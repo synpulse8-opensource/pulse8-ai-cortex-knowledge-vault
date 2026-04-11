@@ -1,0 +1,17 @@
+Meeting: Cortex Architecture Review
+Date: 2026-04-11
+Attendees: Jieke, Team
+
+Decisions:
+- Cortex is a passive knowledge substrate, not an orchestrator
+- Keystone handles orchestration, Cortex handles knowledge storage and retrieval
+- MCP tool surface is the primary interface (7 tools)
+- QMD for local search — no custom search infrastructure
+- No database — filesystem only with JSON graph persistence
+- LLM-powered compilation from raw sources to wiki articles
+
+Action items:
+- Build MCP server first (vault:read, vault:write, vault:search)
+- Integrate QMD for hybrid search
+- Build knowledge compiler pipeline (raw → wiki via Claude)
+- Containerize with Docker
