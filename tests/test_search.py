@@ -111,3 +111,34 @@ class TestQMDSearch:
             cmds = [call[0][0][0] for call in mock_run.call_args_list]
             assert "update" in cmds
             assert "embed" in cmds
+
+    @pytest.mark.asyncio
+    async def test_update_tolerates_embed_failure(self):
+        """update() should not fail if embed fails (e.g. model download hangs)."""
+        from cortex.search.qmd import QMDSearch
+
+        qmd = QMDSearch(Path("/tmp/vault"), "qmd")
+
+        async def _mock_run(args: list[str]) -> str:
+            if args[0] == "embed":
+                raise RuntimeError("QMD error: embed timeout")
+            return ""
+
+        with patch.object(qmd, "_run", side_effect=_mock_run):
+            await qmd.update()
+
+    @pytest.mark.asyncio
+    async def test_initialize_succeeds_when_embed_fails(self):
+        """initialize() should still set _initialized even if embed fails."""
+        from cortex.search.qmd import QMDSearch
+
+        qmd = QMDSearch(Path("/tmp/vault"), "qmd")
+
+        async def _mock_run(args: list[str]) -> str:
+            if args[0] == "embed":
+                raise RuntimeError("QMD error: embed timeout")
+            return ""
+
+        with patch.object(qmd, "_run", side_effect=_mock_run):
+            await qmd.initialize()
+            assert qmd._initialized is True

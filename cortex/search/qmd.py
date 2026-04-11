@@ -36,8 +36,8 @@ class QMDSearch:
 
     async def update(self) -> None:
         """Re-index and re-embed all collections."""
-        await self._run(["update"])
-        await self._run(["embed"])
+        await self._run_safe(["update"])
+        await self._run_safe(["embed"])
 
     async def search(
         self,
