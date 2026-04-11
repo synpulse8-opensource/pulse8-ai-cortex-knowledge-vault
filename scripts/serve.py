@@ -1,4 +1,9 @@
-"""Start the Cortex MCP server (stdio or SSE)."""
+"""Start the Cortex server.
+
+Supported transports (CORTEX_MCP_TRANSPORT):
+  stdio  – MCP over stdin/stdout (default, for Claude Desktop stdio mode)
+  http   – FastAPI + MCP streamable HTTP at /mcp (persistent server)
+"""
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +19,7 @@ def main() -> None:
         from cortex.mcp.server import run_stdio
 
         asyncio.run(run_stdio())
-    elif transport == "sse":
+    elif transport in ("http", "sse"):
         import uvicorn
 
         uvicorn.run(
