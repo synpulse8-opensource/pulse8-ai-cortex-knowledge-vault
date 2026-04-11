@@ -9,15 +9,20 @@ from cortex.api.routes import router
 from cortex.config import settings
 from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
+from cortex.mcp.http_server import create_fastmcp_server
 from cortex.search.qmd import QMDSearch
 from cortex.vault.reader import scan_vault
 from cortex.vault.watcher import VaultWatcher
 
 logger = logging.getLogger(__name__)
 
+_mcp_server = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _mcp_server
+
     vault_path = settings.vault_path
     app.state.vault_path = vault_path
 
@@ -35,10 +40,15 @@ async def lifespan(app: FastAPI):
         logger.warning("QMD initialization failed — search will be unavailable")
     app.state.qmd = qmd
 
+    _mcp_server = await create_fastmcp_server(vault_path)
+    app.mount("/mcp", _mcp_server.streamable_http_app())
+    logger.info("MCP streamable HTTP endpoint mounted at /mcp")
+
     watcher = VaultWatcher(vault_path, app.state.graph)
     await watcher.start()
 
-    yield
+    async with _mcp_server.session_manager.run():
+        yield
 
     await watcher.stop()
 
