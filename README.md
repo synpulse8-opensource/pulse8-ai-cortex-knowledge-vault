@@ -1,4 +1,4 @@
-# Cortex
+# Cortex Knowledge Vault (a.k.a., Cortex 2.0)
 
 Agent-native knowledge OS built on Markdown files.
 
