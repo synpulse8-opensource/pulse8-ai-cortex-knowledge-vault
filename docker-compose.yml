@@ -25,8 +25,8 @@ services:
       - ./vault:/vault
     environment:
       - CORTEX_VAULT_PATH=/vault
-      - CORTEX_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - CORTEX_COMPILER_MODEL=claude-sonnet-4-20250514
+      - CORTEX_LLM_API_KEY=${LLM_API_KEY}
+      - CORTEX_COMPILER_MODEL=${COMPILER_MODEL:-anthropic/claude-sonnet-4-20250514}
       - CORTEX_MCP_TRANSPORT=http
       - CORTEX_QMD_URL=http://qmd:3100
     depends_on:

@@ -21,6 +21,15 @@ class TestPrompts:
         assert "cross-reference" in COMPILE_SYSTEM_PROMPT.lower() or "contradiction" in COMPILE_SYSTEM_PROMPT.lower()
 
 
+def _mock_chat_response(text: str) -> MagicMock:
+    """Create a mock OpenAI-compatible chat completion response."""
+    choice = MagicMock()
+    choice.message.content = text
+    response = MagicMock()
+    response.choices = [choice]
+    return response
+
+
 class TestKnowledgeCompiler:
     @pytest.mark.asyncio
     async def test_ingest_source_creates_wiki_articles(self, tmp_vault: Path):
@@ -36,10 +45,9 @@ class TestKnowledgeCompiler:
             }
         ])
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=mock_articles)]
+        mock_response = _mock_chat_response(mock_articles)
 
-        with patch.object(compiler.client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        with patch.object(compiler.client.chat.completions, "create", new_callable=AsyncMock, return_value=mock_response):
             result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
             assert len(result) == 1
             assert (tmp_vault / "wiki" / "test-concept.md").exists()
@@ -59,10 +67,9 @@ class TestKnowledgeCompiler:
             }
         ])
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=mock_articles)]
+        mock_response = _mock_chat_response(mock_articles)
 
-        with patch.object(compiler.client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        with patch.object(compiler.client.chat.completions, "create", new_callable=AsyncMock, return_value=mock_response):
             await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
             post = fm.load(str(tmp_vault / "wiki" / "from-paper.md"))
             assert post.metadata["source_path"] == "raw/transformer-paper.txt"
@@ -79,10 +86,9 @@ class TestKnowledgeCompiler:
             "content": "Content.",
         }]) + '\n```'
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=fenced)]
+        mock_response = _mock_chat_response(fenced)
 
-        with patch.object(compiler.client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        with patch.object(compiler.client.chat.completions, "create", new_callable=AsyncMock, return_value=mock_response):
             result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
             assert len(result) == 1
 
@@ -92,10 +98,9 @@ class TestKnowledgeCompiler:
 
         compiler = KnowledgeCompiler(tmp_vault)
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="This is not valid JSON at all")]
+        mock_response = _mock_chat_response("This is not valid JSON at all")
 
-        with patch.object(compiler.client.messages, "create", new_callable=AsyncMock, return_value=mock_response):
+        with patch.object(compiler.client.chat.completions, "create", new_callable=AsyncMock, return_value=mock_response):
             result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
             assert result == []
 

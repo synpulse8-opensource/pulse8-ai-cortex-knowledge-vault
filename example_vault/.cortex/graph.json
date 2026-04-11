@@ -1,4 +1,1478 @@
 {
-  "nodes": [],
-  "edges": []
+  "nodes": [
+    {
+      "id": "agents/research-scout.agent.md",
+      "attrs": {
+        "node_type": "agent_def",
+        "title": "Research Scout",
+        "authored_by": "human"
+      }
+    },
+    {
+      "id": "daily/2026-04-11.md",
+      "attrs": {
+        "node_type": "note",
+        "title": "Daily Log 2026-04-11",
+        "authored_by": "human"
+      }
+    },
+    {
+      "id": "sessions/2026-04-11.session.md",
+      "attrs": {
+        "node_type": "session",
+        "title": "Architecture Review Session",
+        "authored_by": "human"
+      }
+    },
+    {
+      "id": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "node_type": "note",
+        "title": "Attention Mechanisms",
+        "authored_by": "claude-sonnet-4-20250514"
+      }
+    },
+    {
+      "id": "wiki/rnn-claims.md",
+      "attrs": {
+        "node_type": "note",
+        "title": "RNN Claims",
+        "authored_by": "human"
+      }
+    },
+    {
+      "id": "wiki/transformers.md",
+      "attrs": {
+        "node_type": "note",
+        "title": "Transformer Architecture",
+        "authored_by": "claude-sonnet-4-20250514"
+      }
+    },
+    {
+      "id": "tag:ml",
+      "attrs": {
+        "node_type": "tag",
+        "title": "ml"
+      }
+    },
+    {
+      "id": "tag:attention",
+      "attrs": {
+        "node_type": "tag",
+        "title": "attention"
+      }
+    },
+    {
+      "id": "tag:deep-learning",
+      "attrs": {
+        "node_type": "tag",
+        "title": "deep-learning"
+      }
+    },
+    {
+      "id": "raw/transformer-paper.txt",
+      "attrs": {
+        "node_type": "raw_source",
+        "title": "raw/transformer-paper.txt"
+      }
+    },
+    {
+      "id": "tag:rnn",
+      "attrs": {
+        "node_type": "tag",
+        "title": "rnn"
+      }
+    },
+    {
+      "id": "tag:sequence-modeling",
+      "attrs": {
+        "node_type": "tag",
+        "title": "sequence-modeling"
+      }
+    },
+    {
+      "id": "tag:architecture",
+      "attrs": {
+        "node_type": "tag",
+        "title": "architecture"
+      }
+    },
+    {
+      "id": "tag:nlp",
+      "attrs": {
+        "node_type": "tag",
+        "title": "nlp"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.646400+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.661756+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.755303+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.088750+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.834739+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.532063+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.100771+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.123450+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.647345+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.662768+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.756872+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.089438+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.835416+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.533494+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.101537+00:00"
+      }
+    },
+    {
+      "source": "daily/2026-04-11.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.124378+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.650841+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.668079+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.763261+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.092578+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.838708+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.539382+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.104686+00:00"
+      }
+    },
+    {
+      "source": "sessions/2026-04-11.session.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.127246+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.651761+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.669060+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.764844+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.093195+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.839292+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.541061+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.105479+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.128040+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.655491+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.674512+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.771186+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.099054+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.843024+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.547006+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.108865+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.130733+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.656565+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.675368+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.772650+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.099621+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.843642+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.548333+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.109552+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.131527+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.660967+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.682560+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.778079+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.103384+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.846295+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.554120+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.112689+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "tag:deep-learning",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.134150+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.661942+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.683737+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.779644+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.103971+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.847034+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.555947+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.113394+00:00"
+      }
+    },
+    {
+      "source": "wiki/attention-mechanisms.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.134984+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.666827+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.691018+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.786000+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.107011+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.849243+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.563376+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.116379+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "wiki/transformers.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.137711+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.667968+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.692121+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.787635+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.107612+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.849879+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.564733+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.117037+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.138619+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.673037+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.697159+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.793956+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.110125+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.853372+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.568684+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.119351+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:rnn",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.141135+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.674202+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.698322+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.795470+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.110699+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.854320+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.569790+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.120023+00:00"
+      }
+    },
+    {
+      "source": "wiki/rnn-claims.md",
+      "target": "tag:sequence-modeling",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.141868+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.679604+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.704222+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.801714+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.114958+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.858642+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.574988+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.124013+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/rnn-claims.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.144388+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.680914+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.705669+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.803302+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.115737+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.859564+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.576191+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.124897+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "wiki/attention-mechanisms.md",
+      "attrs": {
+        "edge_type": "links_to",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.145217+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.686947+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.712390+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.809586+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.118337+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.862970+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.579246+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.127907+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:ml",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.147585+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.688299+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.714015+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.811300+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.118947+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.863860+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.580440+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.128619+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:architecture",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.148322+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.694164+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.720204+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.817833+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.121251+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.868189+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.583687+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.131761+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:attention",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.151017+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.695478+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.721683+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.819528+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.121866+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.869033+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.584695+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.132478+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "tag:nlp",
+      "attrs": {
+        "edge_type": "tagged_with",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.151802+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:48.701891+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:16:49.728187+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:10.826004+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:33:12.124860+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:18.872608+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:41:29.588387+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:18.135243+00:00"
+      }
+    },
+    {
+      "source": "wiki/transformers.md",
+      "target": "raw/transformer-paper.txt",
+      "attrs": {
+        "edge_type": "derived_from",
+        "metadata": {},
+        "created_at": "2026-04-11T17:58:28.154285+00:00"
+      }
+    }
+  ]
 }

@@ -21,7 +21,7 @@ COPY scripts/ scripts/
 RUN mkdir -p /vault/raw /vault/wiki /vault/agents /vault/sessions /vault/daily /vault/.cortex
 
 ENV CORTEX_VAULT_PATH=/vault
-ENV CORTEX_MCP_TRANSPORT=sse
+ENV CORTEX_MCP_TRANSPORT=http
 ENV CORTEX_MCP_SSE_PORT=8420
 
 EXPOSE 8420

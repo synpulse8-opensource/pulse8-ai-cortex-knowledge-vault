@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, INGEST_SYSTEM_PROMPT
 from cortex.config import settings
@@ -16,8 +16,23 @@ class KnowledgeCompiler:
 
     def __init__(self, vault_path: Path) -> None:
         self.vault_path = vault_path
-        self.client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+        self.client = AsyncOpenAI(
+            api_key=settings.llm_api_key or "unused",
+            base_url=settings.llm_base_url,
+        )
         self.model = settings.compiler_model
+
+    async def _chat(self, system: str, user_content: str) -> str:
+        """Send a chat completion request and return the assistant's text."""
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=settings.compiler_max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content},
+            ],
+        )
+        return response.choices[0].message.content or ""
 
     async def ingest_source(self, source_path: Path) -> list[Path]:
         """Read a raw source, call LLM to produce wiki articles, write them to wiki/."""
@@ -26,21 +41,14 @@ class KnowledgeCompiler:
 
         index_content = self._build_index_context()
 
-        response = await self.client.messages.create(
-            model=self.model,
-            max_tokens=settings.compiler_max_tokens,
-            system=INGEST_SYSTEM_PROMPT,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"## Raw Source: {relative_source}\n\n"
-                    f"{source_content}\n\n"
-                    f"## Existing Wiki Index\n\n{index_content}"
-                ),
-            }],
+        text = await self._chat(
+            INGEST_SYSTEM_PROMPT,
+            f"## Raw Source: {relative_source}\n\n"
+            f"{source_content}\n\n"
+            f"## Existing Wiki Index\n\n{index_content}",
         )
 
-        articles = self._parse_articles(response.content[0].text)
+        articles = self._parse_articles(text)
 
         created_paths: list[Path] = []
         for article in articles:
@@ -79,20 +87,13 @@ class KnowledgeCompiler:
 
         index_context = self._build_index_context()
 
-        response = await self.client.messages.create(
-            model=self.model,
-            max_tokens=settings.compiler_max_tokens,
-            system=COMPILE_SYSTEM_PROMPT,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"## New Articles\n\n{'---'.join(new_articles)}\n\n"
-                    f"## Existing Wiki Index\n\n{index_context}"
-                ),
-            }],
+        text = await self._chat(
+            COMPILE_SYSTEM_PROMPT,
+            f"## New Articles\n\n{'---'.join(new_articles)}\n\n"
+            f"## Existing Wiki Index\n\n{index_context}",
         )
 
-        updates = self._parse_updates(response.content[0].text)
+        updates = self._parse_updates(text)
         await self._apply_updates(updates)
 
     def _build_index_context(self) -> str:

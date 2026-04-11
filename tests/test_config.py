@@ -13,8 +13,9 @@ def test_default_settings():
     assert s.vault_path == Path("./vault")
     assert s.qmd_bin == "qmd"
     assert s.qmd_url == ""
-    assert s.anthropic_api_key == ""
-    assert s.compiler_model == "claude-sonnet-4-20250514"
+    assert s.llm_api_key == ""
+    assert s.llm_base_url == "https://openrouter.ai/api/v1"
+    assert s.compiler_model == "anthropic/claude-sonnet-4-20250514"
     assert s.compiler_max_tokens == 4096
     assert s.mcp_transport == "stdio"
     assert s.mcp_sse_host == "0.0.0.0"
@@ -46,3 +47,17 @@ def test_qmd_url_from_env(monkeypatch):
 
     s = CortexSettings()
     assert s.qmd_url == "http://qmd:3100"
+
+
+def test_llm_config_from_env(monkeypatch):
+    """LLM settings should be configurable via env vars."""
+    monkeypatch.setenv("CORTEX_LLM_API_KEY", "sk-or-test-key")
+    monkeypatch.setenv("CORTEX_LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setenv("CORTEX_COMPILER_MODEL", "gpt-4o")
+
+    from cortex.config import CortexSettings
+
+    s = CortexSettings()
+    assert s.llm_api_key == "sk-or-test-key"
+    assert s.llm_base_url == "https://api.openai.com/v1"
+    assert s.compiler_model == "gpt-4o"
