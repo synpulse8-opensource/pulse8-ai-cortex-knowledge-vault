@@ -11,6 +11,7 @@ from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
 from cortex.mcp.http_server import create_fastmcp_server
 from cortex.search.qmd import QMDSearch
+from cortex.search.qmd_http import QMDHttpSearch
 from cortex.vault.reader import scan_vault
 from cortex.vault.watcher import VaultWatcher
 
@@ -33,7 +34,11 @@ async def lifespan(app: FastAPI):
         notes, vault_path / ".cortex" / "graph.json", vault_path
     )
 
-    qmd = QMDSearch(vault_path, settings.qmd_bin)
+    if settings.qmd_url:
+        qmd = QMDHttpSearch(base_url=settings.qmd_url)
+        logger.info("Using QMD HTTP client at %s", settings.qmd_url)
+    else:
+        qmd = QMDSearch(vault_path, settings.qmd_bin)
     try:
         await qmd.initialize()
     except Exception:

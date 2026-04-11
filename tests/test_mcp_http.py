@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from starlette.testclient import TestClient
@@ -14,7 +15,8 @@ def mcp_http_client(tmp_vault: Path):
     from cortex.mcp.http_server import create_mcp_app
 
     loop = asyncio.new_event_loop()
-    starlette_app = loop.run_until_complete(create_mcp_app(tmp_vault))
+    with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+        starlette_app = loop.run_until_complete(create_mcp_app(tmp_vault))
     loop.close()
 
     with TestClient(starlette_app, base_url="http://localhost") as client:
@@ -59,7 +61,8 @@ class TestMCPHttpServer:
         from starlette.applications import Starlette
 
         loop = asyncio.new_event_loop()
-        app = loop.run_until_complete(create_mcp_app(tmp_vault))
+        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+            app = loop.run_until_complete(create_mcp_app(tmp_vault))
         loop.close()
         assert isinstance(app, Starlette)
 
@@ -204,7 +207,8 @@ class TestMainAppMCPMount:
         test_app.state.vault_path = tmp_vault
         test_app.state.qmd = QMDSearch(tmp_vault, "qmd")
 
-        mcp_server = loop.run_until_complete(create_fastmcp_server(tmp_vault))
+        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+            mcp_server = loop.run_until_complete(create_fastmcp_server(tmp_vault))
         mount_mcp_on_app(test_app, mcp_server)
         loop.close()
 

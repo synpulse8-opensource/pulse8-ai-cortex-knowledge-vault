@@ -12,6 +12,7 @@ def test_default_settings():
     s = CortexSettings()
     assert s.vault_path == Path("./vault")
     assert s.qmd_bin == "qmd"
+    assert s.qmd_url == ""
     assert s.anthropic_api_key == ""
     assert s.compiler_model == "claude-sonnet-4-20250514"
     assert s.compiler_max_tokens == 4096
@@ -35,3 +36,13 @@ def test_settings_from_env(monkeypatch):
     assert s.vault_path == Path("/tmp/test-vault")
     assert s.mcp_transport == "sse"
     assert s.mcp_sse_port == 9999
+
+
+def test_qmd_url_from_env(monkeypatch):
+    """CORTEX_QMD_URL should configure HTTP-based QMD client."""
+    monkeypatch.setenv("CORTEX_QMD_URL", "http://qmd:3100")
+
+    from cortex.config import CortexSettings
+
+    s = CortexSettings()
+    assert s.qmd_url == "http://qmd:3100"

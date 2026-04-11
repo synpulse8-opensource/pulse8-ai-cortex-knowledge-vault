@@ -9,6 +9,7 @@ class CortexSettings(BaseSettings):
     vault_path: Path = Path("./vault")
 
     qmd_bin: str = "qmd"
+    qmd_url: str = ""
 
     anthropic_api_key: str = ""
     compiler_model: str = "claude-sonnet-4-20250514"

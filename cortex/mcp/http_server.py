@@ -26,6 +26,7 @@ from cortex.mcp.tools import (
     handle_vault_write,
 )
 from cortex.search.qmd import QMDSearch
+from cortex.search.qmd_http import QMDHttpSearch
 from cortex.vault.reader import scan_vault
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,10 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
     notes = scan_vault(vault_path)
     graph = await build_graph(notes, vault_path / ".cortex" / "graph.json", vault_path)
 
-    qmd = QMDSearch(vault_path, settings.qmd_bin)
+    if settings.qmd_url:
+        qmd = QMDHttpSearch(base_url=settings.qmd_url)
+    else:
+        qmd = QMDSearch(vault_path, settings.qmd_bin)
     try:
         await qmd.initialize()
     except Exception:

@@ -81,6 +81,26 @@ class TestQMDSearch:
             assert qmd._initialized is True
 
     @pytest.mark.asyncio
+    async def test_initialize_tolerates_existing_collections(self):
+        """initialize() should not fail when collections already exist."""
+        from cortex.search.qmd import QMDSearch
+
+        qmd = QMDSearch(Path("/tmp/vault"), "qmd")
+
+        call_count = 0
+
+        async def _mock_run(args: list[str]) -> str:
+            nonlocal call_count
+            call_count += 1
+            if args[0] == "collection" and args[1] == "add":
+                raise RuntimeError("QMD error: Collection 'wiki' already exists.")
+            return ""
+
+        with patch.object(qmd, "_run", side_effect=_mock_run):
+            await qmd.initialize()
+            assert qmd._initialized is True
+
+    @pytest.mark.asyncio
     async def test_update_calls_reindex(self):
         from cortex.search.qmd import QMDSearch
 
