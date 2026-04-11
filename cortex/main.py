@@ -11,6 +11,7 @@ from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
 from cortex.search.qmd import QMDSearch
 from cortex.vault.reader import scan_vault
+from cortex.vault.watcher import VaultWatcher
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,12 @@ async def lifespan(app: FastAPI):
         logger.warning("QMD initialization failed — search will be unavailable")
     app.state.qmd = qmd
 
+    watcher = VaultWatcher(vault_path, app.state.graph)
+    await watcher.start()
+
     yield
+
+    await watcher.stop()
 
 
 app = FastAPI(title="Cortex", version="0.1.0", lifespan=lifespan)
