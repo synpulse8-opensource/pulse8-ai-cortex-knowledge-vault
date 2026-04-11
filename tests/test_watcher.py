@@ -16,6 +16,20 @@ class TestVaultWatcher:
         watcher = VaultWatcher(tmp_vault, graph)
         assert watcher.vault_root == tmp_vault
 
+    def test_vault_root_resolved_to_absolute(self, tmp_vault: Path, monkeypatch):
+        """Relative vault_root must be resolved so watchfiles absolute paths match."""
+        import os
+        from cortex.vault.watcher import VaultWatcher
+        from cortex.graph.engine import GraphEngine
+
+        monkeypatch.chdir(tmp_vault.parent)
+        relative = Path(tmp_vault.name)
+
+        graph = GraphEngine(tmp_vault / ".cortex" / "graph.json")
+        watcher = VaultWatcher(relative, graph)
+        assert watcher.vault_root.is_absolute()
+        assert watcher.vault_root == tmp_vault
+
     @pytest.mark.asyncio
     async def test_handle_change_reads_note(self, tmp_vault: Path):
         from cortex.vault.watcher import VaultWatcher

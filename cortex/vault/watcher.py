@@ -18,7 +18,7 @@ class VaultWatcher:
     """Watch vault filesystem for changes and keep graph/index in sync."""
 
     def __init__(self, vault_root: Path, graph: GraphEngine) -> None:
-        self.vault_root = vault_root
+        self.vault_root = vault_root.resolve()
         self.graph = graph
         self._task: asyncio.Task | None = None
 
