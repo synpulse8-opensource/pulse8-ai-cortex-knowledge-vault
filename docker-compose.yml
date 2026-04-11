@@ -1,0 +1,13 @@
+services:
+  cortex:
+    build: .
+    ports:
+      - "8420:8420"
+    volumes:
+      - ./vault:/vault
+    environment:
+      - CORTEX_VAULT_PATH=/vault
+      - CORTEX_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CORTEX_COMPILER_MODEL=claude-sonnet-4-20250514
+      - CORTEX_MCP_TRANSPORT=sse
+    restart: unless-stopped
