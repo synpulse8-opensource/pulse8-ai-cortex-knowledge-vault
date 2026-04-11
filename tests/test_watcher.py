@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from watchfiles import Change
 
 
 class TestVaultWatcher:
@@ -78,3 +79,31 @@ class TestVaultWatcher:
         initial_count = graph.graph.number_of_nodes()
         await watcher._handle_change(tmp_vault / ".cortex" / "index.md")
         assert graph.graph.number_of_nodes() == initial_count
+
+    def test_watch_filter_excludes_cortex_dir(self, tmp_vault: Path):
+        """awatch must use a filter that rejects .cortex paths at the watchfiles level."""
+        from cortex.vault.watcher import VaultWatcher
+        from cortex.graph.engine import GraphEngine
+
+        graph = GraphEngine(tmp_vault / ".cortex" / "graph.json")
+        watcher = VaultWatcher(tmp_vault, graph)
+
+        cortex_dir = tmp_vault / ".cortex"
+        assert watcher._watch_filter(Change.modified, str(cortex_dir / "graph.json")) is False
+        assert watcher._watch_filter(Change.modified, str(cortex_dir / "index.md")) is False
+        assert watcher._watch_filter(Change.modified, str(cortex_dir / "log.md")) is False
+
+        assert watcher._watch_filter(Change.modified, str(tmp_vault / "wiki" / "note.md")) is True
+        assert watcher._watch_filter(Change.modified, str(tmp_vault / "agents" / "scout.md")) is True
+
+    def test_watch_filter_rejects_non_markdown(self, tmp_vault: Path):
+        """awatch filter should also reject non-.md files."""
+        from cortex.vault.watcher import VaultWatcher
+        from cortex.graph.engine import GraphEngine
+
+        graph = GraphEngine(tmp_vault / ".cortex" / "graph.json")
+        watcher = VaultWatcher(tmp_vault, graph)
+
+        assert watcher._watch_filter(Change.modified, str(tmp_vault / "wiki" / "image.png")) is False
+        assert watcher._watch_filter(Change.modified, str(tmp_vault / ".DS_Store")) is False
+        assert watcher._watch_filter(Change.modified, str(tmp_vault / "wiki" / "note.md")) is True

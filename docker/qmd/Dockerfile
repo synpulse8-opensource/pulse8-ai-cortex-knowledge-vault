@@ -18,6 +18,7 @@ USER qmd
 ENV VAULT_PATH=/vault
 ENV QMD_PORT=3100
 ENV NODE_ENV=production
+ENV XDG_CONFIG_HOME=/home/qmd/.cache
 
 EXPOSE 3100
 

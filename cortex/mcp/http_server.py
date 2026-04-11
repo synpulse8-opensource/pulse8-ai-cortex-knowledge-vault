@@ -101,7 +101,7 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
     @mcp.tool()
     async def vault_search(
         query: str,
-        mode: str = "hybrid",
+        mode: str | None = None,
         collection: Optional[str] = None,
         top_k: int = 10,
     ) -> str:

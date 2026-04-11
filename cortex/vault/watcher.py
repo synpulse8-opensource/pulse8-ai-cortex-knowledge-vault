@@ -21,6 +21,13 @@ class VaultWatcher:
         self.vault_root = vault_root.resolve()
         self.graph = graph
         self._task: asyncio.Task | None = None
+        self._cortex_dir = str(self.vault_root / ".cortex")
+
+    def _watch_filter(self, change: Change, path: str) -> bool:
+        """Filter for watchfiles: only accept .md files outside .cortex/."""
+        if path.startswith(self._cortex_dir):
+            return False
+        return path.endswith(".md")
 
     async def start(self) -> None:
         """Start watching the vault directory."""
@@ -40,15 +47,10 @@ class VaultWatcher:
     async def _watch(self) -> None:
         """Main watch loop using watchfiles."""
         try:
-            async for changes in awatch(self.vault_root):
+            async for changes in awatch(self.vault_root, watch_filter=self._watch_filter):
                 for change_type, path_str in changes:
                     path = Path(path_str)
-                    if not path.suffix == ".md":
-                        continue
-
                     rel = path.relative_to(self.vault_root)
-                    if rel.parts[0] == ".cortex":
-                        continue
 
                     if change_type in (Change.added, Change.modified):
                         await self._handle_change(path)

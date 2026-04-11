@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "cortex": {
+      "url": "http://localhost:8420/mcp/"
+    }
+  }
+}

@@ -15,7 +15,7 @@ def test_default_settings():
     assert s.qmd_url == ""
     assert s.llm_api_key == ""
     assert s.llm_base_url == "https://openrouter.ai/api/v1"
-    assert s.compiler_model == "anthropic/claude-sonnet-4-20250514"
+    assert s.compiler_model == "anthropic/claude-sonnet-4"
     assert s.compiler_max_tokens == 4096
     assert s.mcp_transport == "stdio"
     assert s.mcp_sse_host == "0.0.0.0"
@@ -23,6 +23,7 @@ def test_default_settings():
     assert s.max_context_depth == 2
     assert s.max_context_notes == 8
     assert s.default_author == "human"
+    assert s.qmd_search_mode == "keyword"
 
 
 def test_settings_from_env(monkeypatch):

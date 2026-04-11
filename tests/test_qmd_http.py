@@ -115,6 +115,36 @@ class TestQMDHttpSearch:
             assert "/update" in mock_client.post.call_args[0][0]
 
     @pytest.mark.asyncio
+    async def test_initialize_uses_extended_timeout(self):
+        """initialize() must use a timeout of at least 300s for /setup."""
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            await qmd.initialize()
+            call_kwargs = mock_client.post.call_args[1]
+            assert "timeout" in call_kwargs
+            assert call_kwargs["timeout"] >= 300
+
+    @pytest.mark.asyncio
+    async def test_initialize_tolerates_timeout_error(self):
+        """initialize() should degrade gracefully on timeout."""
+        import httpx
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.post = AsyncMock(side_effect=httpx.ReadTimeout("Setup timed out"))
+            await qmd.initialize()
+            assert qmd._initialized is False
+
+    @pytest.mark.asyncio
     async def test_has_same_interface_as_qmd_search(self):
         """QMDHttpSearch must have the same public API as QMDSearch."""
         from cortex.search.qmd_http import QMDHttpSearch

@@ -112,14 +112,17 @@ async def handle_vault_search(
     vault_path: Path,
     graph: GraphEngine,
     qmd: QMDSearch,
-    mode: str = "hybrid",
+    mode: str | None = None,
     collection: Optional[str] = None,
     top_k: int = 10,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Search via QMD and enrich results with graph edges."""
+    from cortex.config import settings
+
+    effective_mode = mode or settings.qmd_search_mode
     try:
-        raw_results = await qmd.search(query, mode=mode, collection=collection, top_k=top_k)
+        raw_results = await qmd.search(query, mode=effective_mode, collection=collection, top_k=top_k)
 
         enriched = []
         for r in raw_results:

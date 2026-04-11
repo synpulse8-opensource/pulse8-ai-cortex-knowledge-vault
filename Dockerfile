@@ -3,20 +3,18 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     poppler-utils \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g @tobilu/qmd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY cortex/ cortex/
 COPY scripts/ scripts/
+RUN uv sync --frozen --no-dev
 
 RUN mkdir -p /vault/raw /vault/wiki /vault/agents /vault/sessions /vault/daily /vault/.cortex
 
@@ -25,5 +23,8 @@ ENV CORTEX_MCP_TRANSPORT=http
 ENV CORTEX_MCP_SSE_PORT=8420
 
 EXPOSE 8420
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -sf http://localhost:8420/api/v1/health || exit 1
 
 CMD ["uv", "run", "uvicorn", "cortex.main:app", "--host", "0.0.0.0", "--port", "8420"]

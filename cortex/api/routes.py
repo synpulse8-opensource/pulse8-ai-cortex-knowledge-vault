@@ -133,15 +133,18 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
 async def search_endpoint(
     q: str,
     request: Request,
-    mode: str = "hybrid",
+    mode: str | None = None,
     collection: Optional[str] = None,
     top_k: int = 10,
 ):
+    from cortex.config import settings
+
     vault_path = get_vault_path(request)
     graph = get_graph(request)
     qmd = get_qmd(request)
+    effective_mode = mode or settings.qmd_search_mode
 
-    raw_results = await qmd.search(q, mode=mode, collection=collection, top_k=top_k)
+    raw_results = await qmd.search(q, mode=effective_mode, collection=collection, top_k=top_k)
 
     enriched = []
     for r in raw_results:

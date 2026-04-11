@@ -3,7 +3,7 @@ services:
     build:
       context: ./docker/qmd
     volumes:
-      - ./vault:/vault:ro
+      - ${VAULT_DIR:-./example_vault}:/vault:ro
       - qmd-cache:/home/qmd/.cache/qmd
     environment:
       - VAULT_PATH=/vault
@@ -22,11 +22,12 @@ services:
     ports:
       - "8420:8420"
     volumes:
-      - ./vault:/vault
+      - ${VAULT_DIR:-./example_vault}:/vault
     environment:
       - CORTEX_VAULT_PATH=/vault
       - CORTEX_LLM_API_KEY=${LLM_API_KEY:-}
-      - CORTEX_COMPILER_MODEL=${COMPILER_MODEL:-anthropic/claude-sonnet-4-20250514}
+      - CORTEX_LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      - CORTEX_COMPILER_MODEL=${COMPILER_MODEL:-anthropic/claude-sonnet-4}
       - CORTEX_MCP_TRANSPORT=http
       - CORTEX_QMD_URL=http://qmd:3100
     depends_on:

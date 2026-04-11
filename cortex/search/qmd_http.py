@@ -16,9 +16,13 @@ class QMDHttpSearch:
         self._initialized = False
 
     async def initialize(self) -> None:
-        """Tell the QMD server to set up collections and run initial indexing."""
+        """Tell the QMD server to set up collections and run initial indexing.
+
+        Uses a 5-minute timeout because ``/setup`` may download embedding
+        models and index all vault content on first run.
+        """
         try:
-            resp = await self._client.post("/setup")
+            resp = await self._client.post("/setup", timeout=300.0)
             resp.raise_for_status()
             self._initialized = True
         except Exception:

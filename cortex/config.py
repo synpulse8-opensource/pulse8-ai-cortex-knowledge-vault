@@ -10,10 +10,11 @@ class CortexSettings(BaseSettings):
 
     qmd_bin: str = "qmd"
     qmd_url: str = ""
+    qmd_search_mode: str = "keyword"
 
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
-    compiler_model: str = "anthropic/claude-sonnet-4-20250514"
+    compiler_model: str = "anthropic/claude-sonnet-4"
     compiler_max_tokens: int = 4096
 
     mcp_transport: str = "stdio"
