@@ -156,6 +156,45 @@ Start Cortex with `./scripts/start.sh`, then configure Claude Desktop to connect
 - **REST API**: FastAPI endpoints mirroring MCP tools
 - **Watcher**: Real-time filesystem monitoring, auto-updates graph on vault changes
 
+## How It Works
+
+### Watcher vs Compiler
+
+The **Watcher** and **Compiler** are independent components with distinct responsibilities:
+
+- **Watcher** builds and maintains the **graph**. Any `.md` file added, modified, or deleted anywhere in the vault automatically gets its nodes, edges (wikilinks, tags), and index updated.
+- **Compiler** transforms **content**. It takes raw sources from `raw/` and calls the LLM to produce structured wiki articles in `wiki/`. It does no graph work.
+
+They connect indirectly: the compiler writes new files to `wiki/`, and the watcher picks those up and adds them to the graph. Compilation is **on-demand** (triggered by an agent calling `vault_compile` or `vault_ingest`), not automatic.
+
+```
+User/Agent drops file into raw/
+         │
+         ▼
+Watcher sees raw/file.md → adds to graph (as raw_source node)
+         │
+         ▼
+Agent calls vault_compile (manual trigger)
+         │
+         ▼
+Compiler reads raw/file.md → LLM → writes wiki/article.md
+         │
+         ▼
+Watcher sees wiki/article.md → adds to graph (as note node, with edges)
+```
+
+### QMD Search + Graph Enrichment
+
+QMD searches the **files** — it indexes the actual Markdown content on disk across all vault subdirectories (`wiki/`, `agents/`, `sessions/`, `daily/`, `raw/`). It knows nothing about the graph.
+
+The **graph** is used for enrichment after search. When an agent calls `vault_search`:
+
+1. **QMD** performs keyword/semantic search on file contents → returns matching documents with scores
+2. **Cortex** takes those results and enriches them with **graph edges** (wikilinks, tags, contradictions between the matched notes)
+3. The enriched results are returned to the agent in a single response
+
+QMD answers *"what's relevant to this query?"* and the graph answers *"how are these results connected?"*
+
 ## MCP Tools
 
 | Tool | Description |
