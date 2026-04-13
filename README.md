@@ -40,6 +40,7 @@ cp .env.example .env
 | `COMPILER_MODEL` | No | `anthropic/claude-sonnet-4` | LLM model for knowledge compilation |
 | `LLM_BASE_URL` | No | `https://openrouter.ai/api/v1` | LLM API base URL |
 | `VAULT_DIR` | No | `./example_vault` | Path to your vault directory |
+| `QMD_REFRESH_INTERVAL_SECONDS` | No | `900` | Periodic QMD re-index interval (seconds). Set to `0` to disable |
 
 The script checks `LLM_API_KEY`, `OPENROUTER_API_KEY`, and `CORTEX_LLM_API_KEY` in that order. If none are set, it prompts you interactively and saves to `.env`.
 
@@ -195,15 +196,26 @@ The **graph** is used for enrichment after search. When an agent calls `vault_se
 
 QMD answers *"what's relevant to this query?"* and the graph answers *"how are these results connected?"*
 
+### Search Index Freshness
+
+The QMD search index stays fresh through two mechanisms:
+
+- **Eager refresh**: Every write operation (`vault_write`, `vault_ingest`, `vault_compile` — via both REST API and MCP) triggers an immediate `qmd.update()` call after writing content. New notes are searchable right away.
+- **Periodic refresh**: A configurable background timer (default every 15 minutes) calls `qmd.update()` as a safety net. This catches files added outside the app — manual edits, `git pull`, or other processes writing directly to the vault directory. Both the Cortex app and the QMD container run their own independent refresh loops.
+
+Set `QMD_REFRESH_INTERVAL_SECONDS=0` to disable periodic refresh (eager refresh still works).
+
 ## MCP Tools
 
 | Tool | Description |
 |---|---|
 | `vault_read` | Read a note by path |
-| `vault_write` | Create or update a note |
+| `vault_write` | Create or update a note (refreshes search index) |
 | `vault_search` | Search the vault (keyword/semantic/hybrid) |
 | `vault_link` | Create, query, or delete graph edges |
-| `vault_ingest` | Ingest raw content and compile to wiki articles |
+| `vault_context` | Build a context window: search → graph BFS → ranked subgraph |
+| `vault_ingest` | Ingest raw content (refreshes search index) |
+| `vault_compile` | Compile raw sources into wiki articles via LLM (refreshes search index) |
 
 ## Data Persistence
 
