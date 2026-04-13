@@ -70,6 +70,17 @@ class TestNotesEndpoints:
         data = response.json()
         assert data["path"] == "wiki/api-test.md"
 
+    def test_write_note_refreshes_qmd_index(self, app_client):
+        with patch.object(app_client.app.state.qmd, "update", new_callable=AsyncMock) as mock_update:
+            response = app_client.put(
+                "/api/v1/notes/wiki/qmd-refresh-api.md",
+                json={
+                    "content": "# QMD Refresh\n\nShould trigger index update.",
+                },
+            )
+            assert response.status_code == 200
+            mock_update.assert_awaited_once()
+
 
 class TestSearchEndpoint:
     def test_search(self, app_client):

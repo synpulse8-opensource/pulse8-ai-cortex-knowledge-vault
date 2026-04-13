@@ -89,6 +89,7 @@ async def read_note_endpoint(path: str, request: Request):
 async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
     vault_path = get_vault_path(request)
     graph = get_graph(request)
+    qmd = get_qmd(request)
 
     try:
         note = write_note(
@@ -119,6 +120,10 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
                 )
 
         await rebuild_index(vault_path)
+        try:
+            await qmd.update()
+        except Exception:
+            pass
         await log_operation(vault_path, body.authored_by, "vault:write", f"Wrote {path}")
 
         return {"path": note.path, "title": note.title, "status": "written"}
