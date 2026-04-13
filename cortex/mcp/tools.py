@@ -213,6 +213,7 @@ async def handle_vault_ingest(
     source_type: str = "text",
     auto_compile: bool = False,
     compiler: Optional[KnowledgeCompiler] = None,
+    qmd: Optional[Any] = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Write raw source to raw/ and optionally trigger compilation."""
@@ -234,6 +235,12 @@ async def handle_vault_ingest(
             created = await compiler.ingest_source(raw_path)
             result["compiled"] = True
             result["wiki_articles"] = [str(p.relative_to(vault_path)) for p in created]
+
+        if qmd is not None:
+            try:
+                await qmd.update()
+            except Exception:
+                logger.warning("QMD index refresh failed after ingest")
 
         return result
     except Exception as e:

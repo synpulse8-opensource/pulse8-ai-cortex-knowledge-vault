@@ -177,3 +177,17 @@ class TestVaultIngestTool:
         vault_path = mcp_services["vault_path"]
         assert (vault_path / "raw" / "test-ingest.txt").exists()
         assert result["path"] == "raw/test-ingest.txt"
+
+    @pytest.mark.asyncio
+    async def test_ingest_refreshes_qmd_index(self, mcp_services):
+        from cortex.mcp.tools import handle_vault_ingest
+
+        with patch.object(mcp_services["qmd"], "update", new_callable=AsyncMock) as mock_update:
+            await handle_vault_ingest(
+                content="Raw content for QMD refresh test.",
+                filename="qmd-refresh-test.txt",
+                source_type="text",
+                auto_compile=False,
+                **mcp_services,
+            )
+            mock_update.assert_awaited_once()
