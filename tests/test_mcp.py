@@ -191,3 +191,17 @@ class TestVaultIngestTool:
                 **mcp_services,
             )
             mock_update.assert_awaited_once()
+
+
+class TestVaultCompileTool:
+    @pytest.mark.asyncio
+    async def test_compile_refreshes_qmd_index(self, mcp_services):
+        from cortex.mcp.tools import handle_vault_compile
+
+        vault_path = mcp_services["vault_path"]
+        (vault_path / "raw" / "compile-test.txt").write_text("Compile me.")
+
+        with patch.object(mcp_services["qmd"], "update", new_callable=AsyncMock) as mock_update:
+            with patch.object(mcp_services["compiler"], "ingest_source", new_callable=AsyncMock, return_value=[]):
+                await handle_vault_compile(**mcp_services)
+            mock_update.assert_awaited_once()

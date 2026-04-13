@@ -252,6 +252,7 @@ async def handle_vault_compile(
     vault_path: Path,
     graph: GraphEngine,
     compiler: KnowledgeCompiler,
+    qmd: Optional[Any] = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Compile unprocessed raw sources into wiki articles."""
@@ -281,6 +282,11 @@ async def handle_vault_compile(
                 all_created.extend(str(p.relative_to(vault_path)) for p in created)
 
         await rebuild_index(vault_path)
+        if qmd is not None:
+            try:
+                await qmd.update()
+            except Exception:
+                logger.warning("QMD index refresh failed after compile")
         await log_operation(vault_path, "mcp", "vault:compile", f"Compiled {compiled_count} sources")
 
         return {
