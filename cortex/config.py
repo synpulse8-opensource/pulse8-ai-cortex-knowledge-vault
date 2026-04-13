@@ -17,6 +17,8 @@ class CortexSettings(BaseSettings):
     compiler_model: str = "anthropic/claude-sonnet-4"
     compiler_max_tokens: int = 4096
 
+    qmd_refresh_interval_seconds: int = 900
+
     mcp_transport: str = "stdio"
     mcp_sse_host: str = "0.0.0.0"
     mcp_sse_port: int = 8420

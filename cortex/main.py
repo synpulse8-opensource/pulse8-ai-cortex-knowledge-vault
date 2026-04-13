@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,7 @@ from cortex.graph.engine import GraphEngine
 from cortex.mcp.http_server import create_fastmcp_server
 from cortex.search.qmd import QMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
+from cortex.search.qmd_refresh import periodic_qmd_refresh
 from cortex.vault.reader import scan_vault
 from cortex.vault.watcher import VaultWatcher
 
@@ -52,9 +54,25 @@ async def lifespan(app: FastAPI):
     watcher = VaultWatcher(vault_path, app.state.graph)
     await watcher.start()
 
+    refresh_task = None
+    if settings.qmd_refresh_interval_seconds > 0:
+        refresh_task = asyncio.create_task(
+            periodic_qmd_refresh(qmd, settings.qmd_refresh_interval_seconds)
+        )
+        logger.info(
+            "Periodic QMD refresh enabled every %ds",
+            settings.qmd_refresh_interval_seconds,
+        )
+
     async with _mcp_server.session_manager.run():
         yield
 
+    if refresh_task is not None:
+        refresh_task.cancel()
+        try:
+            await refresh_task
+        except asyncio.CancelledError:
+            pass
     await watcher.stop()
 
 

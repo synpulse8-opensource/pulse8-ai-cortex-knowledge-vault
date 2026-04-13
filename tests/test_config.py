@@ -24,6 +24,7 @@ def test_default_settings():
     assert s.max_context_notes == 8
     assert s.default_author == "human"
     assert s.qmd_search_mode == "keyword"
+    assert s.qmd_refresh_interval_seconds == 900
 
 
 def test_settings_from_env(monkeypatch):
