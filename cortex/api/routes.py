@@ -271,6 +271,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
 @router.post("/compile")
 async def compile_endpoint(request: Request):
     vault_path = get_vault_path(request)
+    qmd = get_qmd(request)
 
     existing_sources: set[str] = set()
     for note in scan_vault(vault_path):
@@ -298,6 +299,10 @@ async def compile_endpoint(request: Request):
             all_created.extend(str(p.relative_to(vault_path)) for p in created)
 
     await rebuild_index(vault_path)
+    try:
+        await qmd.update()
+    except Exception:
+        pass
     await log_operation(vault_path, "api", "vault:compile", f"Compiled {compiled_count} sources")
 
     return {

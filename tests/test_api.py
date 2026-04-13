@@ -150,3 +150,17 @@ class TestIngestEndpoint:
             )
             assert response.status_code == 200
             mock_update.assert_awaited_once()
+
+
+class TestCompileEndpoint:
+    def test_compile_refreshes_qmd_index(self, app_client):
+        vault_path = app_client.app.state.vault_path
+        (vault_path / "raw" / "compile-api-test.txt").write_text("Compile me via API.")
+
+        with patch.object(app_client.app.state.qmd, "update", new_callable=AsyncMock) as mock_update:
+            with patch("cortex.compiler.compiler.KnowledgeCompiler") as MockCompiler:
+                mock_instance = MockCompiler.return_value
+                mock_instance.ingest_source = AsyncMock(return_value=[])
+                response = app_client.post("/api/v1/compile")
+            assert response.status_code == 200
+            mock_update.assert_awaited_once()
