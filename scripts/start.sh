@@ -37,9 +37,10 @@ echo "Configuration saved to .env"
 # ── Launch ───────────────────────────────────────────────────────────
 echo ""
 echo "Starting Cortex..."
-echo "  Vault:    $VAULT_DIR"
-echo "  Model:    $COMPILER_MODEL"
-echo "  LLM URL:  $LLM_BASE_URL"
+echo "  Vault:       $VAULT_DIR"
+echo "  Model:       $COMPILER_MODEL"
+echo "  LLM URL:     $LLM_BASE_URL"
+echo "  QMD Refresh: ${QMD_REFRESH_INTERVAL_SECONDS}s"
 echo ""
 
 docker compose up --build -d

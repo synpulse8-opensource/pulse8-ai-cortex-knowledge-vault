@@ -26,6 +26,7 @@ apply_defaults() {
     export VAULT_DIR="${VAULT_DIR:-./example_vault}"
     export COMPILER_MODEL="${COMPILER_MODEL:-anthropic/claude-sonnet-4}"
     export LLM_BASE_URL="${LLM_BASE_URL:-https://openrouter.ai/api/v1}"
+    export QMD_REFRESH_INTERVAL_SECONDS="${QMD_REFRESH_INTERVAL_SECONDS:-900}"
 }
 
 write_env_file() {
@@ -35,6 +36,7 @@ LLM_API_KEY=${LLM_API_KEY}
 COMPILER_MODEL=${COMPILER_MODEL}
 LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
 VAULT_DIR=${VAULT_DIR}
+QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
 EOF
 }
 
@@ -62,5 +64,6 @@ prompt_missing_env() {
     echo "  Model:        $COMPILER_MODEL"
     echo "  LLM Base URL: $LLM_BASE_URL"
     echo "  Vault:        $VAULT_DIR"
+    echo "  QMD Refresh:  ${QMD_REFRESH_INTERVAL_SECONDS}s"
     echo ""
 }
