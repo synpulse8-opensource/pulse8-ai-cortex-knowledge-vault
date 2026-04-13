@@ -8,6 +8,7 @@ services:
     environment:
       - VAULT_PATH=/vault
       - QMD_PORT=3100
+      - QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
     ports:
       - "3100:3100"
     restart: unless-stopped
@@ -30,6 +31,7 @@ services:
       - CORTEX_COMPILER_MODEL=${COMPILER_MODEL:-anthropic/claude-sonnet-4}
       - CORTEX_MCP_TRANSPORT=http
       - CORTEX_QMD_URL=http://qmd:3100
+      - CORTEX_QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
     depends_on:
       qmd:
         condition: service_healthy
