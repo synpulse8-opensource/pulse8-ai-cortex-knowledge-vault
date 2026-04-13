@@ -22,6 +22,7 @@ async def mcp_services(tmp_vault: Path):
     graph = await build_graph(notes, tmp_vault / ".cortex" / "graph.json", tmp_vault)
 
     qmd = QMDSearch(tmp_vault, "qmd")
+    qmd.update = AsyncMock()
 
     compiler = KnowledgeCompiler(tmp_vault)
 
@@ -83,6 +84,18 @@ class TestVaultWriteTool:
         )
         graph = mcp_services["graph"]
         assert graph.graph.has_node("wiki/graph-test.md")
+
+    @pytest.mark.asyncio
+    async def test_write_refreshes_qmd_index(self, mcp_services):
+        from cortex.mcp.tools import handle_vault_write
+
+        with patch.object(mcp_services["qmd"], "update", new_callable=AsyncMock) as mock_update:
+            await handle_vault_write(
+                path="wiki/qmd-refresh-test.md",
+                content="# QMD Refresh\n\nShould trigger index update.",
+                **mcp_services,
+            )
+            mock_update.assert_awaited_once()
 
 
 class TestVaultSearchTool:

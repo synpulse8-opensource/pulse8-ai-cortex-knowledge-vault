@@ -61,6 +61,7 @@ async def handle_vault_write(
     mode: str = "upsert",
     authored_by: str = "human",
     model: Optional[str] = None,
+    qmd: Optional[Any] = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Create or update a note. Updates graph and vault index."""
@@ -95,6 +96,11 @@ async def handle_vault_write(
                 )
 
         await rebuild_index(vault_path)
+        if qmd is not None:
+            try:
+                await qmd.update()
+            except Exception:
+                logger.warning("QMD index refresh failed after write")
         await log_operation(vault_path, authored_by, "vault:write", f"Wrote {path}")
 
         return {
