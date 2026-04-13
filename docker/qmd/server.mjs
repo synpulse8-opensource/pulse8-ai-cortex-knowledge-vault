@@ -7,8 +7,13 @@ const exec = promisify(execFile);
 const PORT = parseInt(process.env.QMD_PORT || "3100", 10);
 const VAULT_PATH = process.env.VAULT_PATH || "/vault";
 const QMD_BIN = process.env.QMD_BIN || "qmd";
+const REFRESH_INTERVAL_S = parseInt(
+  process.env.QMD_REFRESH_INTERVAL_SECONDS || "900",
+  10,
+);
 
 let setupReady = false;
+let refreshTimer = null;
 
 async function qmd(args, timeout = 120_000) {
   const { stdout, stderr } = await exec(QMD_BIN, args, {
@@ -143,8 +148,40 @@ const server = createServer(async (req, res) => {
   }
 });
 
+async function periodicRefresh() {
+  if (!setupReady) return;
+  console.log("Periodic refresh: running update + embed");
+  try {
+    await qmd(["update"]);
+    await qmd(["embed"], 600_000);
+    console.log("Periodic refresh complete");
+  } catch (e) {
+    console.warn("Periodic refresh failed:", e.message);
+  }
+}
+
+function startRefreshTimer() {
+  if (REFRESH_INTERVAL_S <= 0) {
+    console.log("Periodic refresh disabled (interval <= 0)");
+    return;
+  }
+  refreshTimer = setInterval(periodicRefresh, REFRESH_INTERVAL_S * 1000);
+  console.log(`Periodic refresh enabled every ${REFRESH_INTERVAL_S}s`);
+}
+
+function shutdown() {
+  console.log("Shutting down...");
+  if (refreshTimer) clearInterval(refreshTimer);
+  server.close(() => process.exit(0));
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`QMD HTTP server listening on port ${PORT}`);
   console.log(`Vault path: ${VAULT_PATH}`);
-  runSetup().catch((e) => console.error("Auto-setup failed:", e.message));
+  runSetup()
+    .then(() => startRefreshTimer())
+    .catch((e) => console.error("Auto-setup failed:", e.message));
 });
