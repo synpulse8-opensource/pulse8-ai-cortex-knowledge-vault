@@ -136,3 +136,17 @@ class TestIngestEndpoint:
         )
         assert response.status_code == 200
         assert response.json()["path"] == "raw/api-ingest.txt"
+
+    def test_ingest_refreshes_qmd_index(self, app_client):
+        with patch.object(app_client.app.state.qmd, "update", new_callable=AsyncMock) as mock_update:
+            response = app_client.post(
+                "/api/v1/ingest",
+                json={
+                    "content": "Raw content for QMD refresh test.",
+                    "filename": "qmd-refresh-ingest.txt",
+                    "source_type": "text",
+                    "auto_compile": False,
+                },
+            )
+            assert response.status_code == 200
+            mock_update.assert_awaited_once()

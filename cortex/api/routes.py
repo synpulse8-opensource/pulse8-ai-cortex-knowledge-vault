@@ -237,6 +237,7 @@ async def graph_stats_endpoint(request: Request):
 @router.post("/ingest")
 async def ingest_endpoint(body: IngestBody, request: Request):
     vault_path = get_vault_path(request)
+    qmd = get_qmd(request)
 
     raw_path = vault_path / "raw" / body.filename
     raw_path.parent.mkdir(parents=True, exist_ok=True)
@@ -258,6 +259,11 @@ async def ingest_endpoint(body: IngestBody, request: Request):
         created = await compiler.ingest_source(raw_path)
         result["compiled"] = True
         result["wiki_articles"] = [str(p.relative_to(vault_path)) for p in created]
+
+    try:
+        await qmd.update()
+    except Exception:
+        pass
 
     return result
 
