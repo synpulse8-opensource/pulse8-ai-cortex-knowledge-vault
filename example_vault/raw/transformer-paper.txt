@@ -1,13 +1,9 @@
 Title: Attention Is All You Need — Summary Notes
 
-The transformer architecture introduces a model based entirely on attention mechanisms,
-dispensing with recurrence and convolutions. Key innovation is multi-head self-attention
-which allows the model to jointly attend to information from different representation
-subspaces at different positions.
-
-The model achieves state-of-the-art results on WMT 2014 English-to-German and
-English-to-French translation tasks. Training time is significantly reduced compared
-to recurrent models.
+The transformer architecture introduces a model based entirely on attention
+mechanisms, dispensing with recurrence and convolutions. The key innovation is
+multi-head self-attention, which allows the model to jointly attend to
+information from different representation subspaces at different positions.
 
 Key components:
 - Scaled dot-product attention: Attention(Q,K,V) = softmax(QK^T / sqrt(d_k))V
@@ -16,5 +12,6 @@ Key components:
 - Feed-forward networks: two linear transformations with ReLU
 - Residual connections and layer normalization
 
-The paper argues that recurrence is NOT necessary for sequence modeling, contradicting
-the prevailing view that sequential processing is fundamental to language understanding.
+The paper argues that recurrence is not necessary for sequence modeling,
+challenging the prevailing view that sequential processing is fundamental
+to language understanding.
