@@ -6,6 +6,8 @@ PULSE8.ai Cortex is an agent-native knowledge OS built on Markdown. It gives AI 
 
 Drop files in, let agents read, write, search, link, and compile knowledge — no database required.
 
+> Inspired by [Andrej Karpathy](https://github.com/karpathy)'s [LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern — a persistent, compounding knowledge base maintained by LLMs instead of re-derived on every query. Search powered by [Tobi Lütke](https://github.com/tobi)'s [QMD](https://github.com/tobi/qmd).
+
 ## Get started
 
 > [!NOTE]
@@ -214,6 +216,13 @@ uv run pytest tests/ -v
 ## Reporting issues
 
 Use [GitHub Issues](https://github.com/pulse8-ai/cortex-knowledge-vault/issues) to report bugs or request features.
+
+## Acknowledgements
+
+PULSE8.ai Cortex builds on ideas and tools from the open-source community:
+
+- **[LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)** by [Andrej Karpathy](https://github.com/karpathy) — the core pattern of an LLM-maintained, persistent knowledge base that compiles and interlinks knowledge incrementally rather than re-discovering it from raw documents on every query. This gist is the direct inspiration for Cortex's architecture.
+- **[QMD](https://github.com/tobi/qmd)** by [Tobi Lütke](https://github.com/tobi) — the on-device search engine powering all full-text and hybrid search in Cortex. QMD combines BM25, vector search, and LLM re-ranking, all running locally.
 
 ## License
 
