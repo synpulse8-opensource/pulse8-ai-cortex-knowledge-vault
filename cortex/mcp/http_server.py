@@ -39,7 +39,7 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
         allowed_hosts=["localhost:*", "127.0.0.1:*", "localhost", "127.0.0.1"],
     )
     mcp = FastMCP(
-        "cortex",
+        "PULSE8.ai Cortex",
         stateless_http=True,
         json_response=True,
         streamable_http_path="/",

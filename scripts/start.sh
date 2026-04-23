@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Cortex — one-click launcher
-# Validates environment, then starts QMD + Cortex via Docker Compose.
+# PULSE8.ai Cortex — one-click launcher
+# Validates environment, then starts QMD + PULSE8.ai Cortex via Docker Compose.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
@@ -36,7 +36,7 @@ echo "Configuration saved to .env"
 
 # ── Launch ───────────────────────────────────────────────────────────
 echo ""
-echo "Starting Cortex..."
+echo "Starting PULSE8.ai Cortex..."
 echo "  Vault:       $VAULT_DIR"
 echo "  Model:       $COMPILER_MODEL"
 echo "  LLM URL:     $LLM_BASE_URL"
@@ -50,7 +50,7 @@ echo "Waiting for services to become healthy..."
 docker compose up --wait
 
 echo ""
-echo "✔ Cortex is running!"
+echo "✔ PULSE8.ai Cortex is running!"
 echo ""
 echo "  MCP endpoint:  http://localhost:8420/mcp/"
 echo "  REST API:      http://localhost:8420/api/v1/"

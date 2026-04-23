@@ -1,58 +1,55 @@
-# Cortex Knowledge Vault
+# PULSE8.ai Cortex
 
-![](https://img.shields.io/badge/Python-3.12%2B-blue?style=flat-square) ![](https://img.shields.io/badge/Docker-ready-blue?style=flat-square&logo=docker) ![](https://img.shields.io/badge/MCP-compatible-purple?style=flat-square) ![](https://img.shields.io/badge/License-Apache--2.0-green?style=flat-square)
-
-Cortex is an agent-native knowledge OS built on Markdown. It gives AI agents and humans a shared vault backed by a typed knowledge graph, full-text search, and an LLM-powered compiler — all accessible through a unified [MCP](https://modelcontextprotocol.io/) interface.
+PULSE8.ai Cortex is an agent-native knowledge OS built on Markdown. It gives AI agents and humans a shared vault backed by a typed knowledge graph, full-text search, and an LLM-powered compiler — all accessible through a unified [MCP](https://modelcontextprotocol.io/) interface.
 
 Drop files in, let agents read, write, search, link, and compile knowledge — no database required.
 
 ## Get started
 
 > [!NOTE]
-> Cortex requires Docker. On first run you'll be prompted for an [OpenRouter API key](https://openrouter.ai/keys).
+> PULSE8.ai Cortex requires Docker. On first run you'll be prompted for an [OpenRouter API key](https://openrouter.ai/keys).
 
 1. Clone the repository:
-
-    ```bash
+  ```bash
     git clone https://github.com/pulse8-ai/cortex-knowledge-vault.git
     cd cortex-knowledge-vault
-    ```
-
-2. Launch Cortex:
-
-    ```bash
+  ```
+2. Launch PULSE8.ai Cortex:
+  ```bash
     ./scripts/start.sh
-    ```
-
-    This builds and starts both **Cortex** (API + MCP on `:8420`) and **QMD** (search on `:3100`), waits for health checks, and you're ready to go.
-
+  ```
+    This builds and starts both **PULSE8.ai Cortex** (API + MCP on `:8420`) and **QMD** (search on `:3100`), waits for health checks, and you're ready to go.
 3. Connect your MCP client (e.g. Claude Desktop) to `http://localhost:8420/mcp/`.
 
 To stop: `./scripts/stop.sh`
 
 ## Features
 
-| | |
-|---|---|
-| **Knowledge Graph** | Typed graph engine (NetworkX) — wikilinks, tags, and custom edges, auto-maintained on every file change |
-| **Full-Text Search** | BM25 keyword search via QMD with optional hybrid (vector + reranking) mode |
-| **LLM Compiler** | Transforms raw sources into structured wiki articles using any OpenRouter-compatible model |
-| **MCP Server** | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client |
-| **REST API** | FastAPI endpoints mirroring all MCP tools at `/api/v1/` |
-| **Vault Watcher** | Real-time filesystem monitoring — graph stays in sync automatically |
-| **Zero Database** | Everything persists as Markdown + JSON on your filesystem |
+
+|                      |                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Knowledge Graph**  | Typed graph engine (NetworkX) — wikilinks, tags, and custom edges, auto-maintained on every file change |
+| **Full-Text Search** | BM25 keyword search via QMD with optional hybrid (vector + reranking) mode                              |
+| **LLM Compiler**     | Transforms raw sources into structured wiki articles using any OpenRouter-compatible model              |
+| **MCP Server**       | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client               |
+| **REST API**         | FastAPI endpoints mirroring all MCP tools at `/api/v1/`                                                 |
+| **Vault Watcher**    | Real-time filesystem monitoring — graph stays in sync automatically                                     |
+| **Zero Database**    | Everything persists as Markdown + JSON on your filesystem                                               |
+
 
 ## MCP tools
 
-| Tool | Description |
-|---|---|
-| `vault_read` | Read a note by path |
-| `vault_write` | Create or update a note |
-| `vault_search` | Search the vault (keyword / semantic / hybrid) |
-| `vault_link` | Create, query, or delete graph edges |
+
+| Tool            | Description                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `vault_read`    | Read a note by path                                                |
+| `vault_write`   | Create or update a note                                            |
+| `vault_search`  | Search the vault (keyword / semantic / hybrid)                     |
+| `vault_link`    | Create, query, or delete graph edges                               |
 | `vault_context` | Build a context window: search → graph traversal → ranked subgraph |
-| `vault_ingest` | Ingest raw content into the vault |
-| `vault_compile` | Compile raw sources into wiki articles via LLM |
+| `vault_ingest`  | Ingest raw content into the vault                                  |
+| `vault_compile` | Compile raw sources into wiki articles via LLM                     |
+
 
 ## Architecture
 
@@ -62,11 +59,11 @@ To stop: `./scripts/stop.sh`
 └──────────┬───────────────────────────────────┘
            │  MCP (HTTP or stdio)
 ┌──────────▼───────────────────────────────────┐
-│  Cortex  :8420                               │
-│  ┌─────────┐ ┌──────────┐ ┌──────────────┐  │
-│  │ MCP     │ │ REST API │ │ Vault Watcher│  │
-│  │ /mcp/   │ │ /api/v1/ │ │ (watchfiles) │  │
-│  └────┬────┘ └────┬─────┘ └──────┬───────┘  │
+│  PULSE8.ai Cortex  :8420                     │
+│  ┌─────────┐ ┌──────────┐ ┌──────────────┐   │
+│  │ MCP     │ │ REST API │ │ Vault Watcher│   │
+│  │ /mcp/   │ │ /api/v1/ │ │ (watchfiles) │   │
+│  └────┬────┘ └────┬─────┘ └──────┬───────┘   │
 │       └───────────┼──────────────┘           │
 │            ┌──────▼──────┐                   │
 │            │ Graph Engine│                   │
@@ -94,13 +91,15 @@ Copy the example and fill in your values:
 cp .env.example .env
 ```
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `LLM_API_KEY` | Yes | — | OpenRouter (or compatible) API key |
-| `COMPILER_MODEL` | No | `anthropic/claude-sonnet-4` | Model for knowledge compilation |
-| `LLM_BASE_URL` | No | `https://openrouter.ai/api/v1` | LLM API base URL |
-| `VAULT_DIR` | No | `./example_vault` | Path to your vault directory |
-| `QMD_REFRESH_INTERVAL_SECONDS` | No | `900` | Periodic re-index interval (seconds; `0` to disable) |
+
+| Variable                       | Required | Default                        | Description                                          |
+| ------------------------------ | -------- | ------------------------------ | ---------------------------------------------------- |
+| `LLM_API_KEY`                  | Yes      | —                              | OpenRouter (or compatible) API key                   |
+| `COMPILER_MODEL`               | No       | `anthropic/claude-sonnet-4`    | Model for knowledge compilation                      |
+| `LLM_BASE_URL`                 | No       | `https://openrouter.ai/api/v1` | LLM API base URL                                     |
+| `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
+| `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
+
 
 `OPENROUTER_API_KEY` and `CORTEX_LLM_API_KEY` are accepted as aliases for `LLM_API_KEY`.
 
@@ -108,9 +107,9 @@ cp .env.example .env
 
 ### Claude Desktop
 
-An example config is included at [`claude_desktop_config.example.json`](claude_desktop_config.example.json).
+An example config is included at `[claude_desktop_config.example.json](claude_desktop_config.example.json)`.
 
-**HTTP (recommended)** — Cortex runs as a persistent server:
+**HTTP (recommended)** — PULSE8.ai Cortex runs as a persistent server:
 
 ```json
 {
@@ -150,18 +149,20 @@ uv run pytest tests/ -v
 # Run shell tests (requires bats-core)
 bats tests/test_start_sh.bats
 
-# Start Cortex locally (without Docker)
+# Start PULSE8.ai Cortex locally (without Docker)
 CORTEX_MCP_TRANSPORT=http CORTEX_VAULT_PATH=./example_vault uv run python scripts/serve.py
 ```
 
 ### Utility scripts
 
-| Script | Description |
-|---|---|
-| `scripts/serve.py` | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
-| `scripts/compile.py` | Batch-compile all raw sources |
-| `scripts/reindex.py` | Full reindex + graph rebuild |
-| `scripts/lint.py` | Lint vault structure |
+
+| Script               | Description                                                |
+| -------------------- | ---------------------------------------------------------- |
+| `scripts/serve.py`   | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
+| `scripts/compile.py` | Batch-compile all raw sources                              |
+| `scripts/reindex.py` | Full reindex + graph rebuild                               |
+| `scripts/lint.py`    | Lint vault structure                                       |
+
 
 ## How it works
 
@@ -175,7 +176,7 @@ They connect indirectly: the compiler writes to `wiki/`, the watcher picks those
 **Search** uses a two-stage pipeline:
 
 1. **QMD** performs keyword/semantic search on file contents
-2. **Cortex** enriches results with graph edges (wikilinks, tags, relationships between matched notes)
+2. **PULSE8.ai Cortex** enriches results with graph edges (wikilinks, tags, relationships between matched notes)
 
 QMD answers *"what's relevant?"* — the graph answers *"how are these results connected?"*
 
@@ -217,4 +218,4 @@ Use [GitHub Issues](https://github.com/pulse8-ai/cortex-knowledge-vault/issues) 
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE).
+This project is licensed under the [PULSE8.ai Cortex Open Source License](LICENSE.md) (Apache License 2.0 with additional terms).

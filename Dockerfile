@@ -1,5 +1,9 @@
 FROM python:3.12-slim
 
+LABEL org.opencontainers.image.title="PULSE8.ai Cortex"
+LABEL org.opencontainers.image.description="Agent-native knowledge OS built on Markdown"
+LABEL org.opencontainers.image.vendor="PULSE8.ai"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     poppler-utils \

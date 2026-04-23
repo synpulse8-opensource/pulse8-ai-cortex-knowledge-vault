@@ -1,4 +1,4 @@
-"""Start the Cortex server.
+"""Start the PULSE8.ai Cortex server.
 
 Supported transports (CORTEX_MCP_TRANSPORT):
   stdio  – MCP over stdin/stdout (default, for Claude Desktop stdio mode)

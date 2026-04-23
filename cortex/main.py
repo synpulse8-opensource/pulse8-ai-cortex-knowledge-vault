@@ -76,5 +76,5 @@ async def lifespan(app: FastAPI):
     await watcher.stop()
 
 
-app = FastAPI(title="Cortex", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="PULSE8.ai Cortex", version="0.1.0", lifespan=lifespan)
 app.include_router(router, prefix="/api/v1")

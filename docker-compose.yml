@@ -1,5 +1,6 @@
 services:
   qmd:
+    container_name: qmd
     build:
       context: ./docker/qmd
     volumes:
@@ -19,6 +20,7 @@ services:
       - no-new-privileges:true
 
   cortex:
+    container_name: pulse8-ai-cortex
     build: .
     ports:
       - "8420:8420"

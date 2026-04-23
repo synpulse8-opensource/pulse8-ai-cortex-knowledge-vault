@@ -1,7 +1,7 @@
 [project]
 name = "cortex"
 version = "0.1.0"
-description = "Agent-native knowledge OS built on Markdown files"
+description = "PULSE8.ai Cortex — agent-native knowledge OS built on Markdown files"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
