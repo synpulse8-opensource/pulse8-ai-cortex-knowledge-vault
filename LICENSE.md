@@ -1,6 +1,6 @@
 ## PULSE8.ai Cortex Open Source License
 
-PULSE8.ai Cortex is licensed under Apache License 2.0 and is subject to the additional terms below. Except to the extent expressly modified or supplemented by these additional terms, your other rights and obligations are governed by Apache License 2.0.
+PULSE8.ai Cortex is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) and is subject to the additional terms below. Except to the extent expressly modified or supplemented by these additional terms, your other rights and obligations are governed by AGPL-3.0.
 
 **1. Commercial License and Thresholds**
 
@@ -25,6 +25,6 @@ Where a separate commercial license is required under Section 1 but is not obtai
 In these additional terms, "Affiliates" means any legal entity that directly or indirectly controls, is controlled by, or is under common control with you.
 "Control" means the power to direct the management and operating decisions of an entity, whether through equity ownership, voting rights, contractual arrangements, or otherwise.
 
-The full text of Apache License 2.0 is available at [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0) .
+The full text of the GNU Affero General Public License v3.0 is available at [https://www.gnu.org/licenses/agpl-3.0.html](https://www.gnu.org/licenses/agpl-3.0.html).
 
 © 2026 PULSE8.ai
