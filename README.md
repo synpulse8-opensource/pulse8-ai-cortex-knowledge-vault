@@ -1,6 +1,6 @@
 # PULSE8.ai Cortex
 
-![](https://img.shields.io/badge/Python-3.12%2B-blue?style=flat-square) ![](https://img.shields.io/badge/Docker-ready-blue?style=flat-square&logo=docker) ![](https://img.shields.io/badge/MCP-compatible-purple?style=flat-square) ![](https://img.shields.io/badge/License-AGPL--3.0-green?style=flat-square)
+![](https://img.shields.io/badge/Python-3.12%2B-blue?style=flat-square) ![](https://img.shields.io/badge/Docker-ready-blue?style=flat-square&logo=docker) ![](https://img.shields.io/badge/MCP-compatible-purple?style=flat-square) ![](https://img.shields.io/badge/License-Apache--2.0-green?style=flat-square)
 
 PULSE8.ai Cortex is an agent-native knowledge OS built on Markdown. It gives AI agents and humans a shared vault backed by a typed knowledge graph, full-text search, and an LLM-powered compiler — all accessible through a unified [MCP](https://modelcontextprotocol.io/) interface.
 
@@ -226,4 +226,4 @@ PULSE8.ai Cortex builds on ideas and tools from the open-source community:
 
 ## License
 
-This project is licensed under the [PULSE8.ai Cortex Open Source License](LICENSE.md) (AGPL-3.0 with additional terms).
+This project is licensed under the [PULSE8.ai Cortex Open Source License](LICENSE.md) (Apache License 2.0 with additional terms).
