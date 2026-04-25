@@ -153,6 +153,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if name == "vault_context":
             from cortex.graph.context import build_context_window
 
+            from cortex.config import settings as _settings
+
             result = await build_context_window(
                 query=arguments.get("query", ""),
                 searcher=_services["qmd"],
@@ -160,6 +162,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 vault_root=_services["vault_path"],
                 max_notes=arguments.get("max_notes", 8),
                 max_depth=arguments.get("max_depth", 2),
+                mode=_settings.qmd_search_mode,
             )
             response = {
                 "notes": [

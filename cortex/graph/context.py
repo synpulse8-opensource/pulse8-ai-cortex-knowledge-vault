@@ -19,6 +19,7 @@ async def build_context_window(
     vault_root: Path,
     max_notes: int = 8,
     max_depth: int = 2,
+    mode: str = "hybrid",
 ) -> ContextWindow:
     """Build a context window by searching, expanding via BFS, and ranking.
 
@@ -29,7 +30,7 @@ async def build_context_window(
     5. Edges: collect all edges between result nodes
     6. Contradictions: find contradicts edges in subgraph
     """
-    search_results = await searcher.search(query, top_k=max_notes * 2)
+    search_results = await searcher.search(query, mode=mode, top_k=max_notes * 2)
 
     scores: dict[str, float] = {}
     for r in search_results:

@@ -148,6 +148,7 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
             vault_root=services["vault_path"],
             max_notes=max_notes,
             max_depth=max_depth,
+            mode=settings.qmd_search_mode,
         )
         response = {
             "notes": [

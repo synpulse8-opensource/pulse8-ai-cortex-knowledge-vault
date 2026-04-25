@@ -120,6 +120,45 @@ class TestBuildContextWindow:
             assert len(result.notes) == 0
 
     @pytest.mark.asyncio
+    async def test_uses_explicit_search_mode(self, context_services):
+        """build_context_window should pass the mode argument to searcher.search."""
+        from cortex.graph.context import build_context_window
+
+        mock_results = [
+            {"path": "wiki/transformers.md", "score": 0.9, "snippet": "transformer"},
+        ]
+
+        with patch.object(
+            context_services["searcher"], "search",
+            new_callable=AsyncMock, return_value=mock_results,
+        ) as mock_search:
+            await build_context_window(
+                query="transformer",
+                mode="keyword",
+                **context_services,
+            )
+            call_kwargs = mock_search.call_args[1]
+            assert call_kwargs.get("mode") == "keyword"
+
+    @pytest.mark.asyncio
+    async def test_default_mode_is_hybrid(self, context_services):
+        """Without an explicit mode, build_context_window should default to hybrid."""
+        from cortex.graph.context import build_context_window
+
+        mock_results = []
+
+        with patch.object(
+            context_services["searcher"], "search",
+            new_callable=AsyncMock, return_value=mock_results,
+        ) as mock_search:
+            await build_context_window(
+                query="transformer",
+                **context_services,
+            )
+            call_kwargs = mock_search.call_args[1]
+            assert call_kwargs.get("mode") == "hybrid"
+
+    @pytest.mark.asyncio
     async def test_detects_contradictions(self, context_services):
         from cortex.graph.context import build_context_window
         from cortex.vault.models import Edge
