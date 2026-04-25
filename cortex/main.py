@@ -55,13 +55,17 @@ async def lifespan(app: FastAPI):
     await watcher.start()
 
     refresh_task = None
-    if settings.qmd_refresh_interval_seconds > 0:
+    if settings.qmd_refresh_interval_seconds > 0 and not settings.qmd_url:
         refresh_task = asyncio.create_task(
             periodic_qmd_refresh(qmd, settings.qmd_refresh_interval_seconds)
         )
         logger.info(
             "Periodic QMD refresh enabled every %ds",
             settings.qmd_refresh_interval_seconds,
+        )
+    elif settings.qmd_url:
+        logger.info(
+            "Periodic QMD refresh skipped — QMD container manages its own timer"
         )
 
     async with _mcp_server.session_manager.run():

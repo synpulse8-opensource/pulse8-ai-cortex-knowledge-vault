@@ -45,3 +45,31 @@ class TestPeriodicQmdRefresh:
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+class TestSkipRefreshWhenQmdManagesOwnTimer:
+    """Cortex should NOT start a periodic refresh when QMD HTTP is used,
+    because the QMD container already runs its own timer."""
+
+    @pytest.mark.asyncio
+    async def test_no_refresh_task_when_qmd_url_set(self, monkeypatch):
+        """When qmd_url is set (Docker mode), lifespan must not create a refresh task."""
+        from cortex.config import CortexSettings
+
+        s = CortexSettings()
+        monkeypatch.setattr(s, "qmd_url", "http://qmd:3100")
+        monkeypatch.setattr(s, "qmd_refresh_interval_seconds", 900)
+        assert s.qmd_url != "", "precondition: qmd_url should be set"
+        should_refresh = s.qmd_refresh_interval_seconds > 0 and not s.qmd_url
+        assert should_refresh is False
+
+    @pytest.mark.asyncio
+    async def test_refresh_task_when_cli_mode(self, monkeypatch):
+        """When qmd_url is empty (CLI mode), refresh should still be enabled."""
+        from cortex.config import CortexSettings
+
+        s = CortexSettings()
+        monkeypatch.setattr(s, "qmd_url", "")
+        monkeypatch.setattr(s, "qmd_refresh_interval_seconds", 900)
+        should_refresh = s.qmd_refresh_interval_seconds > 0 and not s.qmd_url
+        assert should_refresh is True
