@@ -16,11 +16,21 @@ class QMDHttpSearch:
         self._initialized = False
 
     async def initialize(self) -> None:
-        """Tell the QMD server to set up collections and run initial indexing.
+        """Wait for the QMD server to be ready, falling back to ``/setup``.
 
-        Uses a 5-minute timeout because ``/setup`` may download embedding
-        models and index all vault content on first run.
+        The QMD container auto-runs setup on start.  We first check
+        ``/health`` and only call ``/setup`` if the container hasn't
+        finished its own initialization.  This avoids running the
+        expensive setup twice.
         """
+        try:
+            resp = await self._client.get("/health")
+            if resp.status_code == 200 and resp.json().get("setup_ready"):
+                self._initialized = True
+                return
+        except Exception:
+            logger.debug("QMD /health check failed, falling back to /setup")
+
         try:
             resp = await self._client.post("/setup", timeout=300.0)
             resp.raise_for_status()

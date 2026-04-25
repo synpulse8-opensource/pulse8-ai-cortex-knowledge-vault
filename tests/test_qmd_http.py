@@ -162,6 +162,66 @@ class TestQMDHttpSearch:
             assert call_kwargs["timeout"] >= 120
 
     @pytest.mark.asyncio
+    async def test_initialize_polls_health_before_calling_setup(self):
+        """If /health shows setup_ready=true, skip /setup entirely."""
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+
+        health_response = MagicMock()
+        health_response.status_code = 200
+        health_response.json.return_value = {"status": "ok", "setup_ready": True}
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.get = AsyncMock(return_value=health_response)
+            mock_client.post = AsyncMock()
+            await qmd.initialize()
+            assert qmd._initialized is True
+            mock_client.get.assert_awaited()
+            mock_client.post.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_initialize_calls_setup_when_not_ready(self):
+        """If /health shows setup_ready=false, fall back to /setup."""
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+
+        health_response = MagicMock()
+        health_response.status_code = 200
+        health_response.json.return_value = {"status": "ok", "setup_ready": False}
+
+        setup_response = MagicMock()
+        setup_response.status_code = 200
+        setup_response.raise_for_status = MagicMock()
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.get = AsyncMock(return_value=health_response)
+            mock_client.post = AsyncMock(return_value=setup_response)
+            await qmd.initialize()
+            assert qmd._initialized is True
+            mock_client.post.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_initialize_falls_back_on_health_failure(self):
+        """If /health fails, fall back to calling /setup."""
+        import httpx
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+
+        setup_response = MagicMock()
+        setup_response.status_code = 200
+        setup_response.raise_for_status = MagicMock()
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.get = AsyncMock(side_effect=httpx.ConnectError("down"))
+            mock_client.post = AsyncMock(return_value=setup_response)
+            await qmd.initialize()
+            assert qmd._initialized is True
+            mock_client.post.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_has_same_interface_as_qmd_search(self):
         """QMDHttpSearch must have the same public API as QMDSearch."""
         from cortex.search.qmd_http import QMDHttpSearch
