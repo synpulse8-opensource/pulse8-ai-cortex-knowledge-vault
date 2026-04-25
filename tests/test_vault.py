@@ -145,6 +145,36 @@ class TestScanVault:
             assert not p.startswith(".cortex/")
 
 
+class TestScanVaultAsync:
+    @pytest.mark.asyncio
+    async def test_returns_same_results_as_sync(self, tmp_vault: Path):
+        from cortex.vault.reader import scan_vault, scan_vault_async
+
+        sync_notes = scan_vault(tmp_vault)
+        async_notes = await scan_vault_async(tmp_vault)
+
+        sync_paths = sorted(n.path for n in sync_notes)
+        async_paths = sorted(n.path for n in async_notes)
+        assert sync_paths == async_paths
+
+    @pytest.mark.asyncio
+    async def test_finds_all_notes(self, tmp_vault: Path):
+        from cortex.vault.reader import scan_vault_async
+
+        notes = await scan_vault_async(tmp_vault)
+        paths = [n.path for n in notes]
+        assert "wiki/transformers.md" in paths
+        assert "wiki/attention-mechanisms.md" in paths
+
+    @pytest.mark.asyncio
+    async def test_skips_cortex_dir(self, tmp_vault: Path):
+        from cortex.vault.reader import scan_vault_async
+
+        notes = await scan_vault_async(tmp_vault)
+        for n in notes:
+            assert not n.path.startswith(".cortex/")
+
+
 class TestResolveWikilink:
     def test_resolve_existing(self, tmp_vault: Path):
         from cortex.vault.reader import resolve_wikilink

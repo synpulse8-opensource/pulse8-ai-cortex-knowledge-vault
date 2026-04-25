@@ -95,6 +95,30 @@ def scan_vault(vault_root: Path) -> list[Note]:
     return notes
 
 
+async def scan_vault_async(vault_root: Path) -> list[Note]:
+    """Async version of scan_vault that offloads file I/O to a thread pool."""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    md_files = sorted(
+        f for f in vault_root.rglob("*.md")
+        if f.relative_to(vault_root).parts[0] != ".cortex"
+    )
+
+    def _read(path: Path) -> Note | None:
+        try:
+            return read_note(path, vault_root)
+        except Exception:
+            return None
+
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as pool:
+        futures = [loop.run_in_executor(pool, _read, f) for f in md_files]
+        results = await asyncio.gather(*futures)
+
+    return [n for n in results if n is not None]
+
+
 def resolve_wikilink(link: str, vault_root: Path) -> str | None:
     """Find a matching .md file by name. Search wiki/ first, then other dirs."""
     search_dirs = ["wiki", "agents", "sessions", "daily"]

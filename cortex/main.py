@@ -16,7 +16,7 @@ from cortex.search.qmd_cache import CachedQMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
 from cortex.search.qmd_debounce import DebouncedQMDUpdate
 from cortex.search.qmd_refresh import periodic_qmd_refresh
-from cortex.vault.reader import scan_vault
+from cortex.vault.reader import scan_vault_async
 from cortex.vault.watcher import VaultWatcher
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
     graph = GraphEngine(vault_path / ".cortex" / "graph.json")
     await graph.load()
-    notes = scan_vault(vault_path)
+    notes = await scan_vault_async(vault_path)
     app.state.graph = await build_graph(
         notes, vault_path / ".cortex" / "graph.json", vault_path
     )
