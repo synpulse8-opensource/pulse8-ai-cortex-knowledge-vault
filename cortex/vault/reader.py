@@ -119,8 +119,39 @@ async def scan_vault_async(vault_root: Path) -> list[Note]:
     return [n for n in results if n is not None]
 
 
-def resolve_wikilink(link: str, vault_root: Path) -> str | None:
-    """Find a matching .md file by name. Search wiki/ first, then other dirs."""
+def build_wikilink_index(vault_root: Path) -> dict[str, str]:
+    """Build a stem-to-relative-path map for all .md files in the vault.
+
+    Priority: wiki/ > agents/ > sessions/ > daily/ > other dirs.
+    First match wins for duplicate stems.
+    """
+    search_dirs = ["wiki", "agents", "sessions", "daily"]
+    index: dict[str, str] = {}
+
+    for subdir in search_dirs:
+        d = vault_root / subdir
+        if d.is_dir():
+            for md_file in sorted(d.rglob("*.md")):
+                stem = md_file.stem
+                if stem not in index:
+                    index[stem] = str(md_file.relative_to(vault_root))
+
+    for md_file in sorted(vault_root.rglob("*.md")):
+        rel = md_file.relative_to(vault_root)
+        if rel.parts[0] in (".cortex", *search_dirs):
+            continue
+        stem = md_file.stem
+        if stem not in index:
+            index[stem] = str(rel)
+
+    return index
+
+
+def resolve_wikilink(link: str, vault_root: Path, _index: dict[str, str] | None = None) -> str | None:
+    """Find a matching .md file by name. Uses pre-built index when available."""
+    if _index is not None:
+        return _index.get(link)
+
     search_dirs = ["wiki", "agents", "sessions", "daily"]
 
     for subdir in search_dirs:

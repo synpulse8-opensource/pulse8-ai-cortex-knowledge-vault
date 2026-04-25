@@ -193,3 +193,34 @@ class TestResolveWikilink:
 
         result = resolve_wikilink("research-scout.agent", tmp_vault)
         assert result == "agents/research-scout.agent.md"
+
+
+class TestBuildWikilinkIndex:
+    def test_returns_dict(self, tmp_vault: Path):
+        from cortex.vault.reader import build_wikilink_index
+
+        index = build_wikilink_index(tmp_vault)
+        assert isinstance(index, dict)
+        assert "transformers" in index
+        assert index["transformers"] == "wiki/transformers.md"
+
+    def test_covers_all_stems(self, tmp_vault: Path):
+        from cortex.vault.reader import build_wikilink_index
+
+        index = build_wikilink_index(tmp_vault)
+        assert "attention-mechanisms" in index
+        assert "research-scout.agent" in index
+
+    def test_skips_cortex_dir(self, tmp_vault: Path):
+        from cortex.vault.reader import build_wikilink_index
+
+        index = build_wikilink_index(tmp_vault)
+        for stem, path in index.items():
+            assert not path.startswith(".cortex/")
+
+    def test_resolve_with_index_matches_filesystem(self, tmp_vault: Path):
+        from cortex.vault.reader import build_wikilink_index, resolve_wikilink
+
+        index = build_wikilink_index(tmp_vault)
+        assert index.get("transformers") == resolve_wikilink("transformers", tmp_vault)
+        assert index.get("nonexistent") is None

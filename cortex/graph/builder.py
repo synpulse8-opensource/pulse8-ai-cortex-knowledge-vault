@@ -4,7 +4,7 @@ from pathlib import Path
 
 from cortex.graph.engine import GraphEngine
 from cortex.vault.models import Edge, EdgeType, NodeType, Note
-from cortex.vault.reader import resolve_wikilink
+from cortex.vault.reader import build_wikilink_index, resolve_wikilink
 
 
 async def build_graph(
@@ -20,13 +20,15 @@ async def build_graph(
     engine = GraphEngine(graph_path)
     await engine.load()
 
+    wikilink_index = build_wikilink_index(vault_root)
+
     async with engine.batch():
         for note in notes:
             await engine.add_note_node(note)
 
         for note in notes:
             for link in note.wikilinks:
-                resolved = resolve_wikilink(link, vault_root)
+                resolved = resolve_wikilink(link, vault_root, _index=wikilink_index)
                 if resolved:
                     await engine.add_edge(
                         Edge(
