@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from cortex.vault.models import Note
 from cortex.vault.reader import scan_vault
 
 
-async def rebuild_index(vault_root: Path) -> None:
-    """Rebuild .cortex/index.md from vault contents."""
+async def rebuild_index(vault_root: Path, notes: list[Note] | None = None) -> None:
+    """Rebuild .cortex/index.md from vault contents.
+
+    Accepts pre-scanned notes to avoid a redundant full vault scan.
+    """
     index_path = vault_root / ".cortex" / "index.md"
-    notes = scan_vault(vault_root)
+    if notes is None:
+        notes = scan_vault(vault_root)
 
     sections: dict[str, list[str]] = {
         "wiki": [],

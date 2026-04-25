@@ -55,6 +55,31 @@ class TestRebuildIndex:
         assert "ml" in content
 
 
+    @pytest.mark.asyncio
+    async def test_accepts_prescanned_notes(self, tmp_vault: Path):
+        from cortex.vault.index import rebuild_index
+        from cortex.vault.reader import scan_vault
+
+        notes = scan_vault(tmp_vault)
+        await rebuild_index(tmp_vault, notes=notes)
+        content = (tmp_vault / ".cortex" / "index.md").read_text()
+        assert "Transformer Architecture" in content
+
+    @pytest.mark.asyncio
+    async def test_prescanned_matches_rescan(self, tmp_vault: Path):
+        from cortex.vault.index import rebuild_index
+        from cortex.vault.reader import scan_vault
+
+        await rebuild_index(tmp_vault)
+        from_rescan = (tmp_vault / ".cortex" / "index.md").read_text()
+
+        notes = scan_vault(tmp_vault)
+        await rebuild_index(tmp_vault, notes=notes)
+        from_prescanned = (tmp_vault / ".cortex" / "index.md").read_text()
+
+        assert from_rescan == from_prescanned
+
+
 class TestAuditLog:
     @pytest.mark.asyncio
     async def test_log_creates_file(self, tmp_vault: Path):
