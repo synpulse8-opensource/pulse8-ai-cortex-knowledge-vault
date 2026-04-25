@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import networkx as nx
@@ -15,6 +16,7 @@ class GraphEngine:
     def __init__(self, graph_path: Path) -> None:
         self.graph: nx.MultiDiGraph = nx.MultiDiGraph()
         self.graph_path = graph_path
+        self._batch_active = False
 
     async def load(self) -> None:
         """Load graph from JSON. Create empty graph if file is missing."""
@@ -27,8 +29,24 @@ class GraphEngine:
                     edge["source"], edge["target"], **edge.get("attrs", {})
                 )
 
+    @asynccontextmanager
+    async def batch(self):
+        """Defer all save() calls until the block exits, then persist once."""
+        self._batch_active = True
+        try:
+            yield
+        finally:
+            self._batch_active = False
+            await self._persist()
+
     async def save(self) -> None:
-        """Persist graph to JSON file."""
+        """Persist graph to JSON file. No-op inside a batch() block."""
+        if self._batch_active:
+            return
+        await self._persist()
+
+    async def _persist(self) -> None:
+        """Write graph JSON to disk unconditionally."""
         self.graph_path.parent.mkdir(parents=True, exist_ok=True)
         nodes = [
             {"id": n, "attrs": dict(self.graph.nodes[n])} for n in self.graph.nodes

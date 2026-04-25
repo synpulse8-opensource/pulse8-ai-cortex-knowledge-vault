@@ -291,3 +291,60 @@ class TestGraphEngineQueries:
         assert stats["total_nodes"] == 2
         assert stats["total_edges"] == 1
         assert stats["orphans"] == 1
+
+
+class TestGraphEngineBatchMode:
+    @pytest.mark.asyncio
+    async def test_batch_defers_save(self, tmp_path: Path):
+        """Inside a batch(), individual mutations must not write to disk."""
+        from cortex.graph.engine import GraphEngine
+        from unittest.mock import AsyncMock, patch
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        with patch.object(engine, "_persist", new_callable=AsyncMock) as mock_persist:
+            async with engine.batch():
+                await engine.add_note_node(_make_note("wiki/a.md", "A"))
+                await engine.add_note_node(_make_note("wiki/b.md", "B"))
+                await engine.add_edge(
+                    Edge(source="wiki/a.md", target="wiki/b.md", edge_type=EdgeType.LINKS_TO)
+                )
+                assert mock_persist.await_count == 0
+
+            assert mock_persist.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_batch_persists_all_changes(self, tmp_path: Path):
+        """After batch exits, all changes should be persisted to disk."""
+        from cortex.graph.engine import GraphEngine
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        async with engine.batch():
+            await engine.add_note_node(_make_note("wiki/a.md", "A"))
+            await engine.add_note_node(_make_note("wiki/b.md", "B"))
+            await engine.add_edge(
+                Edge(source="wiki/a.md", target="wiki/b.md", edge_type=EdgeType.LINKS_TO)
+            )
+
+        engine2 = GraphEngine(tmp_path / "graph.json")
+        await engine2.load()
+        assert engine2.graph.number_of_nodes() == 2
+        assert engine2.graph.number_of_edges() == 1
+
+    @pytest.mark.asyncio
+    async def test_without_batch_saves_on_every_mutation(self, tmp_path: Path):
+        """Outside batch(), each mutation should still persist immediately."""
+        from cortex.graph.engine import GraphEngine
+        from unittest.mock import AsyncMock, patch
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        with patch.object(engine, "_persist", new_callable=AsyncMock) as mock_persist:
+            await engine.add_note_node(_make_note("wiki/a.md", "A"))
+            assert mock_persist.await_count == 1
+            await engine.add_note_node(_make_note("wiki/b.md", "B"))
+            assert mock_persist.await_count == 2
