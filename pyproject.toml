@@ -1,6 +1,6 @@
 [project]
 name = "cortex"
-version = "0.1.0"
+version = "0.2.0"
 description = "PULSE8.ai Cortex — agent-native knowledge OS built on Markdown files"
 readme = "README.md"
 requires-python = ">=3.12"
