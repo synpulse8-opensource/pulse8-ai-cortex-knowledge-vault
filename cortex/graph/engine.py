@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -119,6 +120,19 @@ class GraphEngine:
                 )
 
         return results
+
+    async def get_edges_batch(
+        self,
+        paths: list[str],
+        edge_types: list[EdgeType] | None = None,
+    ) -> dict[str, list[Edge]]:
+        """Fetch edges for multiple paths concurrently."""
+        if not paths:
+            return {}
+        results = await asyncio.gather(
+            *(self.get_edges(p, edge_types=edge_types) for p in paths)
+        )
+        return dict(zip(paths, results))
 
     async def get_contradictions(self, path: str) -> list[Edge]:
         """Get all contradiction edges for a node."""

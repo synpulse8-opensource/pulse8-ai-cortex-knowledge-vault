@@ -106,8 +106,9 @@ async def build_context_window(
     contradictions: list[tuple[str, str]] = []
     total_edges_explored = 0
 
+    edges_by_path = await graph.get_edges_batch(top_paths)
     for path in top_paths:
-        edges = await graph.get_edges(path)
+        edges = edges_by_path.get(path, [])
         total_edges_explored += len(edges)
         for edge in edges:
             if edge.source in top_set or edge.target in top_set:

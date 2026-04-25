@@ -199,6 +199,52 @@ class TestGraphEngineEdges:
         assert edges[0].target == "wiki/b.md"
 
 
+class TestGraphEngineBatchEdges:
+    @pytest.mark.asyncio
+    async def test_get_edges_batch_returns_dict(self, tmp_path: Path):
+        from cortex.graph.engine import GraphEngine
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        await engine.add_note_node(_make_note("wiki/a.md", "A"))
+        await engine.add_note_node(_make_note("wiki/b.md", "B"))
+        await engine.add_edge(Edge(source="wiki/a.md", target="wiki/b.md", edge_type=EdgeType.LINKS_TO))
+
+        result = await engine.get_edges_batch(["wiki/a.md", "wiki/b.md"])
+        assert isinstance(result, dict)
+        assert "wiki/a.md" in result
+        assert "wiki/b.md" in result
+
+    @pytest.mark.asyncio
+    async def test_get_edges_batch_matches_individual_calls(self, tmp_path: Path):
+        from cortex.graph.engine import GraphEngine
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        await engine.add_note_node(_make_note("wiki/a.md", "A"))
+        await engine.add_note_node(_make_note("wiki/b.md", "B"))
+        await engine.add_edge(Edge(source="wiki/a.md", target="wiki/b.md", edge_type=EdgeType.LINKS_TO))
+
+        batch = await engine.get_edges_batch(["wiki/a.md", "wiki/b.md"])
+        individual_a = await engine.get_edges("wiki/a.md")
+        individual_b = await engine.get_edges("wiki/b.md")
+
+        assert len(batch["wiki/a.md"]) == len(individual_a)
+        assert len(batch["wiki/b.md"]) == len(individual_b)
+
+    @pytest.mark.asyncio
+    async def test_get_edges_batch_empty_list(self, tmp_path: Path):
+        from cortex.graph.engine import GraphEngine
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        result = await engine.get_edges_batch([])
+        assert result == {}
+
+
 class TestGraphEngineQueries:
     @pytest.mark.asyncio
     async def test_get_contradictions(self, tmp_path: Path):

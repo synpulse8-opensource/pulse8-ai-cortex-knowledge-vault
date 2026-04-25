@@ -152,10 +152,13 @@ async def search_endpoint(
 
     raw_results = await qmd.search(q, mode=effective_mode, collection=collection, top_k=top_k)
 
+    paths = [r.get("path", "") for r in raw_results]
+    edges_by_path = await graph.get_edges_batch(paths)
+
     enriched = []
     for r in raw_results:
         path = r.get("path", "")
-        edges = await graph.get_edges(path)
+        edges = edges_by_path.get(path, [])
         edge_dicts = [
             {"source": e.source, "target": e.target, "edge_type": e.edge_type.value}
             for e in edges
