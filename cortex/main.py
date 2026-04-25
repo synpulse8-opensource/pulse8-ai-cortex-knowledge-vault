@@ -13,6 +13,7 @@ from cortex.graph.engine import GraphEngine
 from cortex.mcp.http_server import create_fastmcp_server
 from cortex.search.qmd import QMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
+from cortex.search.qmd_debounce import DebouncedQMDUpdate
 from cortex.search.qmd_refresh import periodic_qmd_refresh
 from cortex.vault.reader import scan_vault
 from cortex.vault.watcher import VaultWatcher
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.warning("QMD initialization failed — search will be unavailable")
     app.state.qmd = qmd
+    app.state.qmd_debounce = DebouncedQMDUpdate(qmd)
 
     _mcp_server = await create_fastmcp_server(vault_path)
     app.mount("/mcp", _mcp_server.streamable_http_app())

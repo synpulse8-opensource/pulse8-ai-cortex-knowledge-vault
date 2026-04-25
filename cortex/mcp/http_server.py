@@ -26,6 +26,7 @@ from cortex.mcp.tools import (
     handle_vault_write,
 )
 from cortex.search.qmd import QMDSearch
+from cortex.search.qmd_debounce import DebouncedQMDUpdate
 from cortex.search.qmd_http import QMDHttpSearch
 from cortex.vault.reader import scan_vault
 
@@ -64,10 +65,13 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
 
     compiler = KnowledgeCompiler(vault_path)
 
+    qmd_debounce = DebouncedQMDUpdate(qmd)
+
     services = {
         "vault_path": vault_path,
         "graph": graph,
         "qmd": qmd,
+        "qmd_debounce": qmd_debounce,
         "compiler": compiler,
     }
 

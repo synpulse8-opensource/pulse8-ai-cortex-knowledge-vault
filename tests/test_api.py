@@ -15,6 +15,7 @@ def app_client(tmp_vault: Path):
     from cortex.graph.builder import build_graph
     from cortex.graph.engine import GraphEngine
     from cortex.search.qmd import QMDSearch
+    from cortex.search.qmd_debounce import DebouncedQMDUpdate
     from cortex.vault.reader import scan_vault
 
     from fastapi import FastAPI
@@ -33,6 +34,7 @@ def app_client(tmp_vault: Path):
         build_graph(notes, tmp_vault / ".cortex" / "graph.json", tmp_vault)
     )
     test_app.state.qmd = QMDSearch(tmp_vault, "qmd")
+    test_app.state.qmd_debounce = DebouncedQMDUpdate(test_app.state.qmd)
     loop.close()
 
     client = TestClient(test_app)
@@ -70,16 +72,16 @@ class TestNotesEndpoints:
         data = response.json()
         assert data["path"] == "wiki/api-test.md"
 
-    def test_write_note_refreshes_qmd_index(self, app_client):
-        with patch.object(app_client.app.state.qmd, "update", new_callable=AsyncMock) as mock_update:
+    def test_write_note_schedules_debounced_qmd_update(self, app_client):
+        with patch.object(app_client.app.state.qmd_debounce, "schedule") as mock_schedule:
             response = app_client.put(
                 "/api/v1/notes/wiki/qmd-refresh-api.md",
                 json={
-                    "content": "# QMD Refresh\n\nShould trigger index update.",
+                    "content": "# QMD Refresh\n\nShould trigger debounced update.",
                 },
             )
             assert response.status_code == 200
-            mock_update.assert_awaited_once()
+            mock_schedule.assert_called_once()
 
 
 class TestSearchEndpoint:
@@ -137,8 +139,8 @@ class TestIngestEndpoint:
         assert response.status_code == 200
         assert response.json()["path"] == "raw/api-ingest.txt"
 
-    def test_ingest_refreshes_qmd_index(self, app_client):
-        with patch.object(app_client.app.state.qmd, "update", new_callable=AsyncMock) as mock_update:
+    def test_ingest_schedules_debounced_qmd_update(self, app_client):
+        with patch.object(app_client.app.state.qmd_debounce, "schedule") as mock_schedule:
             response = app_client.post(
                 "/api/v1/ingest",
                 json={
@@ -149,18 +151,18 @@ class TestIngestEndpoint:
                 },
             )
             assert response.status_code == 200
-            mock_update.assert_awaited_once()
+            mock_schedule.assert_called_once()
 
 
 class TestCompileEndpoint:
-    def test_compile_refreshes_qmd_index(self, app_client):
+    def test_compile_schedules_debounced_qmd_update(self, app_client):
         vault_path = app_client.app.state.vault_path
         (vault_path / "raw" / "compile-api-test.txt").write_text("Compile me via API.")
 
-        with patch.object(app_client.app.state.qmd, "update", new_callable=AsyncMock) as mock_update:
+        with patch.object(app_client.app.state.qmd_debounce, "schedule") as mock_schedule:
             with patch("cortex.compiler.compiler.KnowledgeCompiler") as MockCompiler:
                 mock_instance = MockCompiler.return_value
                 mock_instance.ingest_source = AsyncMock(return_value=[])
                 response = app_client.post("/api/v1/compile")
             assert response.status_code == 200
-            mock_update.assert_awaited_once()
+            mock_schedule.assert_called_once()

@@ -96,7 +96,10 @@ async def handle_vault_write(
                 )
 
         await rebuild_index(vault_path)
-        if qmd is not None:
+        qmd_debounce = kwargs.get("qmd_debounce")
+        if qmd_debounce is not None:
+            qmd_debounce.schedule()
+        elif qmd is not None:
             try:
                 await qmd.update()
             except Exception:
@@ -236,7 +239,10 @@ async def handle_vault_ingest(
             result["compiled"] = True
             result["wiki_articles"] = [str(p.relative_to(vault_path)) for p in created]
 
-        if qmd is not None:
+        qmd_debounce = kwargs.get("qmd_debounce")
+        if qmd_debounce is not None:
+            qmd_debounce.schedule()
+        elif qmd is not None:
             try:
                 await qmd.update()
             except Exception:
@@ -282,7 +288,10 @@ async def handle_vault_compile(
                 all_created.extend(str(p.relative_to(vault_path)) for p in created)
 
         await rebuild_index(vault_path)
-        if qmd is not None:
+        qmd_debounce = kwargs.get("qmd_debounce")
+        if qmd_debounce is not None:
+            qmd_debounce.schedule()
+        elif qmd is not None:
             try:
                 await qmd.update()
             except Exception:

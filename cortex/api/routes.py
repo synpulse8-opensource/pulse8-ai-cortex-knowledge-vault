@@ -50,6 +50,10 @@ def get_qmd(request: Request) -> QMDSearch:
     return request.app.state.qmd
 
 
+def get_qmd_debounce(request: Request):
+    return request.app.state.qmd_debounce
+
+
 @router.get("/health")
 async def health():
     return {"status": "healthy"}
@@ -89,7 +93,7 @@ async def read_note_endpoint(path: str, request: Request):
 async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
     vault_path = get_vault_path(request)
     graph = get_graph(request)
-    qmd = get_qmd(request)
+    qmd_debounce = get_qmd_debounce(request)
 
     try:
         note = write_note(
@@ -120,10 +124,7 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
                 )
 
         await rebuild_index(vault_path)
-        try:
-            await qmd.update()
-        except Exception:
-            pass
+        qmd_debounce.schedule()
         await log_operation(vault_path, body.authored_by, "vault:write", f"Wrote {path}")
 
         return {"path": note.path, "title": note.title, "status": "written"}
@@ -237,7 +238,7 @@ async def graph_stats_endpoint(request: Request):
 @router.post("/ingest")
 async def ingest_endpoint(body: IngestBody, request: Request):
     vault_path = get_vault_path(request)
-    qmd = get_qmd(request)
+    qmd_debounce = get_qmd_debounce(request)
 
     raw_path = vault_path / "raw" / body.filename
     raw_path.parent.mkdir(parents=True, exist_ok=True)
@@ -260,10 +261,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
         result["compiled"] = True
         result["wiki_articles"] = [str(p.relative_to(vault_path)) for p in created]
 
-    try:
-        await qmd.update()
-    except Exception:
-        pass
+    qmd_debounce.schedule()
 
     return result
 
@@ -271,7 +269,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
 @router.post("/compile")
 async def compile_endpoint(request: Request):
     vault_path = get_vault_path(request)
-    qmd = get_qmd(request)
+    qmd_debounce = get_qmd_debounce(request)
 
     existing_sources: set[str] = set()
     for note in scan_vault(vault_path):
@@ -299,10 +297,7 @@ async def compile_endpoint(request: Request):
             all_created.extend(str(p.relative_to(vault_path)) for p in created)
 
     await rebuild_index(vault_path)
-    try:
-        await qmd.update()
-    except Exception:
-        pass
+    qmd_debounce.schedule()
     await log_operation(vault_path, "api", "vault:compile", f"Compiled {compiled_count} sources")
 
     return {
