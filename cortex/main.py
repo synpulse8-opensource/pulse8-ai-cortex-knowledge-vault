@@ -12,6 +12,7 @@ from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
 from cortex.mcp.http_server import create_fastmcp_server
 from cortex.search.qmd import QMDSearch
+from cortex.search.qmd_cache import CachedQMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
 from cortex.search.qmd_debounce import DebouncedQMDUpdate
 from cortex.search.qmd_refresh import periodic_qmd_refresh
@@ -38,14 +39,15 @@ async def lifespan(app: FastAPI):
     )
 
     if settings.qmd_url:
-        qmd = QMDHttpSearch(base_url=settings.qmd_url)
+        raw_qmd = QMDHttpSearch(base_url=settings.qmd_url)
         logger.info("Using QMD HTTP client at %s", settings.qmd_url)
     else:
-        qmd = QMDSearch(vault_path, settings.qmd_bin)
+        raw_qmd = QMDSearch(vault_path, settings.qmd_bin)
     try:
-        await qmd.initialize()
+        await raw_qmd.initialize()
     except Exception:
         logger.warning("QMD initialization failed — search will be unavailable")
+    qmd = CachedQMDSearch(raw_qmd)
     app.state.qmd = qmd
     app.state.qmd_debounce = DebouncedQMDUpdate(qmd)
 
