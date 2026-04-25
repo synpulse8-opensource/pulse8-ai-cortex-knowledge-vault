@@ -29,9 +29,13 @@ class QMDHttpSearch:
             logger.exception("QMD HTTP initialization failed")
 
     async def update(self) -> None:
-        """Trigger re-index and re-embed on the QMD server."""
+        """Trigger re-index and re-embed on the QMD server.
+
+        Uses a 10-minute timeout because the server-side embed step
+        can take up to 600s on large vaults.
+        """
         try:
-            resp = await self._client.post("/update")
+            resp = await self._client.post("/update", timeout=600.0)
             resp.raise_for_status()
         except Exception:
             logger.exception("QMD HTTP update failed")
