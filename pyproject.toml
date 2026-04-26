@@ -1,9 +1,23 @@
 [project]
-name = "cortex"
+name = "pulse8-ai-cortex-knowledge-vault"
 version = "0.2.0"
 description = "PULSE8.ai Cortex — agent-native knowledge OS built on Markdown files"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [
+    { name = "PULSE8.ai", email = "opensource@pulse8.ai" },
+]
+keywords = ["knowledge-graph", "mcp", "llm", "markdown", "wiki", "obsidian"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.34.0",
@@ -23,9 +37,20 @@ dev = [
     "pytest-asyncio>=0.25.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault"
+Repository = "https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault"
+Issues = "https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/issues"
+
+[project.scripts]
+cortex = "scripts.serve:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cortex", "scripts"]
 
 [tool.pylint.main]
 load-plugins = []
