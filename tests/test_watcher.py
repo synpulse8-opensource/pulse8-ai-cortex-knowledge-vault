@@ -1,8 +1,7 @@
+"""Tests for vault filesystem watcher."""
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from watchfiles import Change
@@ -19,7 +18,6 @@ class TestVaultWatcher:
 
     def test_vault_root_resolved_to_absolute(self, tmp_vault: Path, monkeypatch):
         """Relative vault_root must be resolved so watchfiles absolute paths match."""
-        import os
         from cortex.vault.watcher import VaultWatcher
         from cortex.graph.engine import GraphEngine
 

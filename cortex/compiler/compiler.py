@@ -1,3 +1,4 @@
+"""LLM-powered knowledge compiler for raw source ingestion."""
 from __future__ import annotations
 
 import json
@@ -7,7 +8,7 @@ from openai import AsyncOpenAI
 
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, INGEST_SYSTEM_PROMPT
 from cortex.config import settings
-from cortex.vault.reader import read_note, scan_vault
+from cortex.vault.reader import read_note
 from cortex.vault.writer import write_note
 
 

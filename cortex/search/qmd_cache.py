@@ -1,3 +1,4 @@
+"""TTL search-result cache wrapper for QMD backends."""
 from __future__ import annotations
 
 import logging
@@ -20,9 +21,11 @@ class CachedQMDSearch:
         self._cache: dict[tuple, tuple[float, list[dict]]] = {}
 
     async def initialize(self) -> None:
+        """Delegate initialization to the inner backend."""
         await self._inner.initialize()
 
     async def update(self) -> None:
+        """Invalidate cache and delegate update to the inner backend."""
         self._cache.clear()
         await self._inner.update()
 
@@ -33,6 +36,7 @@ class CachedQMDSearch:
         collection: str | None = None,
         top_k: int = 10,
     ) -> list[dict]:
+        """Return cached results or delegate to the inner backend."""
         key = (query, mode, collection, top_k)
         now = time.monotonic()
 
@@ -49,5 +53,6 @@ class CachedQMDSearch:
         return results
 
     async def close(self) -> None:
+        """Close the inner backend if it supports it."""
         if hasattr(self._inner, "close"):
             await self._inner.close()

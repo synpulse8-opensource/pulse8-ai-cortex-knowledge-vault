@@ -1,3 +1,4 @@
+"""Cortex application settings via pydantic-settings."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 
 class CortexSettings(BaseSettings):
+    """Cortex configuration loaded from environment variables with CORTEX_ prefix."""
     vault_path: Path = Path("./vault")
 
     qmd_bin: str = "qmd"

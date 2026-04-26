@@ -1,3 +1,4 @@
+"""Filesystem watcher — keeps graph and index in sync on vault changes."""
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,7 @@ class VaultWatcher:
         self._task: asyncio.Task | None = None
         self._cortex_dir = str(self.vault_root / ".cortex")
 
-    def _watch_filter(self, change: Change, path: str) -> bool:
+    def _watch_filter(self, _change: Change, path: str) -> bool:
         """Filter for watchfiles: only accept .md files outside .cortex/."""
         if path.startswith(self._cortex_dir):
             return False
@@ -58,8 +59,6 @@ class VaultWatcher:
                         await self._handle_delete(str(rel))
 
                 await rebuild_index(self.vault_root)
-        except asyncio.CancelledError:
-            raise
         except Exception:
             logger.exception("Watcher error")
 

@@ -1,3 +1,4 @@
+"""Debounced QMD update scheduler to coalesce rapid writes."""
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ class DebouncedQMDUpdate:
         self._task: asyncio.Task | None = None
 
     def schedule(self) -> None:
+        """Reset the debounce timer and schedule a deferred update."""
         if self._task is not None and not self._task.done():
             self._task.cancel()
         self._task = asyncio.create_task(self._run())

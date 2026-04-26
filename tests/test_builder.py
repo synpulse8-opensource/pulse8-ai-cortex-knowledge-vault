@@ -1,3 +1,4 @@
+"""Tests for graph builder."""
 from __future__ import annotations
 
 from pathlib import Path

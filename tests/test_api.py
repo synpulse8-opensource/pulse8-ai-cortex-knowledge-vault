@@ -1,6 +1,6 @@
+"""Tests for REST API routes."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -160,7 +160,7 @@ class TestCompileEndpoint:
         (vault_path / "raw" / "compile-api-test.txt").write_text("Compile me via API.")
 
         with patch.object(app_client.app.state.qmd_debounce, "schedule") as mock_schedule:
-            with patch("cortex.compiler.compiler.KnowledgeCompiler") as MockCompiler:
+            with patch("cortex.compiler.compiler.KnowledgeCompiler") as MockCompiler:  # pylint: disable=invalid-name
                 mock_instance = MockCompiler.return_value
                 mock_instance.ingest_source = AsyncMock(return_value=[])
                 response = app_client.post("/api/v1/compile")

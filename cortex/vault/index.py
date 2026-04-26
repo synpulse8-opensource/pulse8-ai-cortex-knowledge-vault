@@ -1,3 +1,4 @@
+"""Vault index builder — auto-generates .cortex/index.md."""
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,3 +1,4 @@
+"""Periodic background QMD index refresh loop."""
 from __future__ import annotations
 
 import asyncio

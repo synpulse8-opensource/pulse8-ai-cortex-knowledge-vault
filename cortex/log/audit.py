@@ -1,3 +1,4 @@
+"""Audit logging — append operations to .cortex/log.md."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -14,5 +15,5 @@ async def log_operation(
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     entry = f"## [{timestamp}] {tool} | {consumer}\n\n{summary}\n\n"
 
-    with open(log_path, "a") as f:
+    with open(log_path, "a", encoding="utf-8") as f:
         f.write(entry)

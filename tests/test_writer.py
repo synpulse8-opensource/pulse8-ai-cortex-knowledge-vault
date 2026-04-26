@@ -1,3 +1,4 @@
+"""Tests for note writer."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -131,7 +132,7 @@ class TestWriteNote:
     def test_upsert_creates_new(self, tmp_vault: Path):
         from cortex.vault.writer import write_note
 
-        note = write_note(
+        _note = write_note(
             path=tmp_vault / "wiki" / "upserted.md",
             vault_root=tmp_vault,
             content="# Upserted\n\nContent.",
@@ -153,7 +154,7 @@ class TestWriteNote:
     def test_provenance_injected(self, tmp_vault: Path):
         from cortex.vault.writer import write_note
 
-        note = write_note(
+        _note = write_note(
             path=tmp_vault / "wiki" / "prov-test.md",
             vault_root=tmp_vault,
             content="# Test",
@@ -169,7 +170,7 @@ class TestWriteNote:
     def test_creates_parent_directories(self, tmp_vault: Path):
         from cortex.vault.writer import write_note
 
-        note = write_note(
+        _note = write_note(
             path=tmp_vault / "wiki" / "subdir" / "deep-note.md",
             vault_root=tmp_vault,
             content="# Deep",

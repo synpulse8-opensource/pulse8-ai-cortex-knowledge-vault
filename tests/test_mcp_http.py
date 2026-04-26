@@ -1,3 +1,4 @@
+"""Tests for MCP HTTP server."""
 from __future__ import annotations
 
 import asyncio
@@ -182,7 +183,6 @@ class TestMCPHttpToolCalls:
 class TestMainAppMCPMount:
     def test_mcp_mounted_on_fastapi(self, tmp_vault: Path):
         """The FastAPI app should have MCP mounted at /mcp."""
-        import asyncio
         from cortex.graph.builder import build_graph
         from cortex.graph.engine import GraphEngine
         from cortex.search.qmd import QMDSearch

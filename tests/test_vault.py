@@ -1,3 +1,4 @@
+"""Tests for vault reader and scanner."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -215,7 +216,7 @@ class TestBuildWikilinkIndex:
         from cortex.vault.reader import build_wikilink_index
 
         index = build_wikilink_index(tmp_vault)
-        for stem, path in index.items():
+        for _stem, path in index.items():
             assert not path.startswith(".cortex/")
 
     def test_resolve_with_index_matches_filesystem(self, tmp_vault: Path):

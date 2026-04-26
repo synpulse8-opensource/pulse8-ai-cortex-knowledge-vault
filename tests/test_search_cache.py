@@ -1,3 +1,4 @@
+"""Tests for TTL search cache."""
 from __future__ import annotations
 
 import asyncio

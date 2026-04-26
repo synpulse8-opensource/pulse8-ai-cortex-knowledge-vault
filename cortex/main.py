@@ -1,3 +1,4 @@
+"""FastAPI application entry-point and lifespan management."""
 from __future__ import annotations
 
 import asyncio
@@ -21,7 +22,7 @@ from cortex.vault.watcher import VaultWatcher
 
 logger = logging.getLogger(__name__)
 
-_mcp_server = None
+_mcp_server = None  # pylint: disable=invalid-name
 
 
 @asynccontextmanager

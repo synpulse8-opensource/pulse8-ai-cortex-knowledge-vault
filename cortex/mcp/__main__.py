@@ -1,3 +1,4 @@
+"""Run the MCP stdio server as ``python -m cortex.mcp``."""
 from __future__ import annotations
 
 import asyncio

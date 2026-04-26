@@ -1,9 +1,8 @@
+"""MCP stdio server — tool definitions and request dispatch."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from mcp.server import Server
@@ -69,8 +68,15 @@ def _tool_definitions() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
-                    "mode": {"type": "string", "enum": ["keyword", "semantic", "hybrid"], "default": "hybrid"},
-                    "collection": {"type": "string", "description": "Limit to collection (wiki, agents, sessions, daily)"},
+                    "mode": {
+                        "type": "string",
+                        "enum": ["keyword", "semantic", "hybrid"],
+                        "default": "hybrid",
+                    },
+                    "collection": {
+                        "type": "string",
+                        "description": "Limit to collection (wiki, agents, sessions, daily)",
+                    },
                     "top_k": {"type": "integer", "default": 10},
                 },
                 "required": ["query"],
@@ -87,7 +93,11 @@ def _tool_definitions() -> list[Tool]:
                     "target": {"type": "string", "description": "Target node path"},
                     "edge_type": {
                         "type": "string",
-                        "enum": ["links_to", "authored_by", "contradicts", "derived_from", "supersedes", "memory_of", "tagged_with"],
+                        "enum": [
+                            "links_to", "authored_by", "contradicts",
+                            "derived_from", "supersedes", "memory_of",
+                            "tagged_with",
+                        ],
                     },
                     "metadata": {"type": "object"},
                 },
@@ -134,11 +144,13 @@ def _tool_definitions() -> list[Tool]:
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
+    """Return all available Cortex tools."""
     return _tool_definitions()
 
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    """Dispatch an incoming tool call to the appropriate handler."""
     handlers = {
         "vault_read": handle_vault_read,
         "vault_write": handle_vault_write,
@@ -153,8 +165,6 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if name == "vault_context":
             from cortex.graph.context import build_context_window
 
-            from cortex.config import settings as _settings
-
             result = await build_context_window(
                 query=arguments.get("query", ""),
                 searcher=_services["qmd"],
@@ -162,7 +172,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 vault_root=_services["vault_path"],
                 max_notes=arguments.get("max_notes", 8),
                 max_depth=arguments.get("max_depth", 2),
-                mode=_settings.qmd_search_mode,
+                mode=settings.qmd_search_mode,
             )
             response = {
                 "notes": [

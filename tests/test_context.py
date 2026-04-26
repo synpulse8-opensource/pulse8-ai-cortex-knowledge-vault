@@ -1,3 +1,4 @@
+"""Tests for context window builder."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,7 +12,6 @@ from cortex.vault.models import EdgeType
 @pytest.fixture
 async def context_services(tmp_vault: Path):
     """Set up graph and QMD for context window tests."""
-    from cortex.graph.engine import GraphEngine
     from cortex.graph.builder import build_graph
     from cortex.vault.reader import scan_vault
     from cortex.search.qmd import QMDSearch

@@ -1,3 +1,4 @@
+"""System prompts for the knowledge compiler LLM."""
 from __future__ import annotations
 
 INGEST_SYSTEM_PROMPT = """You are a knowledge compiler for a Markdown wiki called Cortex.

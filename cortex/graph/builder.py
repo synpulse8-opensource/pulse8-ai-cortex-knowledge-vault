@@ -1,3 +1,4 @@
+"""Knowledge graph builder — creates nodes and edges from scanned notes."""
 from __future__ import annotations
 
 from pathlib import Path

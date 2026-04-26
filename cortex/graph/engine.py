@@ -1,3 +1,4 @@
+"""NetworkX-backed graph engine with JSON persistence."""
 from __future__ import annotations
 
 import asyncio
@@ -52,7 +53,7 @@ class GraphEngine:
             {"id": n, "attrs": dict(self.graph.nodes[n])} for n in self.graph.nodes
         ]
         edges = []
-        for u, v, key, d in self.graph.edges(data=True, keys=True):
+        for u, v, _key, d in self.graph.edges(data=True, keys=True):
             edges.append({"source": u, "target": v, "attrs": dict(d)})
         data = {"nodes": nodes, "edges": edges}
         self.graph_path.write_text(json.dumps(data, indent=2, default=str))

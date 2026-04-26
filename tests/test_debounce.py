@@ -1,3 +1,4 @@
+"""Tests for debounced QMD update."""
 from __future__ import annotations
 
 import asyncio

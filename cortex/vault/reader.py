@@ -1,3 +1,4 @@
+"""Markdown note reader, vault scanner, and wikilink resolver."""
 from __future__ import annotations
 
 import re

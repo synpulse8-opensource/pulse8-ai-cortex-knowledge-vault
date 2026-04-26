@@ -1,3 +1,4 @@
+"""REST API route handlers for the Cortex vault."""
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -17,6 +18,7 @@ router = APIRouter()
 
 
 class WriteNoteBody(BaseModel):
+    """Request body for creating or updating a note."""
     content: str
     frontmatter: Optional[dict[str, Any]] = None
     mode: str = "upsert"
@@ -25,6 +27,7 @@ class WriteNoteBody(BaseModel):
 
 
 class CreateLinkBody(BaseModel):
+    """Request body for creating a graph edge."""
     source: str
     target: str
     edge_type: str
@@ -32,6 +35,7 @@ class CreateLinkBody(BaseModel):
 
 
 class IngestBody(BaseModel):
+    """Request body for ingesting a raw source."""
     content: str
     filename: str
     source_type: str = "text"
@@ -39,35 +43,41 @@ class IngestBody(BaseModel):
 
 
 def get_vault_path(request: Request):
+    """Extract the vault path from application state."""
     return request.app.state.vault_path
 
 
 def get_graph(request: Request) -> GraphEngine:
+    """Extract the graph engine from application state."""
     return request.app.state.graph
 
 
 def get_qmd(request: Request) -> QMDSearch:
+    """Extract the QMD search backend from application state."""
     return request.app.state.qmd
 
 
 def get_qmd_debounce(request: Request):
+    """Extract the debounced QMD updater from application state."""
     return request.app.state.qmd_debounce
 
 
 @router.get("/health")
 async def health():
+    """Liveness probe."""
     return {"status": "healthy"}
 
 
 @router.get("/notes/{path:path}")
 async def read_note_endpoint(path: str, request: Request):
+    """Read a note by vault-relative path."""
     vault_path = get_vault_path(request)
     graph = get_graph(request)
 
     try:
         note = read_note(vault_path / path, vault_path)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Note not found: {path}")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Note not found: {path}") from exc
 
     edges = await graph.get_edges(note.path)
     edge_dicts = [
@@ -91,6 +101,7 @@ async def read_note_endpoint(path: str, request: Request):
 
 @router.put("/notes/{path:path}")
 async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
+    """Create or update a note with provenance tracking."""
     vault_path = get_vault_path(request)
     graph = get_graph(request)
     qmd_debounce = get_qmd_debounce(request)
@@ -129,10 +140,10 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
 
         return {"path": note.path, "title": note.title, "status": "written"}
 
-    except FileExistsError:
-        raise HTTPException(status_code=409, detail=f"Note already exists: {path}")
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Note not found: {path}")
+    except FileExistsError as exc:
+        raise HTTPException(status_code=409, detail=f"Note already exists: {path}") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=f"Note not found: {path}") from exc
 
 
 @router.get("/search")
@@ -143,6 +154,7 @@ async def search_endpoint(
     collection: Optional[str] = None,
     top_k: int = 10,
 ):
+    """Search the vault via QMD and return graph-enriched results."""
     from cortex.config import settings
 
     vault_path = get_vault_path(request)
@@ -171,6 +183,7 @@ async def search_endpoint(
 
 @router.post("/links")
 async def create_link_endpoint(body: CreateLinkBody, request: Request):
+    """Create a typed edge in the knowledge graph."""
     vault_path = get_vault_path(request)
     graph = get_graph(request)
 
@@ -194,6 +207,7 @@ async def query_links_endpoint(
     request: Request,
     edge_type: Optional[str] = None,
 ):
+    """Query edges from a source node."""
     graph = get_graph(request)
     edge_types = [EdgeType(edge_type)] if edge_type else None
     edges = await graph.get_edges(source, edge_types=edge_types)
@@ -218,6 +232,7 @@ async def delete_link_endpoint(
     target: str = "",
     edge_type: str = "",
 ):
+    """Delete a typed edge from the knowledge graph."""
     vault_path = get_vault_path(request)
     graph = get_graph(request)
 
@@ -234,12 +249,14 @@ async def delete_link_endpoint(
 
 @router.get("/graph/stats")
 async def graph_stats_endpoint(request: Request):
+    """Return graph node/edge statistics."""
     graph = get_graph(request)
     return await graph.get_stats()
 
 
 @router.post("/ingest")
 async def ingest_endpoint(body: IngestBody, request: Request):
+    """Ingest a raw source file and optionally compile it."""
     vault_path = get_vault_path(request)
     qmd_debounce = get_qmd_debounce(request)
 
@@ -271,6 +288,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
 
 @router.post("/compile")
 async def compile_endpoint(request: Request):
+    """Compile all unprocessed raw sources into wiki articles."""
     vault_path = get_vault_path(request)
     qmd_debounce = get_qmd_debounce(request)
 

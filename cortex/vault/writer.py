@@ -1,3 +1,4 @@
+"""Note writer with provenance tracking and frontmatter merging."""
 from __future__ import annotations
 
 from datetime import datetime, timezone

@@ -1,8 +1,7 @@
+"""Tests for domain models."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import datetime
 
 
 def test_node_type_values():

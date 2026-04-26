@@ -27,6 +27,33 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.pylint.main]
+load-plugins = []
+
+[tool.pylint."messages control"]
+disable = [
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-return-statements",
+    "too-many-instance-attributes",
+    "too-few-public-methods",
+    "broad-exception-caught",
+    "import-outside-toplevel",
+    "global-statement",
+    "duplicate-code",
+    "redefined-outer-name",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "protected-access",
+    "use-implicit-booleaness-not-comparison",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

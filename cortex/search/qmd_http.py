@@ -1,3 +1,4 @@
+"""HTTP client for a remote QMD search container."""
 from __future__ import annotations
 
 import logging

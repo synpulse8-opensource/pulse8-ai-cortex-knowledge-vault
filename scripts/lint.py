@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
 
 from cortex.config import settings
 from cortex.graph.builder import build_graph
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
+    """Run vault health checks and print a report."""
     vault_path = settings.vault_path
     notes = scan_vault(vault_path)
     graph = await build_graph(notes, vault_path / ".cortex" / "graph.json", vault_path)

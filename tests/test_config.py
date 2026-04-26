@@ -1,8 +1,7 @@
+"""Tests for CortexSettings configuration."""
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
 
 
 def test_default_settings():

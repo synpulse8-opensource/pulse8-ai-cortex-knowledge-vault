@@ -1,3 +1,4 @@
+"""Tool handler implementations shared by MCP and REST surfaces."""
 from __future__ import annotations
 
 import logging
@@ -20,7 +21,7 @@ async def handle_vault_read(
     path: str,
     vault_path: Path,
     graph: GraphEngine,
-    **kwargs: Any,
+    **_kwargs: Any,
 ) -> dict[str, Any]:
     """Read a note by path. Returns frontmatter, content, and edges."""
     try:
@@ -124,7 +125,7 @@ async def handle_vault_search(
     mode: str | None = None,
     collection: Optional[str] = None,
     top_k: int = 10,
-    **kwargs: Any,
+    **_kwargs: Any,
 ) -> dict[str, Any]:
     """Search via QMD and enrich results with graph edges."""
     from cortex.config import settings
@@ -161,7 +162,7 @@ async def handle_vault_link(
     target: Optional[str] = None,
     edge_type: Optional[str] = None,
     metadata: Optional[dict[str, Any]] = None,
-    **kwargs: Any,
+    **_kwargs: Any,
 ) -> dict[str, Any]:
     """Create, query, or delete typed edges in the graph."""
     try:
@@ -178,7 +179,7 @@ async def handle_vault_link(
             await log_operation(vault_path, "mcp", "vault:link", f"Created {edge_type}: {source} → {target}")
             return {"status": "created", "source": source, "target": target, "edge_type": edge_type}
 
-        elif action == "query":
+        if action == "query":
             if not source:
                 return {"error": "source is required for query"}
             edge_types = [EdgeType(edge_type)] if edge_type else None
@@ -196,15 +197,14 @@ async def handle_vault_link(
                 ],
             }
 
-        elif action == "delete":
+        if action == "delete":
             if not source or not target or not edge_type:
                 return {"error": "source, target, and edge_type are required for delete"}
             await graph.remove_edge(source, target, EdgeType(edge_type))
             await log_operation(vault_path, "mcp", "vault:link", f"Deleted {edge_type}: {source} → {target}")
             return {"status": "deleted", "source": source, "target": target, "edge_type": edge_type}
 
-        else:
-            return {"error": f"Unknown action: {action}"}
+        return {"error": f"Unknown action: {action}"}
 
     except Exception as e:
         logger.exception("vault:link error")
@@ -215,8 +215,7 @@ async def handle_vault_ingest(
     content: str,
     filename: str,
     vault_path: Path,
-    graph: GraphEngine,
-    source_type: str = "text",
+    source_type: str = "text",  # pylint: disable=unused-argument
     auto_compile: bool = False,
     compiler: Optional[KnowledgeCompiler] = None,
     qmd: Optional[Any] = None,
@@ -259,7 +258,6 @@ async def handle_vault_ingest(
 
 async def handle_vault_compile(
     vault_path: Path,
-    graph: GraphEngine,
     compiler: KnowledgeCompiler,
     qmd: Optional[Any] = None,
     **kwargs: Any,

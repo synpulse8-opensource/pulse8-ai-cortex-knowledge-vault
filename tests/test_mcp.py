@@ -1,18 +1,15 @@
+"""Tests for MCP stdio server tools."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from cortex.vault.models import EdgeType
-
 
 @pytest.fixture
 async def mcp_services(tmp_vault: Path):
     """Set up all MCP service dependencies."""
-    from cortex.graph.engine import GraphEngine
     from cortex.graph.builder import build_graph
     from cortex.vault.reader import scan_vault
     from cortex.search.qmd import QMDSearch

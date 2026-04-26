@@ -1,3 +1,4 @@
+"""Source type detection and text extraction helpers."""
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,3 +1,4 @@
+"""FastMCP HTTP server and Starlette/FastAPI integration."""
 from __future__ import annotations
 
 import contextlib
@@ -196,7 +197,7 @@ async def create_mcp_app(vault_path: Path) -> Starlette:
     mcp = await create_fastmcp_server(vault_path)
 
     @contextlib.asynccontextmanager
-    async def lifespan(app: Starlette):
+    async def lifespan(_app: Starlette):
         async with mcp.session_manager.run():
             yield
 
@@ -211,12 +212,10 @@ def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> None:
 
     Wraps the app's existing lifespan to also run the MCP session manager.
     """
-    from fastapi import FastAPI as _FastAPI
-
     original_lifespan = app.router.lifespan_context
 
     @contextlib.asynccontextmanager
-    async def combined_lifespan(a: _FastAPI):
+    async def combined_lifespan(a: FastAPI):
         async with mcp.session_manager.run():
             if original_lifespan:
                 async with original_lifespan(a) as state:

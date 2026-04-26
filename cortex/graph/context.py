@@ -1,3 +1,4 @@
+"""Context window builder — search, BFS expand, rank, and assemble."""
 from __future__ import annotations
 
 import logging
@@ -86,8 +87,8 @@ async def build_context_window(
         max_score = 1.0
 
     ranked: list[tuple[str, float]] = []
-    for path in scores:
-        normalized_search = scores[path] / max_score
+    for path, search_score in scores.items():
+        normalized_search = search_score / max_score
         combined = normalized_search * 0.6 + centrality.get(path, 0.0) * 0.4
         ranked.append((path, combined))
 
