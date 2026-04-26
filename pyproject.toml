@@ -1,6 +1,6 @@
 [project]
 name = "pulse8-ai-cortex-knowledge-vault"
-version = "0.2.1"
+version = "0.3.0"
 description = "PULSE8.ai Cortex — agent-native knowledge OS built on Markdown files"
 readme = "README.md"
 requires-python = ">=3.12"
