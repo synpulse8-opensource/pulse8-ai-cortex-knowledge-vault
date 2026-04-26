@@ -15,6 +15,7 @@ def test_pylint_passes():
         ["python", "-m", "pylint", *tracked],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 0, (
         f"pylint exited with code {result.returncode}\n{result.stdout}"
