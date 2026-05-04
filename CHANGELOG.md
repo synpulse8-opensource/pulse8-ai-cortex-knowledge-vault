@@ -5,6 +5,30 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-05-04
+
+### Added — LLM Enrichment Pipeline
+
+- **Post-conversion LLM enrichment**: After MarkItDown converts a raw file to Markdown, the LLM now adds `[[wikilinks]]` and suggests tags via the new `enrich_article()` method. This restores intelligent graph linking that was lost when the conversion step moved to MarkItDown.
+- **`ENRICH_SYSTEM_PROMPT`**: New system prompt in `prompts.py` that instructs the LLM to add wikilinks and tags while preserving original content.
+- **Automatic cross-referencing**: `compile_cross_references()` is now automatically called after `ingest_source` in both `handle_vault_ingest` (when `auto_compile=true`) and `handle_vault_compile`.
+- **API key guard on cross-references**: `compile_cross_references()` gracefully skips when no LLM API key is configured, matching the enrichment behaviour.
+
+### Changed
+
+- **`auto_compile` defaults to `True`**: Ingested files are now automatically compiled (MarkItDown + LLM enrichment + cross-references) unless the caller explicitly passes `auto_compile=false`. Applies to REST API, MCP stdio, and MCP HTTP surfaces.
+
+### Fixed — Example Vault
+
+- Repaired wiki articles with proper titles, `[[wikilinks]]`, and tags
+- Added 3 new raw sources and enriched wiki articles (alignment faking, attention paper, emotion concepts)
+- Gitignored vault runtime artifacts (`.cortex/graph.json`, `index.md`, `log.md`, `.obsidian/`)
+
+### Tests
+
+- 8 new tests for LLM enrichment, cross-reference wiring, and prompt validation
+- Total test count: 227
+
 ## [0.4.0] — 2026-05-04
 
 ### Changed — MarkItDown Compiler
