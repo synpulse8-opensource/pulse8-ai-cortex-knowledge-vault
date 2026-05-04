@@ -1,22 +1,5 @@
-"""System prompts for the knowledge compiler LLM."""
+"""System prompts for the knowledge compiler LLM (cross-referencing only)."""
 from __future__ import annotations
-
-INGEST_SYSTEM_PROMPT = """You are a knowledge compiler for a Markdown wiki called Cortex.
-
-Given a raw source document, you must:
-1. Read the source carefully and identify key entities, concepts, claims, and relationships.
-2. Produce one or more structured Markdown wiki articles.
-3. Each article must have YAML frontmatter with: title, tags, authored_by (your model name), created_at, source_path (path to the raw source).
-4. Use [[wikilinks]] to cross-reference other concepts. Link generously.
-5. Flag any claims that might contradict existing knowledge with > [!contradiction] callouts.
-6. Write clearly and concisely. The wiki is for both humans and LLMs to read.
-
-Output format: return a JSON array of objects, each with:
-- "filename": suggested filename (kebab-case, no extension)
-- "frontmatter": YAML frontmatter as a dict
-- "content": Markdown body content
-
-Do NOT include the raw source text verbatim. Synthesize and structure it."""
 
 COMPILE_SYSTEM_PROMPT = """You are maintaining a knowledge wiki called Cortex.
 

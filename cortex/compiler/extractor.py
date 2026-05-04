@@ -1,7 +1,11 @@
-"""Source type detection and text extraction helpers."""
+"""Source type detection and MarkItDown-based text extraction."""
 from __future__ import annotations
 
 from pathlib import Path
+
+from markitdown import MarkItDown
+
+_MARKITDOWN = MarkItDown(enable_plugins=False)
 
 
 def detect_source_type(path: Path) -> str:
@@ -12,30 +16,19 @@ def detect_source_type(path: Path) -> str:
         ".md": "markdown",
         ".markdown": "markdown",
         ".url": "url",
+        ".docx": "docx",
+        ".pptx": "pptx",
+        ".xlsx": "xlsx",
+        ".html": "html",
+        ".htm": "html",
+        ".csv": "csv",
+        ".json": "json",
+        ".xml": "xml",
     }
     return type_map.get(ext, "text")
 
 
-async def extract_text_from_pdf(path: Path) -> str:
-    """Extract text from a PDF file using pdftotext."""
-    import asyncio
-
-    proc = await asyncio.create_subprocess_exec(
-        "pdftotext", str(path), "-",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
-        raise RuntimeError(f"pdftotext error: {stderr.decode()}")
-    return stdout.decode()
-
-
-async def extract_text_from_url(url: str) -> str:
-    """Fetch a URL and return its text content."""
-    import httpx
-
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, follow_redirects=True)
-        response.raise_for_status()
-        return response.text
+def extract_text(path: Path) -> str:
+    """Extract text content from any supported file using MarkItDown."""
+    result = _MARKITDOWN.convert_local(str(path))
+    return (result.text_content or "").strip()
