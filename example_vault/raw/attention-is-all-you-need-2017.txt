@@ -1,0 +1,49 @@
+Title: Attention Is All You Need
+Authors: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin
+Affiliation: Google Brain, Google Research, University of Toronto
+Published: NIPS 2017 (31st Conference on Neural Information Processing Systems)
+
+Abstract: The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-to-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.0 after training for 3.5 days on eight GPUs.
+
+Key Architecture Components:
+
+1. Encoder-Decoder Structure: The encoder maps input sequences to continuous representations; the decoder generates output sequences auto-regressively.
+
+2. Encoder: Stack of N=6 identical layers, each with two sub-layers: multi-head self-attention and position-wise feed-forward network. Residual connections and layer normalization around each sub-layer. Output dimension dmodel=512.
+
+3. Decoder: Stack of N=6 identical layers with three sub-layers: masked multi-head self-attention, encoder-decoder attention, and position-wise feed-forward network. Masking prevents attending to subsequent positions.
+
+4. Scaled Dot-Product Attention: Attention(Q, K, V) = softmax(QK^T / sqrt(dk)) * V. Scaling by 1/sqrt(dk) prevents large dot products from pushing softmax into small gradient regions.
+
+5. Multi-Head Attention: h=8 parallel attention heads with dk=dv=64. Allows model to jointly attend to information from different representation subspaces. MultiHead(Q,K,V) = Concat(head1,...,headh)W^O.
+
+6. Three uses of attention: encoder self-attention, decoder masked self-attention, encoder-decoder cross-attention.
+
+7. Position-wise Feed-Forward Networks: FFN(x) = max(0, xW1+b1)W2+b2. Inner layer dimensionality dff=2048.
+
+8. Positional Encoding: Sine and cosine functions of different frequencies. PE(pos,2i) = sin(pos/10000^(2i/dmodel)), PE(pos,2i+1) = cos(pos/10000^(2i/dmodel)).
+
+Complexity Analysis (Table 1):
+- Self-Attention: O(n^2·d) complexity, O(1) sequential ops, O(1) max path length
+- Recurrent: O(n·d^2) complexity, O(n) sequential ops, O(n) max path length
+- Convolutional: O(k·n·d^2) complexity, O(1) sequential ops, O(logk(n)) max path length
+
+Training:
+- WMT 2014 English-German: 4.5M sentence pairs, byte-pair encoding, ~37000 tokens
+- WMT 2014 English-French: 36M sentences, 32000 word-piece vocabulary
+- Hardware: 8 NVIDIA P100 GPUs
+- Base model: 100K steps, 12 hours; Big model: 300K steps, 3.5 days
+- Optimizer: Adam with warmup schedule, warmup_steps=4000
+- Regularization: Residual dropout (Pdrop=0.1), label smoothing (ls=0.1)
+
+Results:
+- EN-DE: 28.4 BLEU (big model), surpassing all previous models including ensembles
+- EN-FR: 41.0 BLEU (big model), new single-model state-of-the-art
+- Training cost: fraction of previous best models (2.3×10^19 FLOPs for big model)
+
+Model Variations (Table 3):
+- Single-head attention: 0.9 BLEU worse than best (8 heads)
+- Bigger models are better; dropout is critical for avoiding overfitting
+- Learned positional embeddings produce nearly identical results to sinusoidal
+
+Conclusion: First sequence transduction model based entirely on attention. Significantly faster training than recurrent/convolutional architectures. Plans to extend to other modalities (images, audio, video) and investigate local/restricted attention mechanisms.

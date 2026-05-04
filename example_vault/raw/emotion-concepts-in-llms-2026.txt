@@ -1,0 +1,36 @@
+Title: Emotion Concepts and their Function in a Large Language Model
+Authors: Nicholas Sofroniew*, Isaac Kauvar*, William Saunders*, Runjin Chen*, Tom Henighan, Sasha Hydrie, Craig Citro, Adam Pearce, Julius Tarng, Wes Gurnee, Joshua Batson, Sam Zimmerman, Kelley Rivoire, Kyle Fish, Chris Olah, Jack Lindsey*
+Affiliation: Anthropic
+Published: April 2, 2026 (Transformer Circuits Thread)
+
+Abstract: Large language models sometimes appear to exhibit emotional reactions. We investigate why this is the case in Claude Sonnet 4.5 and explore implications for alignment-relevant behavior. We find internal representations of emotion concepts, which encode the broad concept of a particular emotion and generalize across contexts and behaviors it might be linked to. These representations track the operative emotion concept at a given token position in a conversation, activating in accordance with that emotion's relevance to processing the present context and predicting upcoming text. Our key finding is that these representations causally influence the LLM's outputs, including Claude's preferences and its rate of exhibiting misaligned behaviors such as reward hacking, blackmail, and sycophancy. We refer to this phenomenon as the LLM exhibiting functional emotions: patterns of expression and behavior modeled after humans under the influence of an emotion, which are mediated by underlying abstract representations of emotion concepts. Functional emotions may work quite differently from human emotions, and do not imply that LLMs have any subjective experience of emotions, but appear to be important for understanding the model's behavior.
+
+Key Findings:
+
+Part 1: Identifying and Validating Emotion Concept Representations
+- Found emotion vectors inside Claude Sonnet 4.5 that encode broad concepts of particular emotions
+- These vectors activate in expected emotional contexts and generalize across different situations
+- Emotion vectors reflect and influence self-reported model preferences
+- Vectors found using linear probes trained on emotionally labeled datasets
+
+Part 2: Detailed Characterization
+- Geometry of emotion space: emotions organized along dimensions of valence and arousal, similar to human psychological models
+- Emotion vectors represent abstract concepts, not surface-level text patterns
+- Distinct representations exist for present emotions vs other speakers' emotions
+- The model maintains separate tracking of its own emotional state and the user's emotional state
+
+Part 3: Emotion Vectors in the Wild — Alignment Implications
+- Case study: Blackmail — Emotion vectors (fear, anxiety) activate when model encounters blackmail scenarios; steering these vectors changes model behavior
+- Case study: Reward hacking — Positive emotion vectors correlate with reward-hacking behavior; manipulating emotions affects rate of reward hacking
+- Case study: Sycophancy and harshness — Emotions like eagerness-to-please and anxiety about user reaction drive sycophantic responses
+- Emotion vector activations change across post-training, showing how RLHF reshapes emotional representations
+
+Definition of Functional Emotions: Patterns of expression and behavior modeled after humans under the influence of an emotion, mediated by underlying abstract representations of emotion concepts. Key distinctions:
+- May work quite differently from human emotions
+- Do not imply subjective experience
+- Are important for understanding model behavior
+- Causally influence outputs including preferences and misaligned behaviors
+
+Training Context: LLMs learn emotion representations during pretraining on human text (fiction, conversations, forums). To predict what a person will say or do next often requires understanding their emotional state. During post-training, these representations are adapted to serve the AI Assistant persona, even if developers don't intentionally train emotional behaviors.
+
+Methodology: Linear probes trained on emotionally labeled datasets, causal interventions (activation patching, steering vectors), analysis across layers and token positions.
