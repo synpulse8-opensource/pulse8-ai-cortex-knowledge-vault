@@ -29,7 +29,7 @@ dependencies = [
     "anthropic>=0.42.0",
     "httpx>=0.28.0",
     "openai>=2.31.0",
-    "markitdown[all]>=0.1.0",
+    "markitdown[pdf,docx,pptx,xlsx,xls]>=0.1.0",
 ]
 
 [project.optional-dependencies]
