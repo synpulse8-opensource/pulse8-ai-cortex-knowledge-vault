@@ -249,6 +249,8 @@ async def handle_vault_ingest(
             created = await compiler.ingest_source(raw_path)
             result["compiled"] = True
             result["wiki_articles"] = [str(p.relative_to(vault_path)) for p in created]
+            if created:
+                await compiler.compile_cross_references(created)
 
         qmd_debounce = kwargs.get("qmd_debounce")
         if qmd_debounce is not None:
@@ -287,6 +289,7 @@ async def handle_vault_compile(
 
         compiled_count = 0
         all_created: list[str] = []
+        all_created_paths: list[Path] = []
 
         for raw_file in sorted(raw_dir.iterdir()):
             if raw_file.is_dir():
@@ -296,6 +299,10 @@ async def handle_vault_compile(
                 created = await compiler.ingest_source(raw_file)
                 compiled_count += 1
                 all_created.extend(str(p.relative_to(vault_path)) for p in created)
+                all_created_paths.extend(created)
+
+        if all_created_paths:
+            await compiler.compile_cross_references(all_created_paths)
 
         await rebuild_index(vault_path)
         qmd_debounce = kwargs.get("qmd_debounce")

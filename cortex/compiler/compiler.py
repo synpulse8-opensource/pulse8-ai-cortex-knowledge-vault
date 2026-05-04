@@ -8,7 +8,7 @@ from pathlib import Path
 from markitdown import MarkItDown
 from openai import AsyncOpenAI
 
-from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT
+from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.config import settings
 from cortex.vault.reader import read_note
 from cortex.vault.writer import write_note
@@ -52,8 +52,37 @@ class KnowledgeCompiler:
         )
         return response.choices[0].message.content or ""
 
+    async def enrich_article(self, md_content: str, title: str) -> dict:
+        """Call LLM to add [[wikilinks]] and tags to a converted Markdown article."""
+        index_context = self._build_index_context()
+        try:
+            text = await self._chat(
+                ENRICH_SYSTEM_PROMPT,
+                f"## Article: {title}\n\n{md_content}\n\n"
+                f"## Existing Wiki Index\n\n{index_context}",
+            )
+            return self._parse_enrichment(text, md_content)
+        except Exception:  # pylint: disable=broad-exception-caught
+            return {"content": md_content, "tags": []}
+
+    def _parse_enrichment(self, text: str, original: str) -> dict:
+        """Parse the LLM enrichment response, falling back to original on failure."""
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1]
+        if cleaned.endswith("```"):
+            cleaned = cleaned.rsplit("```", 1)[0]
+        try:
+            data = json.loads(cleaned)
+            return {
+                "content": data.get("content", original),
+                "tags": data.get("tags", []),
+            }
+        except (json.JSONDecodeError, AttributeError):
+            return {"content": original, "tags": []}
+
     async def ingest_source(self, source_path: Path) -> list[Path]:
-        """Convert a raw source file to a wiki Markdown note using MarkItDown."""
+        """Convert a raw source file to wiki Markdown, then enrich with LLM if available."""
         relative_source = str(source_path.relative_to(self.vault_path))
 
         result = self._md.convert_local(str(source_path))
@@ -62,28 +91,36 @@ class KnowledgeCompiler:
         slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
 
+        enriched = {"content": md_content, "tags": []}
+        if settings.llm_api_key:
+            enriched = await self.enrich_article(md_content, title)
+
         filename = f"{slug}.md"
         note_path = self.vault_path / "wiki" / filename
 
-        frontmatter = {
+        frontmatter: dict = {
             "title": title,
             "source_path": relative_source,
         }
+        if enriched["tags"]:
+            frontmatter["tags"] = enriched["tags"]
 
         write_note(
             path=note_path,
             vault_root=self.vault_path,
-            content=md_content,
+            content=enriched["content"],
             frontmatter=frontmatter,
             mode="upsert",
             authored_by="markitdown",
-            model=None,
+            model=self.model if settings.llm_api_key else None,
         )
 
         return [note_path]
 
     async def compile_cross_references(self, new_paths: list[Path]) -> None:
         """After new articles are created, identify cross-references and contradictions."""
+        if not settings.llm_api_key:
+            return
         new_articles = []
         for p in new_paths:
             note = read_note(p, self.vault_path)

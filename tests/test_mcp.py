@@ -241,6 +241,70 @@ class TestVaultIngestBinary:
         assert result["path"] == "raw/note.txt"
 
 
+class TestCrossReferencesAfterIngest:
+    """compile_cross_references should be invoked after ingest when auto_compile is on."""
+
+    @pytest.mark.asyncio
+    async def test_ingest_auto_compile_calls_cross_references(self, mcp_services):
+        """handle_vault_ingest with auto_compile should call compile_cross_references."""
+        from cortex.mcp.tools import handle_vault_ingest
+
+        with patch.object(
+            mcp_services["compiler"], "ingest_source",
+            new_callable=AsyncMock,
+            return_value=[mcp_services["vault_path"] / "wiki" / "test.md"],
+        ) as mock_ingest, patch.object(
+            mcp_services["compiler"], "compile_cross_references",
+            new_callable=AsyncMock,
+        ) as mock_xref:
+            await handle_vault_ingest(
+                content="Raw source text.",
+                filename="xref-test.txt",
+                auto_compile=True,
+                **mcp_services,
+            )
+            mock_ingest.assert_awaited_once()
+            mock_xref.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_ingest_no_compile_skips_cross_references(self, mcp_services):
+        """handle_vault_ingest without auto_compile should NOT call compile_cross_references."""
+        from cortex.mcp.tools import handle_vault_ingest
+
+        with patch.object(
+            mcp_services["compiler"], "compile_cross_references",
+            new_callable=AsyncMock,
+        ) as mock_xref:
+            await handle_vault_ingest(
+                content="Raw source text.",
+                filename="no-xref-test.txt",
+                auto_compile=False,
+                **mcp_services,
+            )
+            mock_xref.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_compile_calls_cross_references(self, mcp_services):
+        """handle_vault_compile should call compile_cross_references after ingesting."""
+        from cortex.mcp.tools import handle_vault_compile
+
+        vault_path = mcp_services["vault_path"]
+        (vault_path / "raw" / "xref-compile-test.txt").write_text("Content for xref.")
+
+        created_path = vault_path / "wiki" / "xref-compile-test.md"
+
+        with patch.object(
+            mcp_services["compiler"], "ingest_source",
+            new_callable=AsyncMock,
+            return_value=[created_path],
+        ), patch.object(
+            mcp_services["compiler"], "compile_cross_references",
+            new_callable=AsyncMock,
+        ) as mock_xref:
+            await handle_vault_compile(**mcp_services)
+            mock_xref.assert_awaited_once()
+
+
 class TestVaultCompileTool:
     @pytest.mark.asyncio
     async def test_compile_refreshes_qmd_index(self, mcp_services):

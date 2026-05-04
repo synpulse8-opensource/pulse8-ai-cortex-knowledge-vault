@@ -1,5 +1,21 @@
-"""System prompts for the knowledge compiler LLM (cross-referencing only)."""
+"""System prompts for the knowledge compiler LLM."""
 from __future__ import annotations
+
+ENRICH_SYSTEM_PROMPT = """You are enriching a Markdown article for a knowledge wiki called Cortex.
+
+You will receive a Markdown article that was converted from a raw source file.
+You will also receive a list of existing wiki articles (title + path).
+
+Your job:
+1. Add [[wikilinks]] to connect concepts mentioned in the article to existing wiki articles or new concepts worth linking.
+2. Suggest relevant tags for the article.
+3. Preserve the original content faithfully — do NOT remove, summarize, or rewrite. Only ADD wikilinks inline and suggest tags.
+
+Output format: return a JSON object with:
+- "content": the article body with [[wikilinks]] added inline
+- "tags": a list of lowercase tag strings
+
+Do NOT wrap the JSON in code fences."""
 
 COMPILE_SYSTEM_PROMPT = """You are maintaining a knowledge wiki called Cortex.
 

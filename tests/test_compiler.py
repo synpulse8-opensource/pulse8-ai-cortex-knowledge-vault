@@ -1,10 +1,20 @@
 """Tests for the knowledge compiler."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+
+def _mock_chat_response(text: str) -> MagicMock:
+    """Create a mock OpenAI-compatible chat completion response."""
+    choice = MagicMock()
+    choice.message.content = text
+    response = MagicMock()
+    response.choices = [choice]
+    return response
 
 
 class TestPrompts:
@@ -13,6 +23,12 @@ class TestPrompts:
 
         assert "wiki" in COMPILE_SYSTEM_PROMPT.lower()
         assert "cross-reference" in COMPILE_SYSTEM_PROMPT.lower() or "contradiction" in COMPILE_SYSTEM_PROMPT.lower()
+
+    def test_enrich_prompt_exists(self):
+        from cortex.compiler.prompts import ENRICH_SYSTEM_PROMPT
+
+        assert "wikilink" in ENRICH_SYSTEM_PROMPT.lower() or "[[" in ENRICH_SYSTEM_PROMPT
+        assert "tag" in ENRICH_SYSTEM_PROMPT.lower()
 
 
 class TestBuildIndexContext:
@@ -54,20 +70,6 @@ class TestMarkItDownIngest:
 
         content = created.read_text()
         assert "Attention Is All You Need" in content
-
-    @pytest.mark.asyncio
-    async def test_ingest_does_not_call_llm(self, tmp_vault: Path):
-        """ingest_source should NOT make any LLM chat calls for conversion."""
-        from cortex.compiler.compiler import KnowledgeCompiler
-
-        compiler = KnowledgeCompiler(tmp_vault)
-
-        with patch.object(
-            compiler.client.chat.completions, "create",
-            new_callable=AsyncMock,
-        ) as mock_llm:
-            await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
-            mock_llm.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_ingest_adds_source_path_frontmatter(self, tmp_vault: Path):
@@ -114,6 +116,94 @@ class TestMarkItDownIngest:
         compiler = KnowledgeCompiler(tmp_vault)
         result = await compiler.ingest_source(tmp_vault / "raw" / "My Research Paper.txt")
         assert result[0].name == "my-research-paper.md"
+
+
+class TestLLMEnrichment:
+    """Tests for the LLM enrichment step that adds wikilinks and tags after MarkItDown conversion."""
+
+    @pytest.mark.asyncio
+    async def test_enrich_adds_wikilinks_and_tags(self, tmp_vault: Path):
+        """After MarkItDown conversion, enrich_article should call LLM to add wikilinks and tags."""
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        enriched_json = json.dumps({
+            "content": "# Transformers\n\nThe [[transformer-architecture]] uses [[attention-mechanisms]].",
+            "tags": ["ml", "architecture", "nlp"],
+        })
+        mock_response = _mock_chat_response(enriched_json)
+
+        with patch.object(
+            compiler.client.chat.completions, "create",
+            new_callable=AsyncMock, return_value=mock_response,
+        ):
+            result = await compiler.enrich_article(
+                "# Transformers\n\nThe transformer architecture uses attention mechanisms.",
+                "Transformers",
+            )
+        assert "[[" in result["content"]
+        assert len(result["tags"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_enrich_gracefully_handles_bad_llm_response(self, tmp_vault: Path):
+        """If LLM returns invalid JSON, enrich should return original content with no tags."""
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+        mock_response = _mock_chat_response("not valid json at all")
+
+        original = "# Test\n\nPlain content."
+        with patch.object(
+            compiler.client.chat.completions, "create",
+            new_callable=AsyncMock, return_value=mock_response,
+        ):
+            result = await compiler.enrich_article(original, "Test")
+        assert result["content"] == original
+        assert result["tags"] == []
+
+    @pytest.mark.asyncio
+    async def test_ingest_source_calls_enrich(self, tmp_vault: Path):
+        """ingest_source should call enrich_article and write the enriched content."""
+        import frontmatter as fm
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        enriched_json = json.dumps({
+            "content": "# Attention Is All You Need\n\nIntroduces the [[transformer-architecture]].",
+            "tags": ["ml", "attention"],
+        })
+        mock_response = _mock_chat_response(enriched_json)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            with patch.object(
+                compiler.client.chat.completions, "create",
+                new_callable=AsyncMock, return_value=mock_response,
+            ):
+                result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
+
+        post = fm.load(str(result[0]))
+        assert "[[transformer-architecture]]" in post.content
+        assert "ml" in post.metadata.get("tags", [])
+
+    @pytest.mark.asyncio
+    async def test_ingest_skips_enrich_when_no_api_key(self, tmp_vault: Path):
+        """When LLM API key is not set, ingest should skip enrichment gracefully."""
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.llm_base_url = "https://openrouter.ai/api/v1"
+            mock_settings.compiler_model = "test"
+            mock_settings.compiler_max_tokens = 4096
+            result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
+
+        assert len(result) == 1
+        assert result[0].exists()
 
 
 class TestTitleAndSlugHelpers:
