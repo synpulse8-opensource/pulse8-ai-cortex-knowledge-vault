@@ -5,6 +5,37 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-05-04
+
+### Changed — MarkItDown Compiler
+
+- **Replace LLM-based file conversion with MarkItDown**: The `KnowledgeCompiler.ingest_source` method now uses [Microsoft MarkItDown](https://github.com/microsoft/markitdown) to convert raw files to Markdown instead of calling an LLM. Supported formats include PDF, DOCX, PPTX, XLSX, XLS, HTML, CSV, JSON, XML, images (EXIF metadata), and plain text. The LLM is still used for cross-reference detection between articles (`compile_cross_references`).
+- **LLM API key is now optional**: An OpenRouter API key is no longer required for file ingestion and conversion. It is only needed for optional cross-referencing between wiki articles.
+
+### Added — Binary File Ingestion
+
+- **REST file upload endpoint**: New `POST /api/v1/ingest/upload` accepts multipart file uploads for binary formats (PDF, DOCX, etc.).
+- **MCP base64 ingestion**: The `vault_ingest` MCP tool now accepts a `content_base64` parameter for binary file ingestion via JSON.
+- **Shared binary handler**: `handle_vault_ingest` accepts a `file_bytes` parameter alongside the existing `content` parameter.
+- **Expanded extractor**: `cortex/compiler/extractor.py` now provides a unified `extract_text()` function powered by MarkItDown, replacing the previous `pdftotext` and `httpx`-based helpers.
+
+### Removed
+
+- `INGEST_SYSTEM_PROMPT` — no longer needed since file conversion is handled by MarkItDown.
+- `KnowledgeCompiler._parse_articles()` — no longer needed since MarkItDown produces Markdown directly.
+- `extract_text_from_pdf()` and `extract_text_from_url()` — replaced by MarkItDown's `extract_text()`.
+
+### Dependencies
+
+- Added `markitdown[pdf,docx,pptx,xlsx,xls]>=0.1.0`
+- Added `pylint>=3.0.0` to dev dependencies
+
+### Tests
+
+- 7 new tests for MarkItDown-based ingestion and helpers
+- 7 new tests for binary file ingestion (REST upload, MCP base64, shared handler)
+- Total test count: 220
+
 ## [0.2.0] — 2026-04-25
 
 ### Performance — QMD Search
