@@ -168,15 +168,23 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
 
     @mcp.tool()
     async def vault_ingest(
-        content: str,
         filename: str,
+        content: Optional[str] = None,
+        content_base64: Optional[str] = None,
         source_type: str = "text",
         auto_compile: bool = False,
     ) -> str:
-        """Ingest a raw source. Write to raw/ and optionally trigger LLM compilation."""
+        """Ingest a raw source. Accepts text via content or binary via content_base64."""
+        import base64
+
+        file_bytes = None
+        if content_base64:
+            file_bytes = base64.b64decode(content_base64)
+
         result = await handle_vault_ingest(
-            content=content,
             filename=filename,
+            content=content,
+            file_bytes=file_bytes,
             source_type=source_type,
             auto_compile=auto_compile,
             **services,

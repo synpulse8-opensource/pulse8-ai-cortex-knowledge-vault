@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from cortex.graph.engine import GraphEngine
@@ -274,6 +274,45 @@ async def ingest_endpoint(body: IngestBody, request: Request):
     }
 
     if body.auto_compile:
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(vault_path)
+        created = await compiler.ingest_source(raw_path)
+        result["compiled"] = True
+        result["wiki_articles"] = [str(p.relative_to(vault_path)) for p in created]
+
+    qmd_debounce.schedule()
+
+    return result
+
+
+@router.post("/ingest/upload")
+async def ingest_upload_endpoint(
+    request: Request,
+    file: UploadFile = File(...),
+    auto_compile: bool = Form(False),
+):
+    """Ingest a file via multipart upload. Supports any format MarkItDown handles."""
+    vault_path = get_vault_path(request)
+    qmd_debounce = get_qmd_debounce(request)
+
+    file_bytes = await file.read()
+    filename = file.filename or "upload"
+
+    raw_path = vault_path / "raw" / filename
+    raw_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_path.write_bytes(file_bytes)
+
+    rel_path = f"raw/{filename}"
+    await log_operation(vault_path, "api", "vault:ingest", f"Ingested {rel_path}")
+
+    result: dict[str, Any] = {
+        "path": rel_path,
+        "status": "ingested",
+        "compiled": False,
+    }
+
+    if auto_compile:
         from cortex.compiler.compiler import KnowledgeCompiler
 
         compiler = KnowledgeCompiler(vault_path)

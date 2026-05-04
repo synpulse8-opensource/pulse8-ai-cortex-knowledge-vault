@@ -180,6 +180,36 @@ class TestMCPHttpToolCalls:
         assert (tmp_vault / "raw" / "http-ingest.txt").exists()
 
 
+class TestMCPIngestBase64:
+    def test_vault_ingest_base64_via_http(self, mcp_http_client: TestClient, tmp_vault: Path):
+        """vault_ingest with content_base64 should decode and write binary content."""
+        import base64
+
+        headers = _init_mcp_session(mcp_http_client)
+        raw_bytes = b"<html><body><h1>Base64</h1></body></html>"
+        b64 = base64.b64encode(raw_bytes).decode()
+
+        resp = mcp_http_client.post(
+            "/",
+            json={
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "tools/call",
+                "params": {
+                    "name": "vault_ingest",
+                    "arguments": {
+                        "filename": "b64-test.html",
+                        "content_base64": b64,
+                    },
+                },
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert (tmp_vault / "raw" / "b64-test.html").exists()
+        assert (tmp_vault / "raw" / "b64-test.html").read_bytes() == raw_bytes
+
+
 class TestMainAppMCPMount:
     def test_mcp_mounted_on_fastapi(self, tmp_vault: Path):
         """The FastAPI app should have MCP mounted at /mcp."""

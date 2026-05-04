@@ -212,20 +212,29 @@ async def handle_vault_link(
 
 
 async def handle_vault_ingest(
-    content: str,
     filename: str,
     vault_path: Path,
+    content: Optional[str] = None,
+    file_bytes: Optional[bytes] = None,
     source_type: str = "text",  # pylint: disable=unused-argument
     auto_compile: bool = False,
     compiler: Optional[KnowledgeCompiler] = None,
     qmd: Optional[Any] = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Write raw source to raw/ and optionally trigger compilation."""
+    """Write raw source to raw/ and optionally trigger compilation.
+
+    Accepts either ``content`` (text) or ``file_bytes`` (binary).
+    """
+    if content is None and file_bytes is None:
+        return {"error": "Either content or file_bytes must be provided"}
     try:
         raw_path = vault_path / "raw" / filename
         raw_path.parent.mkdir(parents=True, exist_ok=True)
-        raw_path.write_text(content)
+        if file_bytes is not None:
+            raw_path.write_bytes(file_bytes)
+        else:
+            raw_path.write_text(content)  # type: ignore[arg-type]
 
         rel_path = f"raw/{filename}"
         await log_operation(vault_path, "mcp", "vault:ingest", f"Ingested {rel_path}")

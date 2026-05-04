@@ -190,6 +190,57 @@ class TestVaultIngestTool:
             mock_update.assert_awaited_once()
 
 
+class TestVaultIngestBinary:
+    @pytest.mark.asyncio
+    async def test_ingest_writes_binary_file(self, mcp_services):
+        """handle_vault_ingest should write raw bytes when file_bytes is provided."""
+        from cortex.mcp.tools import handle_vault_ingest
+
+        binary_data = b"\x50\x4b\x03\x04fake-zip-content"
+
+        result = await handle_vault_ingest(
+            filename="archive.zip",
+            file_bytes=binary_data,
+            auto_compile=False,
+            **mcp_services,
+        )
+        vault_path = mcp_services["vault_path"]
+        written = (vault_path / "raw" / "archive.zip").read_bytes()
+        assert written == binary_data
+        assert result["path"] == "raw/archive.zip"
+
+    @pytest.mark.asyncio
+    async def test_ingest_binary_with_auto_compile(self, mcp_services):
+        """Binary ingest with auto_compile should convert via MarkItDown."""
+        from cortex.mcp.tools import handle_vault_ingest
+
+        html_bytes = b"<html><body><h1>Hello</h1><p>World</p></body></html>"
+
+        result = await handle_vault_ingest(
+            filename="page.html",
+            file_bytes=html_bytes,
+            auto_compile=True,
+            **mcp_services,
+        )
+        assert result.get("compiled") is True
+        assert len(result.get("wiki_articles", [])) >= 1
+
+    @pytest.mark.asyncio
+    async def test_ingest_text_still_works(self, mcp_services):
+        """Existing text content ingestion should still work."""
+        from cortex.mcp.tools import handle_vault_ingest
+
+        result = await handle_vault_ingest(
+            content="Plain text content.",
+            filename="note.txt",
+            auto_compile=False,
+            **mcp_services,
+        )
+        vault_path = mcp_services["vault_path"]
+        assert (vault_path / "raw" / "note.txt").read_text() == "Plain text content."
+        assert result["path"] == "raw/note.txt"
+
+
 class TestVaultCompileTool:
     @pytest.mark.asyncio
     async def test_compile_refreshes_qmd_index(self, mcp_services):

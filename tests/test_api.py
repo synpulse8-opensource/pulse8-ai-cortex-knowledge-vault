@@ -154,6 +154,46 @@ class TestIngestEndpoint:
             mock_schedule.assert_called_once()
 
 
+class TestIngestUploadEndpoint:
+    def test_upload_binary_file(self, app_client):
+        """POST /ingest/upload should accept a multipart file upload."""
+        content = b"<html><body><h1>Uploaded</h1></body></html>"
+        response = app_client.post(
+            "/api/v1/ingest/upload",
+            files={"file": ("page.html", content, "text/html")},
+            data={"auto_compile": "false"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["path"] == "raw/page.html"
+        assert data["status"] == "ingested"
+
+    def test_upload_with_auto_compile(self, app_client):
+        """Upload with auto_compile should convert the file to wiki markdown."""
+        content = b"<html><body><h1>CompileMe</h1><p>Body text.</p></body></html>"
+        response = app_client.post(
+            "/api/v1/ingest/upload",
+            files={"file": ("compile-me.html", content, "text/html")},
+            data={"auto_compile": "true"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("compiled") is True
+        assert len(data.get("wiki_articles", [])) >= 1
+
+    def test_upload_preserves_original_bytes(self, app_client):
+        """Uploaded binary content should be written exactly as received."""
+        binary = b"\x89PNG\r\n\x1a\nfake-png-data"
+        response = app_client.post(
+            "/api/v1/ingest/upload",
+            files={"file": ("image.png", binary, "image/png")},
+            data={"auto_compile": "false"},
+        )
+        assert response.status_code == 200
+        vault_path = app_client.app.state.vault_path
+        assert (vault_path / "raw" / "image.png").read_bytes() == binary
+
+
 class TestCompileEndpoint:
     def test_compile_schedules_debounced_qmd_update(self, app_client):
         vault_path = app_client.app.state.vault_path
