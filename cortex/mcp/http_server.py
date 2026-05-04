@@ -172,7 +172,7 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
         content: Optional[str] = None,
         content_base64: Optional[str] = None,
         source_type: str = "text",
-        auto_compile: bool = False,
+        auto_compile: bool = True,
     ) -> str:
         """Ingest a raw source. Accepts text via content or binary via content_base64."""
         import base64

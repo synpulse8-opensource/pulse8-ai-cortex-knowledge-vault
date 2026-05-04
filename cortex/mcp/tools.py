@@ -217,7 +217,7 @@ async def handle_vault_ingest(
     content: Optional[str] = None,
     file_bytes: Optional[bytes] = None,
     source_type: str = "text",  # pylint: disable=unused-argument
-    auto_compile: bool = False,
+    auto_compile: bool = True,
     compiler: Optional[KnowledgeCompiler] = None,
     qmd: Optional[Any] = None,
     **kwargs: Any,

@@ -39,7 +39,7 @@ class IngestBody(BaseModel):
     content: str
     filename: str
     source_type: str = "text"
-    auto_compile: bool = False
+    auto_compile: bool = True
 
 
 def get_vault_path(request: Request):
@@ -290,7 +290,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
 async def ingest_upload_endpoint(
     request: Request,
     file: UploadFile = File(...),
-    auto_compile: bool = Form(False),
+    auto_compile: bool = Form(True),
 ):
     """Ingest a file via multipart upload. Supports any format MarkItDown handles."""
     vault_path = get_vault_path(request)

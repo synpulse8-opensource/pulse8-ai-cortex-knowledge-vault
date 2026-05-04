@@ -126,7 +126,7 @@ def _tool_definitions() -> list[Tool]:
                     "content": {"type": "string", "description": "Raw source content"},
                     "filename": {"type": "string", "description": "Filename for the raw source"},
                     "source_type": {"type": "string", "enum": ["text", "pdf", "url"], "default": "text"},
-                    "auto_compile": {"type": "boolean", "default": False},
+                    "auto_compile": {"type": "boolean", "default": True},
                 },
                 "required": ["content", "filename"],
             },
