@@ -159,6 +159,30 @@ class TestBuildContextWindow:
             assert call_kwargs.get("mode") == "hybrid"
 
     @pytest.mark.asyncio
+    async def test_reads_notes_without_blocking_event_loop(self, context_services):
+        """Note file reads must be offloaded to threads so the loop stays free."""
+        from cortex.graph.context import build_context_window
+
+        mock_results = [
+            {"path": "wiki/transformers.md", "score": 0.9, "snippet": "transformer"},
+            {"path": "wiki/attention-mechanisms.md", "score": 0.8, "snippet": "attention"},
+        ]
+
+        with patch.object(
+            context_services["searcher"], "search",
+            new_callable=AsyncMock, return_value=mock_results,
+        ):
+            with patch("cortex.graph.context.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+                mock_thread.side_effect = lambda fn, *a, **kw: fn(*a, **kw)
+
+                result = await build_context_window(
+                    query="transformer",
+                    **context_services,
+                )
+                assert mock_thread.await_count >= 2
+                assert len(result.notes) >= 1
+
+    @pytest.mark.asyncio
     async def test_detects_contradictions(self, context_services):
         from cortex.graph.context import build_context_window
         from cortex.vault.models import Edge

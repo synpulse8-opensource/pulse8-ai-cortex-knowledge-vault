@@ -1,6 +1,7 @@
 """Context window builder — search, BFS expand, rank, and assemble."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import deque
 from pathlib import Path
@@ -95,13 +96,14 @@ async def build_context_window(
     ranked.sort(key=lambda x: x[1], reverse=True)
     top_paths = [path for path, _ in ranked[:max_notes]]
 
-    notes: list[Note] = []
-    for path in top_paths:
+    async def _read_one(path: str) -> Note | None:
         try:
-            note = read_note(vault_root / path, vault_root)
-            notes.append(note)
+            return await asyncio.to_thread(read_note, vault_root / path, vault_root)
         except (FileNotFoundError, Exception):
-            continue
+            return None
+
+    loaded = await asyncio.gather(*(_read_one(p) for p in top_paths))
+    notes: list[Note] = [n for n in loaded if n is not None]
 
     top_set = set(top_paths)
     collected_edges: list[Edge] = []
