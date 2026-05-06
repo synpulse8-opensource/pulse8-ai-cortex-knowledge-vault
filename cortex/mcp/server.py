@@ -22,6 +22,7 @@ from cortex.mcp.tools import (
     handle_vault_write,
 )
 from cortex.search.qmd import QMDSearch
+from cortex.search.qmd_cache import CachedQMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
 from cortex.vault.reader import scan_vault
 
@@ -206,13 +207,14 @@ async def run_stdio() -> None:
     graph = await build_graph(notes, vault_path / ".cortex" / "graph.json", vault_path)
 
     if settings.qmd_url:
-        qmd = QMDHttpSearch(base_url=settings.qmd_url)
+        raw_qmd = QMDHttpSearch(base_url=settings.qmd_url)
     else:
-        qmd = QMDSearch(vault_path, settings.qmd_bin)
+        raw_qmd = QMDSearch(vault_path, settings.qmd_bin)
     try:
-        await qmd.initialize()
+        await raw_qmd.initialize()
     except Exception:
         logger.warning("QMD initialization failed — search will be unavailable")
+    qmd = CachedQMDSearch(raw_qmd)
 
     compiler = KnowledgeCompiler(vault_path)
 

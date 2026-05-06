@@ -317,3 +317,36 @@ class TestVaultCompileTool:
             with patch.object(mcp_services["compiler"], "ingest_source", new_callable=AsyncMock, return_value=[]):
                 await handle_vault_compile(**mcp_services)
             mock_update.assert_awaited_once()
+
+
+class TestStdioServerCaching:
+    @pytest.mark.asyncio
+    async def test_stdio_server_wraps_qmd_in_cache(self, tmp_vault: Path):
+        """run_stdio must wrap the QMD backend in CachedQMDSearch."""
+        from cortex.mcp.server import _services, run_stdio
+        from cortex.search.qmd_cache import CachedQMDSearch
+
+        with patch("cortex.mcp.server.scan_vault", return_value=[]), \
+             patch("cortex.mcp.server.build_graph", new_callable=AsyncMock) as mock_bg, \
+             patch("cortex.mcp.server.QMDSearch") as mock_qmd_cls, \
+             patch("cortex.mcp.server.stdio_server") as mock_stdio, \
+             patch("cortex.mcp.server.settings") as mock_settings:
+
+            mock_settings.vault_path = tmp_vault
+            mock_settings.qmd_url = ""
+            mock_settings.qmd_bin = "qmd"
+
+            mock_bg.return_value = AsyncMock()
+            mock_qmd_cls.return_value.initialize = AsyncMock()
+
+            mock_ctx = AsyncMock()
+            mock_ctx.__aenter__ = AsyncMock(return_value=(AsyncMock(), AsyncMock()))
+            mock_ctx.__aexit__ = AsyncMock(return_value=False)
+            mock_stdio.return_value = mock_ctx
+
+            with patch("cortex.mcp.server.app") as mock_app:
+                mock_app.run = AsyncMock()
+                mock_app.create_initialization_options = lambda: {}
+                await run_stdio()
+
+            assert isinstance(_services["qmd"], CachedQMDSearch)
