@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -189,3 +189,100 @@ class TestSearchBenchmark:
         print(f"\n  Single search: {single_ms:.1f}ms")
         print(f"  10 concurrent searches: {batch_ms:.1f}ms (ratio: {ratio:.1f}×)")
         assert batch_ms < 500, f"10 concurrent searches too slow: {batch_ms:.1f}ms (budget: 500ms)"
+
+
+class TestMCPBenchmark:
+    """Benchmarks for MCP-specific fixes (shared services, caching, async scan)."""
+
+    @pytest.mark.asyncio
+    async def test_shared_services_skips_graph_rebuild(self, large_vault, bench_graph):
+        """create_fastmcp_server with pre-built services must not call build_graph."""
+        from cortex.mcp.http_server import create_fastmcp_server
+
+        services = {
+            "vault_path": large_vault,
+            "graph": bench_graph,
+            "qmd": AsyncMock(),
+            "compiler": MagicMock(),
+        }
+
+        with patch(
+            "cortex.mcp.http_server.build_graph", new_callable=AsyncMock,
+        ) as mock_bg:
+            start = time.perf_counter()
+            await create_fastmcp_server(large_vault, services=services)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            mock_bg.assert_not_awaited()
+
+        print(f"\n  create_fastmcp_server (shared): {elapsed_ms:.1f}ms")
+        assert elapsed_ms < 50, (
+            f"MCP server creation too slow with shared services: "
+            f"{elapsed_ms:.1f}ms (budget: 50ms)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_fallback_path_does_not_block_loop(self, large_vault):
+        """Fallback (no services) must use scan_vault_async, not sync scan."""
+        from cortex.mcp.http_server import create_fastmcp_server
+
+        ticks = 0
+
+        async def tick_counter():
+            nonlocal ticks
+            for _ in range(100):
+                await asyncio.sleep(0)
+                ticks += 1
+
+        scan_patch = patch(
+            "cortex.mcp.http_server.scan_vault_async",
+            new_callable=AsyncMock, return_value=[],
+        )
+        bg_patch = patch(
+            "cortex.mcp.http_server.build_graph",
+            new_callable=AsyncMock,
+        )
+
+        with patch("cortex.search.qmd.QMDSearch._run",
+                    new_callable=AsyncMock, return_value=""):
+            with scan_patch as mock_scan, bg_patch as mock_bg:
+                mock_bg.return_value = AsyncMock()
+                mock_bg.return_value.graph = MagicMock()
+
+                task = asyncio.create_task(tick_counter())
+                await create_fastmcp_server(large_vault)
+                await task
+
+                mock_scan.assert_awaited_once()
+
+        print(f"\n  Event-loop ticks during fallback startup: {ticks}/100")
+        assert ticks >= 80, (
+            f"Event loop starved during fallback startup ({ticks}/100 ticks)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_cached_search_faster_on_repeat(self):
+        """CachedQMDSearch should serve repeated queries much faster."""
+        from cortex.search.qmd_cache import CachedQMDSearch
+
+        inner = AsyncMock()
+        inner.search = AsyncMock(return_value=[
+            {"path": f"wiki/note-{i}.md", "score": 0.9}
+            for i in range(10)
+        ])
+        cached = CachedQMDSearch(inner)
+
+        await cached.search("test query", mode="hybrid", top_k=10)
+        inner.search.assert_awaited_once()
+
+        start = time.perf_counter()
+        for _ in range(100):
+            await cached.search("test query", mode="hybrid", top_k=10)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        assert inner.search.await_count == 1
+        avg_us = (elapsed_ms / 100) * 1000
+        print(f"\n  Cached search hit ×100: {elapsed_ms:.1f}ms total, {avg_us:.0f}µs avg")
+        assert elapsed_ms < 10, (
+            f"100 cached lookups too slow: {elapsed_ms:.1f}ms (budget: 10ms)"
+        )
