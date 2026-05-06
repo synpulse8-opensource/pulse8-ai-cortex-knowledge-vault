@@ -125,3 +125,14 @@ class TestAuditLog:
         vault.mkdir()
         await log_operation(vault, "test", "test", "test")
         assert (vault / ".cortex" / "log.md").exists()
+
+    @pytest.mark.asyncio
+    async def test_log_does_not_block_event_loop(self, tmp_vault: Path):
+        """log_operation must offload file I/O so it never blocks the loop."""
+        from unittest.mock import patch, AsyncMock
+        from cortex.log.audit import log_operation
+
+        with patch("cortex.log.audit.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+            mock_thread.return_value = None
+            await log_operation(tmp_vault, "test", "vault:search", "perf test")
+            mock_thread.assert_awaited_once()
