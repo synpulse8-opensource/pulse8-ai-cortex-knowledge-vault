@@ -137,7 +137,17 @@ def _tool_definitions() -> list[Tool]:
             description="Compile unprocessed raw sources into wiki articles via LLM.",
             inputSchema={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "force": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Recompile all sources regardless of enrichment status",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Limit to a single raw file (relative to vault root)",
+                    },
+                },
             },
         ),
     ]

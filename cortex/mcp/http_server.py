@@ -201,9 +201,16 @@ async def create_fastmcp_server(
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool()
-    async def vault_compile() -> str:
-        """Compile unprocessed raw sources into wiki articles via LLM."""
-        result = await handle_vault_compile(**services)
+    async def vault_compile(
+        force: bool = False,
+        path: Optional[str] = None,
+    ) -> str:
+        """Compile unprocessed raw sources into wiki articles via LLM.
+
+        Use *force* to recompile all sources regardless of enrichment status.
+        Use *path* to limit compilation to a single raw file.
+        """
+        result = await handle_vault_compile(force=force, path=path, **services)
         return json.dumps(result, indent=2, default=str)
 
     return mcp

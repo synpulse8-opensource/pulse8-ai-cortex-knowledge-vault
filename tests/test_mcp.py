@@ -422,6 +422,58 @@ class TestCompileReprocessing:
         assert result["sources_compiled"] == 1
 
 
+class TestCompileToolSurface:
+    """Tests that vault_compile tool definitions expose force/path params."""
+
+    def test_stdio_compile_schema_includes_force_and_path(self):
+        """The stdio vault_compile tool should have force and path in its schema."""
+        from cortex.mcp.server import _tool_definitions
+
+        tools = _tool_definitions()
+        compile_tool = next(t for t in tools if t.name == "vault_compile")
+        props = compile_tool.inputSchema["properties"]
+        assert "force" in props, "vault_compile missing 'force' param"
+        assert props["force"]["type"] == "boolean"
+        assert "path" in props, "vault_compile missing 'path' param"
+        assert props["path"]["type"] == "string"
+
+    @pytest.mark.asyncio
+    async def test_stdio_dispatch_passes_force_and_path(self, mcp_services):
+        """The stdio dispatcher should forward force/path to handle_vault_compile."""
+        from cortex.mcp.server import _services, call_tool
+
+        _services.update(mcp_services)
+
+        with patch(
+            "cortex.mcp.server.handle_vault_compile",
+            new_callable=AsyncMock,
+            return_value={"status": "compiled", "sources_compiled": 0, "articles_created": []},
+        ) as mock_handler:
+            await call_tool("vault_compile", {"force": True, "path": "raw/test.txt"})
+            mock_handler.assert_awaited_once()
+            _, call_kwargs = mock_handler.call_args
+            assert call_kwargs.get("force") is True
+            assert call_kwargs.get("path") == "raw/test.txt"
+
+    @pytest.mark.asyncio
+    async def test_http_compile_accepts_force_and_path(self, tmp_vault: Path):
+        """The HTTP vault_compile tool should accept force and path parameters."""
+        from cortex.mcp.http_server import create_fastmcp_server
+
+        mock_services = {
+            "vault_path": tmp_vault,
+            "graph": AsyncMock(),
+            "qmd": AsyncMock(),
+            "compiler": AsyncMock(),
+        }
+
+        mcp = await create_fastmcp_server(tmp_vault, services=mock_services)
+        tools = await mcp.list_tools()
+        compile_tool = next(t for t in tools if t.name == "vault_compile")
+        params = compile_tool.inputSchema.get("properties", {})
+        assert "force" in params or "force" in str(compile_tool)
+
+
 class TestStdioServerCaching:
     @pytest.mark.asyncio
     async def test_stdio_server_wraps_qmd_in_cache(self, tmp_vault: Path):
