@@ -1,7 +1,6 @@
 """NetworkX-backed graph engine with JSON persistence."""
 from __future__ import annotations
 
-import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -98,13 +97,13 @@ class GraphEngine:
         if keys_to_remove:
             await self.save()
 
-    async def get_edges(
+    def _collect_edges(
         self,
         path: str,
         edge_types: list[EdgeType] | None = None,
         direction: str = "both",
     ) -> list[Edge]:
-        """Get edges connected to a node, optionally filtered by type and direction."""
+        """Pure in-memory edge lookup (no I/O)."""
         results: list[Edge] = []
         type_values = {et.value for et in edge_types} if edge_types else None
 
@@ -140,18 +139,24 @@ class GraphEngine:
 
         return results
 
+    async def get_edges(
+        self,
+        path: str,
+        edge_types: list[EdgeType] | None = None,
+        direction: str = "both",
+    ) -> list[Edge]:
+        """Get edges connected to a node, optionally filtered by type and direction."""
+        return self._collect_edges(path, edge_types=edge_types, direction=direction)
+
     async def get_edges_batch(
         self,
         paths: list[str],
         edge_types: list[EdgeType] | None = None,
     ) -> dict[str, list[Edge]]:
-        """Fetch edges for multiple paths concurrently."""
-        if not paths:
-            return {}
-        results = await asyncio.gather(
-            *(self.get_edges(p, edge_types=edge_types) for p in paths)
-        )
-        return dict(zip(paths, results))
+        """Fetch edges for multiple paths using a direct loop (all in-memory, no I/O)."""
+        return {
+            p: self._collect_edges(p, edge_types=edge_types) for p in paths
+        }
 
     async def get_contradictions(self, path: str) -> list[Edge]:
         """Get all contradiction edges for a node."""
