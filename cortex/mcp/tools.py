@@ -271,17 +271,31 @@ async def handle_vault_compile(
     vault_path: Path,
     compiler: KnowledgeCompiler,
     qmd: Optional[Any] = None,
+    force: bool = False,
+    path: Optional[str] = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Compile unprocessed raw sources into wiki articles."""
+    """Compile unprocessed raw sources into wiki articles.
+
+    *force* recompiles all sources regardless of enrichment status.
+    *path* limits compilation to a single raw file (relative to vault root).
+    Sources whose wiki article has ``enrichment_status: incomplete`` are
+    always reprocessed even without *force*.
+    """
     try:
-        existing_sources: set[str] = set()
+        completed_sources: set[str] = set()
+        incomplete_sources: set[str] = set()
         wiki_dir = vault_path / "wiki"
         if wiki_dir.exists():
             for note in scan_vault(vault_path):
                 sp = note.frontmatter.get("source_path")
-                if sp:
-                    existing_sources.add(sp)
+                if not sp:
+                    continue
+                status = note.frontmatter.get("enrichment_status")
+                if status == "incomplete":
+                    incomplete_sources.add(sp)
+                else:
+                    completed_sources.add(sp)
 
         raw_dir = vault_path / "raw"
         if not raw_dir.exists():
@@ -291,11 +305,23 @@ async def handle_vault_compile(
         all_created: list[str] = []
         all_created_paths: list[Path] = []
 
-        for raw_file in sorted(raw_dir.iterdir()):
-            if raw_file.is_dir():
+        if path:
+            raw_files = [vault_path / path]
+        else:
+            raw_files = sorted(
+                f for f in raw_dir.iterdir() if not f.is_dir()
+            )
+
+        for raw_file in raw_files:
+            if not raw_file.exists() or raw_file.is_dir():
                 continue
             rel = str(raw_file.relative_to(vault_path))
-            if rel not in existing_sources:
+            needs_compile = (
+                force
+                or rel in incomplete_sources
+                or rel not in completed_sources
+            )
+            if needs_compile:
                 created = await compiler.ingest_source(raw_file)
                 compiled_count += 1
                 all_created.extend(str(p.relative_to(vault_path)) for p in created)

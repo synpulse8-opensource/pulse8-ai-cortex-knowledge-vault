@@ -319,6 +319,109 @@ class TestVaultCompileTool:
             mock_update.assert_awaited_once()
 
 
+class TestCompileReprocessing:
+    """Tests that vault_compile reprocesses incomplete enrichments and supports force/path."""
+
+    @pytest.mark.asyncio
+    async def test_compile_reprocesses_incomplete_enrichments(self, mcp_services):
+        """Sources with enrichment_status=incomplete should be recompiled."""
+        from cortex.mcp.tools import handle_vault_compile
+
+        vault_path = mcp_services["vault_path"]
+        (vault_path / "raw" / "incomplete-src.txt").write_text("Raw content.")
+
+        wiki_dir = vault_path / "wiki"
+        wiki_dir.mkdir(exist_ok=True)
+        (wiki_dir / "incomplete-src.md").write_text(
+            "---\ntitle: Incomplete\nsource_path: raw/incomplete-src.txt\n"
+            "enrichment_status: incomplete\n---\n\nRaw content.\n"
+        )
+
+        created_path = wiki_dir / "incomplete-src.md"
+        with patch.object(
+            mcp_services["compiler"], "ingest_source",
+            new_callable=AsyncMock, return_value=[created_path],
+        ) as mock_ingest:
+            result = await handle_vault_compile(**mcp_services)
+            mock_ingest.assert_awaited_once()
+
+        assert result["sources_compiled"] == 1
+
+    @pytest.mark.asyncio
+    async def test_compile_skips_complete_enrichments(self, mcp_services):
+        """Sources with enrichment_status=complete should NOT be recompiled."""
+        from cortex.mcp.tools import handle_vault_compile
+
+        vault_path = mcp_services["vault_path"]
+        (vault_path / "raw" / "complete-src.txt").write_text("Raw content.")
+
+        wiki_dir = vault_path / "wiki"
+        wiki_dir.mkdir(exist_ok=True)
+        (wiki_dir / "complete-src.md").write_text(
+            "---\ntitle: Complete\nsource_path: raw/complete-src.txt\n"
+            "enrichment_status: complete\n---\n\nEnriched [[content]].\n"
+        )
+
+        with patch.object(
+            mcp_services["compiler"], "ingest_source",
+            new_callable=AsyncMock, return_value=[],
+        ) as mock_ingest:
+            result = await handle_vault_compile(**mcp_services)
+            mock_ingest.assert_not_awaited()
+
+        assert result["sources_compiled"] == 0
+
+    @pytest.mark.asyncio
+    async def test_compile_force_reprocesses_complete(self, mcp_services):
+        """force=True should recompile even enrichment_status=complete sources."""
+        from cortex.mcp.tools import handle_vault_compile
+
+        vault_path = mcp_services["vault_path"]
+        (vault_path / "raw" / "force-src.txt").write_text("Raw content.")
+
+        wiki_dir = vault_path / "wiki"
+        wiki_dir.mkdir(exist_ok=True)
+        (wiki_dir / "force-src.md").write_text(
+            "---\ntitle: Force\nsource_path: raw/force-src.txt\n"
+            "enrichment_status: complete\n---\n\nEnriched [[content]].\n"
+        )
+
+        created_path = wiki_dir / "force-src.md"
+        with patch.object(
+            mcp_services["compiler"], "ingest_source",
+            new_callable=AsyncMock, return_value=[created_path],
+        ) as mock_ingest:
+            result = await handle_vault_compile(
+                force=True, path="raw/force-src.txt", **mcp_services,
+            )
+            mock_ingest.assert_awaited_once()
+
+        assert result["sources_compiled"] == 1
+
+    @pytest.mark.asyncio
+    async def test_compile_path_filter(self, mcp_services):
+        """path param should limit compilation to a specific raw file."""
+        from cortex.mcp.tools import handle_vault_compile
+
+        vault_path = mcp_services["vault_path"]
+        (vault_path / "raw" / "target.txt").write_text("Target.")
+        (vault_path / "raw" / "other.txt").write_text("Other.")
+
+        created_path = vault_path / "wiki" / "target.md"
+        with patch.object(
+            mcp_services["compiler"], "ingest_source",
+            new_callable=AsyncMock, return_value=[created_path],
+        ) as mock_ingest:
+            result = await handle_vault_compile(
+                path="raw/target.txt", **mcp_services,
+            )
+            mock_ingest.assert_awaited_once()
+            actual_path = mock_ingest.call_args[0][0]
+            assert actual_path.name == "target.txt"
+
+        assert result["sources_compiled"] == 1
+
+
 class TestStdioServerCaching:
     @pytest.mark.asyncio
     async def test_stdio_server_wraps_qmd_in_cache(self, tmp_vault: Path):
