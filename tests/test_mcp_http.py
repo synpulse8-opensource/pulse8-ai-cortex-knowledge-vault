@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from starlette.testclient import TestClient
@@ -293,6 +293,24 @@ class TestSharedServices:
         loop.close()
 
         assert mcp is not None
+
+    def test_create_fastmcp_server_fallback_uses_async_scan(self, tmp_vault: Path):
+        """When no services passed, fallback should use scan_vault_async, not sync scan."""
+        from cortex.mcp.http_server import create_fastmcp_server
+
+        loop = asyncio.new_event_loop()
+        scan_patch = patch(
+            "cortex.mcp.http_server.scan_vault_async",
+            new_callable=AsyncMock, return_value=[],
+        )
+        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+            with scan_patch as mock_async:
+                with patch("cortex.mcp.http_server.build_graph", new_callable=AsyncMock) as mock_bg:
+                    mock_bg.return_value = AsyncMock()
+                    mock_bg.return_value.graph = MagicMock()
+                    loop.run_until_complete(create_fastmcp_server(tmp_vault))
+                    mock_async.assert_awaited_once()
+        loop.close()
 
     def test_create_fastmcp_server_reuses_graph_instance(self, tmp_vault: Path):
         """When services are passed, MCP must use the same graph — not build a new one."""
