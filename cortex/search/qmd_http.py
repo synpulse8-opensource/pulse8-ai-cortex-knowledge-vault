@@ -51,6 +51,23 @@ class QMDHttpSearch:
         except Exception:
             logger.exception("QMD HTTP update failed")
 
+    @staticmethod
+    def _normalize_results(raw: list[dict]) -> list[dict]:
+        """Map QMD response fields to the schema Cortex expects.
+
+        QMD returns ``file`` with a ``qmd://`` URI prefix; Cortex handlers
+        look up results by ``path`` (vault-relative, no prefix).
+        """
+        normalized = []
+        for r in raw:
+            entry = dict(r)
+            file_val = entry.pop("file", "")
+            if file_val.startswith("qmd://"):
+                file_val = file_val[len("qmd://"):]
+            entry.setdefault("path", file_val)
+            normalized.append(entry)
+        return normalized
+
     async def search(
         self,
         query: str,
@@ -72,7 +89,7 @@ class QMDHttpSearch:
             if resp.status_code != 200:
                 logger.warning("QMD search returned %d", resp.status_code)
                 return []
-            return resp.json()
+            return self._normalize_results(resp.json())
         except Exception:
             logger.warning("QMD search unavailable")
             return []

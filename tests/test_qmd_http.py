@@ -221,6 +221,57 @@ class TestQMDHttpSearch:
             mock_client.post.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_search_normalizes_qmd_file_field_to_path(self):
+        """QMD returns 'file' with qmd:// prefix; search() must map it to 'path'."""
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {
+                "docid": "#abc123",
+                "score": 0.9,
+                "file": "qmd://wiki/transformer-architecture.md",
+                "title": "Transformer Architecture",
+                "snippet": "some snippet",
+            },
+            {
+                "docid": "#def456",
+                "score": 0.7,
+                "file": "qmd://wiki/attention.md",
+                "title": "Attention",
+                "snippet": "attention snippet",
+            },
+        ]
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            results = await qmd.search("transformer", mode="keyword")
+
+            assert len(results) == 2
+            assert results[0]["path"] == "wiki/transformer-architecture.md"
+            assert results[1]["path"] == "wiki/attention.md"
+            assert "qmd://" not in results[0].get("path", "")
+
+    @pytest.mark.asyncio
+    async def test_search_normalizes_file_without_qmd_prefix(self):
+        """If QMD returns a file without qmd:// prefix, still map to path."""
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"score": 0.8, "file": "wiki/test.md", "title": "Test"},
+        ]
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            results = await qmd.search("test")
+            assert results[0]["path"] == "wiki/test.md"
+
+    @pytest.mark.asyncio
     async def test_has_same_interface_as_qmd_search(self):
         """QMDHttpSearch must have the same public API as QMDSearch."""
         from cortex.search.qmd_http import QMDHttpSearch

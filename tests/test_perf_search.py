@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from cortex.vault.models import Edge, EdgeType, NodeType, Note, Provenance
+from cortex.vault.models import NodeType, Note, Provenance
 
 
 def _make_note(path: str, title: str) -> Note:
