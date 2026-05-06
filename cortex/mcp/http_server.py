@@ -35,8 +35,17 @@ from cortex.vault.reader import scan_vault
 logger = logging.getLogger(__name__)
 
 
-async def create_fastmcp_server(vault_path: Path) -> FastMCP:
-    """Create a FastMCP server with all Cortex tools registered."""
+async def create_fastmcp_server(
+    vault_path: Path,
+    services: dict | None = None,
+) -> FastMCP:
+    """Create a FastMCP server with all Cortex tools registered.
+
+    When *services* is provided the server reuses existing graph, QMD, and
+    compiler instances so the MCP endpoint shares state with the REST API
+    (and the vault watcher).  When omitted the server bootstraps its own
+    services — useful for standalone ``create_mcp_app()`` deployments.
+    """
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=["localhost:*", "127.0.0.1:*", "localhost", "127.0.0.1"],
@@ -51,32 +60,32 @@ async def create_fastmcp_server(vault_path: Path) -> FastMCP:
         transport_security=security,
     )
 
-    graph = GraphEngine(vault_path / ".cortex" / "graph.json")
-    await graph.load()
-    notes = scan_vault(vault_path)
-    graph = await build_graph(notes, vault_path / ".cortex" / "graph.json", vault_path)
+    if services is None:
+        graph = GraphEngine(vault_path / ".cortex" / "graph.json")
+        await graph.load()
+        notes = scan_vault(vault_path)
+        graph = await build_graph(notes, vault_path / ".cortex" / "graph.json", vault_path)
 
-    if settings.qmd_url:
-        raw_qmd = QMDHttpSearch(base_url=settings.qmd_url)
-    else:
-        raw_qmd = QMDSearch(vault_path, settings.qmd_bin)
-    try:
-        await raw_qmd.initialize()
-    except Exception:
-        logger.warning("QMD initialization failed — search will be unavailable")
-    qmd = CachedQMDSearch(raw_qmd)
+        if settings.qmd_url:
+            raw_qmd = QMDHttpSearch(base_url=settings.qmd_url)
+        else:
+            raw_qmd = QMDSearch(vault_path, settings.qmd_bin)
+        try:
+            await raw_qmd.initialize()
+        except Exception:
+            logger.warning("QMD initialization failed — search will be unavailable")
+        qmd = CachedQMDSearch(raw_qmd)
 
-    compiler = KnowledgeCompiler(vault_path)
+        compiler = KnowledgeCompiler(vault_path)
+        qmd_debounce = DebouncedQMDUpdate(qmd)
 
-    qmd_debounce = DebouncedQMDUpdate(qmd)
-
-    services = {
-        "vault_path": vault_path,
-        "graph": graph,
-        "qmd": qmd,
-        "qmd_debounce": qmd_debounce,
-        "compiler": compiler,
-    }
+        services = {
+            "vault_path": vault_path,
+            "graph": graph,
+            "qmd": qmd,
+            "qmd_debounce": qmd_debounce,
+            "compiler": compiler,
+        }
 
     @mcp.tool()
     async def vault_read(path: str) -> str:

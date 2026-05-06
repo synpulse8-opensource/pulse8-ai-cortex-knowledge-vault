@@ -261,3 +261,65 @@ class TestMainAppMCPMount:
                 headers={"Accept": MCP_ACCEPT},
             )
             assert mcp_resp.status_code == 200
+
+
+class TestSharedServices:
+    def test_create_fastmcp_server_accepts_prebuilt_services(self, tmp_vault: Path):
+        """create_fastmcp_server should accept a services dict to avoid duplicate init."""
+        from cortex.graph.builder import build_graph
+        from cortex.search.qmd import QMDSearch
+        from cortex.search.qmd_cache import CachedQMDSearch
+        from cortex.search.qmd_debounce import DebouncedQMDUpdate
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.vault.reader import scan_vault
+        from cortex.mcp.http_server import create_fastmcp_server
+
+        loop = asyncio.new_event_loop()
+        notes = scan_vault(tmp_vault)
+        graph = loop.run_until_complete(
+            build_graph(notes, tmp_vault / ".cortex" / "graph.json", tmp_vault)
+        )
+        qmd = CachedQMDSearch(QMDSearch(tmp_vault, "qmd"))
+        services = {
+            "vault_path": tmp_vault,
+            "graph": graph,
+            "qmd": qmd,
+            "qmd_debounce": DebouncedQMDUpdate(qmd),
+            "compiler": KnowledgeCompiler(tmp_vault),
+        }
+
+        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+            mcp = loop.run_until_complete(create_fastmcp_server(tmp_vault, services=services))
+        loop.close()
+
+        assert mcp is not None
+
+    def test_create_fastmcp_server_reuses_graph_instance(self, tmp_vault: Path):
+        """When services are passed, MCP must use the same graph — not build a new one."""
+        from cortex.graph.builder import build_graph
+        from cortex.search.qmd import QMDSearch
+        from cortex.search.qmd_cache import CachedQMDSearch
+        from cortex.search.qmd_debounce import DebouncedQMDUpdate
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.vault.reader import scan_vault
+        from cortex.mcp.http_server import create_fastmcp_server
+
+        loop = asyncio.new_event_loop()
+        notes = scan_vault(tmp_vault)
+        graph = loop.run_until_complete(
+            build_graph(notes, tmp_vault / ".cortex" / "graph.json", tmp_vault)
+        )
+        qmd = CachedQMDSearch(QMDSearch(tmp_vault, "qmd"))
+        services = {
+            "vault_path": tmp_vault,
+            "graph": graph,
+            "qmd": qmd,
+            "qmd_debounce": DebouncedQMDUpdate(qmd),
+            "compiler": KnowledgeCompiler(tmp_vault),
+        }
+
+        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+            with patch("cortex.mcp.http_server.build_graph") as mock_build:
+                loop.run_until_complete(create_fastmcp_server(tmp_vault, services=services))
+                mock_build.assert_not_called()
+        loop.close()

@@ -52,9 +52,18 @@ async def lifespan(app: FastAPI):
     app.state.qmd = qmd
     app.state.qmd_debounce = DebouncedQMDUpdate(qmd)
 
-    _mcp_server = await create_fastmcp_server(vault_path)
+    from cortex.compiler.compiler import KnowledgeCompiler
+
+    shared_services = {
+        "vault_path": vault_path,
+        "graph": app.state.graph,
+        "qmd": qmd,
+        "qmd_debounce": app.state.qmd_debounce,
+        "compiler": KnowledgeCompiler(vault_path),
+    }
+    _mcp_server = await create_fastmcp_server(vault_path, services=shared_services)
     app.mount("/mcp", _mcp_server.streamable_http_app())
-    logger.info("MCP streamable HTTP endpoint mounted at /mcp")
+    logger.info("MCP streamable HTTP endpoint mounted at /mcp (shared services)")
 
     watcher = VaultWatcher(vault_path, app.state.graph)
     await watcher.start()
