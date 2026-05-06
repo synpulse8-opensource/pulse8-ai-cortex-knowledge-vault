@@ -206,6 +206,84 @@ class TestLLMEnrichment:
         assert result[0].exists()
 
 
+class TestEnrichmentStatus:
+    """Tests that ingest_source records enrichment quality in frontmatter."""
+
+    @pytest.mark.asyncio
+    async def test_successful_enrichment_marked_complete(self, tmp_vault: Path):
+        """When LLM returns wikilinks and tags, enrichment_status should be 'complete'."""
+        import frontmatter as fm
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+        enriched_json = json.dumps({
+            "content": "# Paper\n\nUses [[attention-mechanisms]] for NLP.",
+            "tags": ["ml", "nlp"],
+        })
+        mock_response = _mock_chat_response(enriched_json)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.compiler_model = "test"
+            mock_settings.compiler_max_tokens = 4096
+            with patch.object(
+                compiler.client.chat.completions, "create",
+                new_callable=AsyncMock, return_value=mock_response,
+            ):
+                result = await compiler.ingest_source(
+                    tmp_vault / "raw" / "transformer-paper.txt"
+                )
+
+        post = fm.load(str(result[0]))
+        assert post.metadata.get("enrichment_status") == "complete"
+
+    @pytest.mark.asyncio
+    async def test_failed_enrichment_marked_incomplete(self, tmp_vault: Path):
+        """When LLM returns no tags and no wikilinks, enrichment_status should be 'incomplete'."""
+        import frontmatter as fm
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+        mock_response = _mock_chat_response("not valid json")
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.compiler_model = "test"
+            mock_settings.compiler_max_tokens = 4096
+            with patch.object(
+                compiler.client.chat.completions, "create",
+                new_callable=AsyncMock, return_value=mock_response,
+            ):
+                result = await compiler.ingest_source(
+                    tmp_vault / "raw" / "transformer-paper.txt"
+                )
+
+        post = fm.load(str(result[0]))
+        assert post.metadata.get("enrichment_status") == "incomplete"
+
+    @pytest.mark.asyncio
+    async def test_no_llm_key_marked_incomplete(self, tmp_vault: Path):
+        """When no LLM API key is set, enrichment_status should be 'incomplete'."""
+        import frontmatter as fm
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.compiler_model = "test"
+            mock_settings.compiler_max_tokens = 4096
+            result = await compiler.ingest_source(
+                tmp_vault / "raw" / "transformer-paper.txt"
+            )
+
+        post = fm.load(str(result[0]))
+        assert post.metadata.get("enrichment_status") == "incomplete"
+
+
 class TestTitleAndSlugHelpers:
     """Unit tests for _slug_from_stem and _title_from_markdown helpers."""
 

@@ -95,12 +95,17 @@ class KnowledgeCompiler:
         if settings.llm_api_key:
             enriched = await self.enrich_article(md_content, title)
 
+        has_tags = bool(enriched["tags"])
+        has_links = "[[" in enriched["content"]
+        enrichment_ok = settings.llm_api_key and (has_tags or has_links)
+
         filename = f"{slug}.md"
         note_path = self.vault_path / "wiki" / filename
 
         frontmatter: dict = {
             "title": title,
             "source_path": relative_source,
+            "enrichment_status": "complete" if enrichment_ok else "incomplete",
         }
         if enriched["tags"]:
             frontmatter["tags"] = enriched["tags"]
