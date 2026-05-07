@@ -72,8 +72,8 @@ class TestRunCli:
             "dry_run": False,
         }
 
-        with patch("scripts.bulk_ingest.BulkIngestor") as MockIngestor:
-            instance = MockIngestor.return_value
+        with patch("scripts.bulk_ingest.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
             instance.run = AsyncMock(return_value=mock_result)
 
             await run_cli([
@@ -81,7 +81,7 @@ class TestRunCli:
                 "--concurrency", "2",
             ], vault_path=tmp_vault)
 
-            MockIngestor.assert_called_once_with(
+            mock_cls.assert_called_once_with(
                 vault_path=tmp_vault,
                 source_dir=source_dir,
                 concurrency=2,
@@ -93,8 +93,8 @@ class TestRunCli:
     async def test_run_cli_passes_force_and_dry_run(
         self, tmp_vault: Path, source_dir: Path
     ) -> None:
-        with patch("scripts.bulk_ingest.BulkIngestor") as MockIngestor:
-            instance = MockIngestor.return_value
+        with patch("scripts.bulk_ingest.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
             instance.run = AsyncMock(return_value={"copied": [], "skipped": [], "compiled": [], "dry_run": True})
 
             await run_cli([
@@ -103,7 +103,7 @@ class TestRunCli:
                 "--dry-run",
             ], vault_path=tmp_vault)
 
-            MockIngestor.assert_called_once_with(
+            mock_cls.assert_called_once_with(
                 vault_path=tmp_vault,
                 source_dir=source_dir,
                 concurrency=4,

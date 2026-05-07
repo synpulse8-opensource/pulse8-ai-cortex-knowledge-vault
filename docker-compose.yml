@@ -26,6 +26,7 @@ services:
       - "8420:8420"
     volumes:
       - ${VAULT_DIR:-./example_vault}:/vault
+      - ${INGEST_DIR:-./ingest}:/ingest:ro
     environment:
       - CORTEX_VAULT_PATH=/vault
       - CORTEX_LLM_API_KEY=${LLM_API_KEY:-}
