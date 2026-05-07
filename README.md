@@ -28,7 +28,10 @@ Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, 
 
 > Inspired by [Andrej Karpathy](https://github.com/karpathy)'s [LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern — a persistent, compounding knowledge base maintained by LLMs instead of re-derived on every query. Search powered by [Tobi Lütke](https://github.com/tobi)'s [QMD](https://github.com/tobi/qmd).
 
-## Get started
+---
+
+<details>
+<summary><h2>Get started</h2></summary>
 
 > [!NOTE]
 > PULSE8.ai Cortex requires Docker. An [OpenRouter API key](https://openrouter.ai/keys) is optional — needed only for LLM-powered cross-referencing between wiki articles. File conversion works out of the box without any API key.
@@ -47,8 +50,10 @@ Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, 
 
 To stop: `./scripts/stop.sh`
 
-## Features
+</details>
 
+<details>
+<summary><h2>Features</h2></summary>
 
 |                      |                                                                                                         |
 | -------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -61,9 +66,10 @@ To stop: `./scripts/stop.sh`
 | **Vault Watcher**    | Real-time filesystem monitoring — graph stays in sync automatically                                                      |
 | **Zero Database**    | Everything persists as Markdown + JSON on your filesystem                                                                |
 
+</details>
 
-## MCP tools
-
+<details>
+<summary><h2>MCP tools</h2></summary>
 
 | Tool            | Description                                                        |
 | --------------- | ------------------------------------------------------------------ |
@@ -75,8 +81,10 @@ To stop: `./scripts/stop.sh`
 | `vault_ingest`  | Ingest raw content or binary files (supports `content_base64` for binary) |
 | `vault_compile` | Compile unprocessed raw sources into wiki Markdown via MarkItDown         |
 
+</details>
 
-## Architecture
+<details>
+<summary><h2>Architecture</h2></summary>
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -108,7 +116,10 @@ To stop: `./scripts/stop.sh`
 └──────────────────────────────────────────────┘
 ```
 
-## Bulk ingest
+</details>
+
+<details>
+<summary><h2>Bulk ingest</h2></summary>
 
 For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the bulk ingest command instead of feeding them one at a time through MCP. It reads directly from a local directory — no wire overhead — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end.
 
@@ -147,14 +158,16 @@ curl -X POST http://localhost:8420/api/v1/bulk-ingest \
 
 The dedup manifest is stored at `.cortex/ingest-manifest.json`. Files are matched by content hash, not filename — renaming a file won't cause re-ingestion, and the same content under a different name will be skipped.
 
-## Configuration
+</details>
+
+<details>
+<summary><h2>Configuration</h2></summary>
 
 Copy the example and fill in your values:
 
 ```bash
 cp .env.example .env
 ```
-
 
 | Variable                       | Required | Default                        | Description                                          |
 | ------------------------------ | -------- | ------------------------------ | ---------------------------------------------------- |
@@ -165,10 +178,12 @@ cp .env.example .env
 | `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
 
-
 `OPENROUTER_API_KEY` and `CORTEX_LLM_API_KEY` are accepted as aliases for `LLM_API_KEY`.
 
-## MCP client setup
+</details>
+
+<details>
+<summary><h2>MCP client setup</h2></summary>
 
 ### Claude Desktop
 
@@ -202,35 +217,10 @@ An example config is included at `[claude_desktop_config.example.json](claude_de
 }
 ```
 
-## Development
+</details>
 
-```bash
-# Install dependencies
-uv sync --all-extras
-
-# Run tests
-uv run pytest tests/ -v
-
-# Run shell tests (requires bats-core)
-bats tests/test_start_sh.bats
-
-# Start PULSE8.ai Cortex locally (without Docker)
-CORTEX_MCP_TRANSPORT=http CORTEX_VAULT_PATH=./example_vault uv run python scripts/serve.py
-```
-
-### Utility scripts
-
-
-| Script                    | Description                                                |
-| ------------------------- | ---------------------------------------------------------- |
-| `scripts/serve.py`        | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
-| `scripts/compile.py`      | Batch-compile all raw sources                              |
-| `scripts/reindex.py`      | Full reindex + graph rebuild                               |
-| `scripts/bulk_ingest.py`  | Bulk-ingest from a local directory (CLI: `cortex-bulk-ingest`) |
-| `scripts/lint.py`         | Lint vault structure                                       |
-
-
-## How it works
+<details>
+<summary><h2>How it works</h2></summary>
 
 **Watcher** and **Compiler** are independent components:
 
@@ -258,7 +248,39 @@ They connect indirectly: the compiler writes to `wiki/`, the watcher picks those
 
 QMD answers *"what's relevant?"* — the graph answers *"how are these results connected?"*
 
-## Data persistence
+</details>
+
+<details>
+<summary><h2>Development</h2></summary>
+
+```bash
+# Install dependencies
+uv sync --all-extras
+
+# Run tests
+uv run pytest tests/ -v
+
+# Run shell tests (requires bats-core)
+bats tests/test_start_sh.bats
+
+# Start PULSE8.ai Cortex locally (without Docker)
+CORTEX_MCP_TRANSPORT=http CORTEX_VAULT_PATH=./example_vault uv run python scripts/serve.py
+```
+
+### Utility scripts
+
+| Script                    | Description                                                |
+| ------------------------- | ---------------------------------------------------------- |
+| `scripts/serve.py`        | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
+| `scripts/compile.py`      | Batch-compile all raw sources                              |
+| `scripts/reindex.py`      | Full reindex + graph rebuild                               |
+| `scripts/bulk_ingest.py`  | Bulk-ingest from a local directory (CLI: `cortex-bulk-ingest`) |
+| `scripts/lint.py`         | Lint vault structure                                       |
+
+</details>
+
+<details>
+<summary><h2>Data persistence</h2></summary>
 
 The vault directory is bind-mounted from your host into the containers. All data lives on your local disk and survives container restarts.
 
@@ -269,7 +291,10 @@ docker compose down -v
 ./scripts/start.sh
 ```
 
-## Contributing
+</details>
+
+<details>
+<summary><h2>Contributing</h2></summary>
 
 We welcome contributions! Please open an issue to discuss your idea before submitting a pull request.
 
@@ -290,17 +315,25 @@ uv run pytest tests/ -v
 # Submit a pull request
 ```
 
-## Reporting issues
+</details>
+
+<details>
+<summary><h2>Reporting issues</h2></summary>
 
 Use [GitHub Issues](https://github.com/pulse8-ai/cortex-knowledge-vault/issues) to report bugs or request features.
 
-## Acknowledgements
+</details>
+
+<details>
+<summary><h2>Acknowledgements</h2></summary>
 
 PULSE8.ai Cortex builds on ideas and tools from the open-source community:
 
 - **[LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)** by [Andrej Karpathy](https://github.com/karpathy) — the core pattern of an LLM-maintained, persistent knowledge base that compiles and interlinks knowledge incrementally rather than re-discovering it from raw documents on every query. This gist is the direct inspiration for Cortex's architecture.
 - **[QMD](https://github.com/tobi/qmd)** by [Tobi Lütke](https://github.com/tobi) — the on-device search engine powering all full-text and hybrid search in Cortex. QMD combines BM25, vector search, and LLM re-ranking, all running locally.
 - **[MarkItDown](https://github.com/microsoft/markitdown)** by [Microsoft](https://github.com/microsoft) — the file-to-Markdown converter powering the Cortex compiler. Converts PDF, Office documents, HTML, images, and more into structured Markdown for ingestion into the vault.
+
+</details>
 
 ## License
 
