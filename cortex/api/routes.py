@@ -1,6 +1,7 @@
 """REST API route handlers for the Cortex vault."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -40,6 +41,14 @@ class IngestBody(BaseModel):
     filename: str
     source_type: str = "text"
     auto_compile: bool = True
+
+
+class BulkIngestBody(BaseModel):
+    """Request body for bulk ingestion from a server-local directory."""
+    source_dir: str
+    concurrency: int = 4
+    force: bool = False
+    dry_run: bool = False
 
 
 def get_vault_path(request: Request):
@@ -365,3 +374,36 @@ async def compile_endpoint(request: Request):
         "sources_compiled": compiled_count,
         "articles_created": all_created,
     }
+
+
+@router.post("/bulk-ingest")
+async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
+    """Bulk-ingest files from a server-local directory."""
+    from cortex.compiler.bulk import BulkIngestor
+
+    vault_path = get_vault_path(request)
+    source_dir = Path(body.source_dir)
+
+    if not source_dir.is_dir():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Source directory does not exist: {body.source_dir}",
+        )
+
+    ingestor = BulkIngestor(
+        vault_path=vault_path,
+        source_dir=source_dir,
+        concurrency=body.concurrency,
+        force=body.force,
+        dry_run=body.dry_run,
+    )
+
+    result = await ingestor.run()
+
+    await log_operation(
+        vault_path, "api", "vault:bulk-ingest",
+        f"Bulk ingested from {body.source_dir}: "
+        f"{len(result['copied'])} copied, {len(result['skipped'])} skipped",
+    )
+
+    return result

@@ -206,3 +206,95 @@ class TestCompileEndpoint:
                 response = app_client.post("/api/v1/compile")
             assert response.status_code == 200
             mock_schedule.assert_called_once()
+
+
+class TestBulkIngestEndpoint:
+    def test_bulk_ingest_requires_source_dir(self, app_client):
+        response = app_client.post(
+            "/api/v1/bulk-ingest",
+            json={"source_dir": "/nonexistent/path"},
+        )
+        assert response.status_code == 400
+
+    def test_bulk_ingest_success(self, app_client):
+        vault_path = app_client.app.state.vault_path
+        inbox = vault_path.parent / "inbox"
+        inbox.mkdir()
+        (inbox / "test.txt").write_text("Bulk ingest test content")
+
+        mock_result = {
+            "copied": ["test.txt"],
+            "skipped": [],
+            "compiled": ["wiki/test.md"],
+            "dry_run": False,
+        }
+
+        with patch("cortex.compiler.bulk.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
+            instance.run = AsyncMock(return_value=mock_result)
+
+            response = app_client.post(
+                "/api/v1/bulk-ingest",
+                json={"source_dir": str(inbox)},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["copied"] == ["test.txt"]
+        assert data["compiled"] == ["wiki/test.md"]
+
+    def test_bulk_ingest_dry_run(self, app_client):
+        vault_path = app_client.app.state.vault_path
+        inbox = vault_path.parent / "inbox-dry"
+        inbox.mkdir()
+        (inbox / "test.txt").write_text("Dry run test")
+
+        mock_result = {
+            "copied": ["test.txt"],
+            "skipped": [],
+            "compiled": [],
+            "dry_run": True,
+        }
+
+        with patch("cortex.compiler.bulk.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
+            instance.run = AsyncMock(return_value=mock_result)
+
+            response = app_client.post(
+                "/api/v1/bulk-ingest",
+                json={"source_dir": str(inbox), "dry_run": True},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["dry_run"] is True
+
+    def test_bulk_ingest_passes_all_options(self, app_client):
+        vault_path = app_client.app.state.vault_path
+        inbox = vault_path.parent / "inbox-opts"
+        inbox.mkdir()
+        (inbox / "test.txt").write_text("Options test")
+
+        with patch("cortex.compiler.bulk.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
+            instance.run = AsyncMock(return_value={
+                "copied": [], "skipped": [], "compiled": [], "dry_run": False,
+            })
+
+            response = app_client.post(
+                "/api/v1/bulk-ingest",
+                json={
+                    "source_dir": str(inbox),
+                    "concurrency": 8,
+                    "force": True,
+                    "dry_run": False,
+                },
+            )
+
+        assert response.status_code == 200
+        mock_cls.assert_called_once_with(
+            vault_path=vault_path,
+            source_dir=inbox,
+            concurrency=8,
+            force=True,
+            dry_run=False,
+        )
