@@ -121,23 +121,33 @@ To stop: `./scripts/stop.sh`
 <details>
 <summary><h2>Bulk ingest</h2></summary>
 
-For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the bulk ingest command instead of feeding them one at a time through MCP. It reads directly from a local directory — no wire overhead — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end.
+For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the one-click shell script instead of feeding them one at a time through MCP. It reads directly from a local directory — no wire overhead, no running server required — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end.
+
+### One-click script (recommended)
 
 ```bash
-# Ingest all files from a local directory
-uv run cortex-bulk-ingest --source ./my-papers/
+# Ingest all files from a directory
+./scripts/bulk_ingest.sh ./my-papers/
 
 # Dry-run to preview what would be ingested
-uv run cortex-bulk-ingest --source ./my-papers/ --dry-run
+./scripts/bulk_ingest.sh ./my-papers/ --dry-run
 
 # Force re-ingest (bypass dedup manifest)
-uv run cortex-bulk-ingest --source ./my-papers/ --force
+./scripts/bulk_ingest.sh ./my-papers/ --force
 
 # Control LLM concurrency (default: 4)
-uv run cortex-bulk-ingest --source ./my-papers/ --concurrency 8
+./scripts/bulk_ingest.sh ./my-papers/ --concurrency 8
 ```
 
-**Inside Docker** (with the optional `INGEST_DIR` volume mount):
+The script automatically loads your `.env` for the LLM key and vault path, prints a summary, then runs the full pipeline (copy, compile, reindex). No running Cortex server needed.
+
+### Python CLI (direct)
+
+```bash
+CORTEX_VAULT_PATH=./example_vault uv run cortex-bulk-ingest --source ./my-papers/
+```
+
+### Inside Docker
 
 ```bash
 # Set INGEST_DIR in .env or export it, then restart
@@ -148,13 +158,17 @@ docker compose up -d
 docker exec pulse8-ai-cortex uv run cortex-bulk-ingest --source /ingest
 ```
 
-**Via REST API** (programmatic use without MCP):
+### Via REST API
+
+For programmatic use without MCP (requires running Cortex server):
 
 ```bash
 curl -X POST http://localhost:8420/api/v1/bulk-ingest \
   -H "Content-Type: application/json" \
   -d '{"source_dir": "/ingest", "concurrency": 4}'
 ```
+
+### Deduplication
 
 The dedup manifest is stored at `.cortex/ingest-manifest.json`. Files are matched by content hash, not filename — renaming a file won't cause re-ingestion, and the same content under a different name will be skipped.
 
@@ -269,13 +283,14 @@ CORTEX_MCP_TRANSPORT=http CORTEX_VAULT_PATH=./example_vault uv run python script
 
 ### Utility scripts
 
-| Script                    | Description                                                |
-| ------------------------- | ---------------------------------------------------------- |
-| `scripts/serve.py`        | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
-| `scripts/compile.py`      | Batch-compile all raw sources                              |
-| `scripts/reindex.py`      | Full reindex + graph rebuild                               |
-| `scripts/bulk_ingest.py`  | Bulk-ingest from a local directory (CLI: `cortex-bulk-ingest`) |
-| `scripts/lint.py`         | Lint vault structure                                       |
+| Script                    | Description                                                    |
+| ------------------------- | -------------------------------------------------------------- |
+| `scripts/serve.py`        | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`)     |
+| `scripts/compile.py`      | Batch-compile all raw sources                                  |
+| `scripts/reindex.py`      | Full reindex + graph rebuild                                   |
+| `scripts/bulk_ingest.sh`  | One-click bulk ingest from a local directory                   |
+| `scripts/bulk_ingest.py`  | Python CLI for bulk ingest (called by `bulk_ingest.sh`)        |
+| `scripts/lint.py`         | Lint vault structure                                           |
 
 </details>
 
