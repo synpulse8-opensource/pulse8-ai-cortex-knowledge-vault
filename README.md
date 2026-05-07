@@ -56,7 +56,8 @@ To stop: `./scripts/stop.sh`
 | **Full-Text Search** | BM25 keyword search via QMD with optional hybrid (vector + reranking) mode                                               |
 | **File Compiler**    | Converts raw sources (PDF, DOCX, PPTX, XLSX, HTML, images, etc.) to Markdown via [MarkItDown](https://github.com/microsoft/markitdown). LLM used only for cross-referencing. |
 | **MCP Server**       | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client                                |
-| **REST API**         | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload                                 |
+| **Bulk Ingest**      | Ingest dozens or hundreds of files at once from a local directory with SHA-256 dedup and bounded concurrency              |
+| **REST API**         | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload and bulk ingest                 |
 | **Vault Watcher**    | Real-time filesystem monitoring — graph stays in sync automatically                                                      |
 | **Zero Database**    | Everything persists as Markdown + JSON on your filesystem                                                                |
 
@@ -107,6 +108,45 @@ To stop: `./scripts/stop.sh`
 └──────────────────────────────────────────────┘
 ```
 
+## Bulk ingest
+
+For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the bulk ingest command instead of feeding them one at a time through MCP. It reads directly from a local directory — no wire overhead — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end.
+
+```bash
+# Ingest all files from a local directory
+uv run cortex-bulk-ingest --source ./my-papers/
+
+# Dry-run to preview what would be ingested
+uv run cortex-bulk-ingest --source ./my-papers/ --dry-run
+
+# Force re-ingest (bypass dedup manifest)
+uv run cortex-bulk-ingest --source ./my-papers/ --force
+
+# Control LLM concurrency (default: 4)
+uv run cortex-bulk-ingest --source ./my-papers/ --concurrency 8
+```
+
+**Inside Docker** (with the optional `INGEST_DIR` volume mount):
+
+```bash
+# Set INGEST_DIR in .env or export it, then restart
+export INGEST_DIR=/path/to/your/papers
+docker compose up -d
+
+# Run bulk ingest inside the container
+docker exec pulse8-ai-cortex uv run cortex-bulk-ingest --source /ingest
+```
+
+**Via REST API** (programmatic use without MCP):
+
+```bash
+curl -X POST http://localhost:8420/api/v1/bulk-ingest \
+  -H "Content-Type: application/json" \
+  -d '{"source_dir": "/ingest", "concurrency": 4}'
+```
+
+The dedup manifest is stored at `.cortex/ingest-manifest.json`. Files are matched by content hash, not filename — renaming a file won't cause re-ingestion, and the same content under a different name will be skipped.
+
 ## Configuration
 
 Copy the example and fill in your values:
@@ -122,6 +162,7 @@ cp .env.example .env
 | `COMPILER_MODEL`               | No       | `anthropic/claude-sonnet-4`    | Model for cross-reference detection                             |
 | `LLM_BASE_URL`                 | No       | `https://openrouter.ai/api/v1` | LLM API base URL                                                |
 | `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
+| `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
 
 
@@ -180,12 +221,13 @@ CORTEX_MCP_TRANSPORT=http CORTEX_VAULT_PATH=./example_vault uv run python script
 ### Utility scripts
 
 
-| Script               | Description                                                |
-| -------------------- | ---------------------------------------------------------- |
-| `scripts/serve.py`   | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
-| `scripts/compile.py` | Batch-compile all raw sources                              |
-| `scripts/reindex.py` | Full reindex + graph rebuild                               |
-| `scripts/lint.py`    | Lint vault structure                                       |
+| Script                    | Description                                                |
+| ------------------------- | ---------------------------------------------------------- |
+| `scripts/serve.py`        | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
+| `scripts/compile.py`      | Batch-compile all raw sources                              |
+| `scripts/reindex.py`      | Full reindex + graph rebuild                               |
+| `scripts/bulk_ingest.py`  | Bulk-ingest from a local directory (CLI: `cortex-bulk-ingest`) |
+| `scripts/lint.py`         | Lint vault structure                                       |
 
 
 ## How it works
