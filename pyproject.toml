@@ -46,6 +46,7 @@ Issues = "https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vau
 
 [project.scripts]
 cortex = "scripts.serve:main"
+cortex-bulk-ingest = "scripts.bulk_ingest:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,9 +1,8 @@
 """Tests for the BulkIngestor class."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -124,7 +123,7 @@ class TestCopyToRaw:
 
     def test_dry_run_does_not_copy(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir, dry_run=True)
-        copied, skipped = ingestor.copy_new_files()
+        copied, _skipped = ingestor.copy_new_files()
         assert len(copied) == 3
         assert not (tmp_vault / "raw" / "paper1.txt").exists()
         manifest = ingestor.load_manifest()
@@ -142,8 +141,8 @@ class TestCompileBatch:
         mock_ingest = AsyncMock(side_effect=lambda p: [tmp_vault / "wiki" / f"{p.stem}.md"])
         mock_xref = AsyncMock()
 
-        with patch("cortex.compiler.bulk.KnowledgeCompiler") as MockCompiler:
-            instance = MockCompiler.return_value
+        with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
+            instance = mock_cls.return_value
             instance.ingest_source = mock_ingest
             instance.compile_cross_references = mock_xref
 
@@ -172,8 +171,8 @@ class TestCompileBatch:
                 raise RuntimeError("LLM timeout")
             return [tmp_vault / "wiki" / f"{p.stem}.md"]
 
-        with patch("cortex.compiler.bulk.KnowledgeCompiler") as MockCompiler:
-            instance = MockCompiler.return_value
+        with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
+            instance = mock_cls.return_value
             instance.ingest_source = AsyncMock(side_effect=_side_effect)
             instance.compile_cross_references = AsyncMock()
 
@@ -186,8 +185,8 @@ class TestCompileBatch:
         ingestor.copy_new_files()
         raw_paths = sorted((tmp_vault / "raw").iterdir())
 
-        with patch("cortex.compiler.bulk.KnowledgeCompiler") as MockCompiler:
-            instance = MockCompiler.return_value
+        with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
+            instance = mock_cls.return_value
             instance.ingest_source = AsyncMock(
                 side_effect=lambda p: [tmp_vault / "wiki" / f"{p.stem}.md"]
             )
@@ -204,8 +203,8 @@ class TestRunPipeline:
     async def test_full_run(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
 
-        with patch("cortex.compiler.bulk.KnowledgeCompiler") as MockCompiler:
-            instance = MockCompiler.return_value
+        with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
+            instance = mock_cls.return_value
             instance.ingest_source = AsyncMock(
                 side_effect=lambda p: [tmp_vault / "wiki" / f"{p.stem}.md"]
             )
@@ -221,9 +220,9 @@ class TestRunPipeline:
     async def test_dry_run_skips_compile_and_reindex(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir, dry_run=True)
 
-        with patch("cortex.compiler.bulk.KnowledgeCompiler") as MockCompiler:
+        with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
             result = await ingestor.run()
-            MockCompiler.assert_not_called()
+            mock_cls.assert_not_called()
 
         assert result["dry_run"] is True
         assert len(result["copied"]) == 3
@@ -232,9 +231,9 @@ class TestRunPipeline:
     async def test_run_rebuilds_index(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
 
-        with patch("cortex.compiler.bulk.KnowledgeCompiler") as MockCompiler, \
+        with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls, \
              patch("cortex.compiler.bulk.rebuild_index", new_callable=AsyncMock) as mock_reindex:
-            instance = MockCompiler.return_value
+            instance = mock_cls.return_value
             instance.ingest_source = AsyncMock(return_value=[])
             instance.compile_cross_references = AsyncMock()
 
