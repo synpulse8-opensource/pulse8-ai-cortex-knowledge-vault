@@ -15,14 +15,14 @@ permissions:
   id-token: write
 
 jobs:
-  buildAndPushImage:
+  buildAndPushCortex:
     runs-on: ubuntu-latest
     environment:
       name: ${{github.ref_name}}
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Build and push backend container"
+      - name: "Build and push Cortex container"
         uses: synpulse-group/s8-actions/custom-build-push-container@main
         with:
           docker-build-context-location: .
@@ -30,3 +30,19 @@ jobs:
           jfrog-user: ${{ secrets.JFROG_USER }} # no need to change - available in all workflows in the organisation
           jfrog-password: ${{ secrets.JFROG_TOKEN }} # no need to change - available in all workflows in the organisation
           image-name-suffix: -cortex-vault
+
+  buildAndPushQMD:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{github.ref_name}}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Build and push QMD container"
+        uses: synpulse-group/s8-actions/custom-build-push-container@main
+        with:
+          docker-build-context-location: ./docker/qmd
+          docker-file-path: ./docker/qmd/Dockerfile
+          jfrog-user: ${{ secrets.JFROG_USER }}
+          jfrog-password: ${{ secrets.JFROG_TOKEN }}
+          image-name-suffix: -cortex-vault-qmd
