@@ -46,9 +46,13 @@ async def create_fastmcp_server(
     (and the vault watcher).  When omitted the server bootstraps its own
     services — useful for standalone ``create_mcp_app()`` deployments.
     """
+    default_hosts = ["localhost:*", "127.0.0.1:*", "localhost", "127.0.0.1"]
+    if settings.mcp_allowed_hosts:
+        extra = [h.strip() for h in settings.mcp_allowed_hosts.split(",") if h.strip()]
+        default_hosts.extend(extra)
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=["localhost:*", "127.0.0.1:*", "localhost", "127.0.0.1"],
+        allowed_hosts=default_hosts,
     )
     mcp = FastMCP(
         "PULSE8.ai Cortex",

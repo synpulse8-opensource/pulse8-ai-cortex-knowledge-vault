@@ -24,6 +24,7 @@ class CortexSettings(BaseSettings):
     mcp_transport: str = "stdio"
     mcp_sse_host: str = "0.0.0.0"
     mcp_sse_port: int = 8420
+    mcp_allowed_hosts: str = "*.pulse8.synpulse8.com,*.pulse8.ai"
 
     max_context_depth: int = 2
     max_context_notes: int = 8
