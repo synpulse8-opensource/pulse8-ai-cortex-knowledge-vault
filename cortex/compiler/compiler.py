@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import logging
 from pathlib import Path
 
 from markitdown import MarkItDown
@@ -13,6 +14,7 @@ from cortex.config import settings
 from cortex.vault.reader import read_note
 from cortex.vault.writer import write_note
 
+logger = logging.getLogger(__name__)
 
 def _slug_from_stem(stem: str) -> str:
     """Convert a filename stem to a kebab-case slug."""
@@ -85,8 +87,15 @@ class KnowledgeCompiler:
         """Convert a raw source file to wiki Markdown, then enrich with LLM if available."""
         relative_source = str(source_path.relative_to(self.vault_path))
 
-        result = self._md.convert_local(str(source_path))
+        try:
+            result = self._md.convert_local(str(source_path))
+        except Exception as exc:
+            logger.warning("Skipping %s: %s", relative_source, exc)
+            return []
         md_content = (result.text_content or "").strip()
+        if not md_content:
+            logger.warning("Skipping %s: empty conversion result", relative_source)
+            return []
 
         slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
