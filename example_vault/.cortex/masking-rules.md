@@ -93,7 +93,7 @@ match a simple regex — for example "台北市信義區松仁路100號12樓" or
 "12F, No. 100, Songren Rd., Xinyi Dist., Taipei City".
 
 ### Patterns
-- `\d{3}[-\s]?\d{2}`
+- `(?:^|(?<=\s))\d{3}[-\s]?\d{2}(?=\s|$)`
 - `\d{3,5}\s*[^\d\s]{2,}[縣市][^\d\s]*[鄉鎮市區][^\d\s]*[路街道巷弄號樓]\S*`
 
 ## Date of Birth

@@ -1128,7 +1128,7 @@ wheels = [
 
 [[package]]
 name = "pulse8-ai-cortex-knowledge-vault"
-version = "0.4.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },

@@ -39,3 +39,6 @@ The dominant sequence transduction models are based on complex recurrent or conv
 ## Significance
 
 First sequence transduction model based entirely on attention. Significantly faster training than recurrent/convolutional architectures. This work laid the foundation for [[large-language-models]] including GPT and BERT.
+
+
+See also: Add a cross-reference to the Comprehensive LLM Survey (Zhao et al., 2023) in the 'Legacy' or 'Impact' section to show how the Transformer architecture eventually led to the modern LLM era described in the survey.
