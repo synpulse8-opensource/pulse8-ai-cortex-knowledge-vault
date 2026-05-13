@@ -35,6 +35,9 @@ services:
       - CORTEX_MCP_TRANSPORT=http
       - CORTEX_QMD_URL=http://qmd:3100
       - CORTEX_QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
+      - CORTEX_MASKING_ENABLED=${MASKING_ENABLED:-false}
+      - CORTEX_MASKING_RULES_PATH=${MASKING_RULES_PATH:-.cortex/masking-rules.md}
+      - CORTEX_MASKING_MODEL=${MASKING_MODEL:-}
     depends_on:
       qmd:
         condition: service_healthy
