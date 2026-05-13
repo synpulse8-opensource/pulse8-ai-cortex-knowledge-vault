@@ -27,6 +27,9 @@ apply_defaults() {
     export COMPILER_MODEL="${COMPILER_MODEL:-anthropic/claude-sonnet-4}"
     export LLM_BASE_URL="${LLM_BASE_URL:-https://openrouter.ai/api/v1}"
     export QMD_REFRESH_INTERVAL_SECONDS="${QMD_REFRESH_INTERVAL_SECONDS:-900}"
+    export MASKING_ENABLED="${MASKING_ENABLED:-false}"
+    export MASKING_RULES_PATH="${MASKING_RULES_PATH:-.cortex/masking-rules.md}"
+    export MASKING_MODEL="${MASKING_MODEL:-}"
 }
 
 write_env_file() {
@@ -37,6 +40,9 @@ COMPILER_MODEL=${COMPILER_MODEL}
 LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
 VAULT_DIR=${VAULT_DIR}
 QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
+MASKING_ENABLED=${MASKING_ENABLED:-false}
+MASKING_RULES_PATH=${MASKING_RULES_PATH:-.cortex/masking-rules.md}
+MASKING_MODEL=${MASKING_MODEL:-}
 EOF
 }
 
@@ -65,5 +71,6 @@ prompt_missing_env() {
     echo "  LLM Base URL: $LLM_BASE_URL"
     echo "  Vault:        $VAULT_DIR"
     echo "  QMD Refresh:  ${QMD_REFRESH_INTERVAL_SECONDS}s"
+    echo "  Masking:      ${MASKING_ENABLED}"
     echo ""
 }

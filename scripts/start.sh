@@ -41,6 +41,7 @@ echo "  Vault:       $VAULT_DIR"
 echo "  Model:       $COMPILER_MODEL"
 echo "  LLM URL:     $LLM_BASE_URL"
 echo "  QMD Refresh: ${QMD_REFRESH_INTERVAL_SECONDS}s"
+echo "  Masking:     ${MASKING_ENABLED} (rules: ${MASKING_RULES_PATH})"
 echo ""
 
 docker compose up --build -d
