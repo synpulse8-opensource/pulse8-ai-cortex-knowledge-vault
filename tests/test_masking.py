@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 
 SAMPLE_RULES_MD = """\
 # Content Masking Rules
@@ -259,3 +261,161 @@ class TestRegexMasking:
         masked, count = masker.apply_regex_rules(text, rules)
         assert "NT$2,500,000.00" not in masked
         assert count >= 1
+
+
+class TestLLMMasking:
+    """Deliverable 3: LLM context-aware masking via apply_llm_masking."""
+
+    @pytest.fixture()
+    def _rules(self, tmp_vault: Path):
+        from cortex.compiler.masking import ContentMasker
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+        return masker, masker.load_rules()
+
+    @pytest.mark.asyncio
+    async def test_llm_masking_calls_api(self, _rules):
+        """apply_llm_masking should call the LLM and return its response."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        masker, rules = _rules
+        llm_output = "We signed a deal with [CLIENT NAMES] last week."
+        choice = MagicMock()
+        choice.message.content = llm_output
+        response = MagicMock()
+        response.choices = [choice]
+
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.masking_model = ""
+            mock_settings.compiler_model = "test-model"
+            mock_settings.compiler_max_tokens = 4096
+            with patch("cortex.compiler.masking.AsyncOpenAI") as mock_client_cls:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(return_value=response)
+                mock_client_cls.return_value = mock_client
+                result = await masker.apply_llm_masking("original text", rules)
+
+        assert result == llm_output
+
+    @pytest.mark.asyncio
+    async def test_llm_masking_skipped_without_api_key(self, _rules):
+        """Without an API key, apply_llm_masking should return content unchanged."""
+        from unittest.mock import patch
+
+        masker, rules = _rules
+        original = "Acme Corp data here."
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            result = await masker.apply_llm_masking(original, rules)
+        assert result == original
+
+    @pytest.mark.asyncio
+    async def test_llm_masking_falls_back_on_error(self, _rules):
+        """If LLM call fails, apply_llm_masking should return content unchanged."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        masker, rules = _rules
+        original = "Some sensitive text."
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.masking_model = "test-model"
+            mock_settings.compiler_max_tokens = 4096
+            with patch("cortex.compiler.masking.AsyncOpenAI") as mock_client_cls:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(
+                    side_effect=Exception("API down")
+                )
+                mock_client_cls.return_value = mock_client
+                result = await masker.apply_llm_masking(original, rules)
+        assert result == original
+
+    @pytest.mark.asyncio
+    async def test_llm_masking_uses_masking_model_if_set(self, _rules):
+        """When masking_model is set, it should be used instead of compiler_model."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        masker, rules = _rules
+        choice = MagicMock()
+        choice.message.content = "masked"
+        response = MagicMock()
+        response.choices = [choice]
+
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.masking_model = "special-masking-model"
+            mock_settings.compiler_model = "general-model"
+            mock_settings.compiler_max_tokens = 4096
+            with patch("cortex.compiler.masking.AsyncOpenAI") as mock_client_cls:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(return_value=response)
+                mock_client_cls.return_value = mock_client
+                await masker.apply_llm_masking("text", rules)
+                call_kwargs = mock_client.chat.completions.create.call_args
+                assert call_kwargs.kwargs["model"] == "special-masking-model"
+
+
+class TestMaskPipeline:
+    """Deliverable 3 (continued): Full mask() pipeline combining regex + LLM."""
+
+    @pytest.mark.asyncio
+    async def test_mask_no_rules_file_passes_through(self, tmp_vault: Path):
+        """mask() with no rules file should return content unchanged."""
+        from cortex.compiler.masking import ContentMasker
+
+        masker = ContentMasker(tmp_vault)
+        result = await masker.mask("sensitive text")
+        assert result.content == "sensitive text"
+        assert result.applied_rules == 0
+        assert result.llm_masking is False
+
+    @pytest.mark.asyncio
+    async def test_mask_regex_only_when_no_api_key(self, tmp_vault: Path):
+        """mask() without API key should apply regex only, llm_masking=False."""
+        from unittest.mock import patch
+        from cortex.compiler.masking import ContentMasker
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.masking_rules_path = ".cortex/masking-rules.md"
+            result = await masker.mask("Acme Corp owes $100.00")
+        assert "Acme Corp" not in result.content
+        assert "$100.00" not in result.content
+        assert result.applied_rules >= 2
+        assert result.llm_masking is False
+
+    @pytest.mark.asyncio
+    async def test_mask_regex_plus_llm(self, tmp_vault: Path):
+        """mask() with API key should apply regex then LLM, llm_masking=True."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from cortex.compiler.masking import ContentMasker
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+
+        choice = MagicMock()
+        choice.message.content = "Fully masked by LLM."
+        response = MagicMock()
+        response.choices = [choice]
+
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = "test-key"
+            mock_settings.llm_base_url = "https://test"
+            mock_settings.masking_model = ""
+            mock_settings.compiler_model = "test-model"
+            mock_settings.compiler_max_tokens = 4096
+            mock_settings.masking_rules_path = ".cortex/masking-rules.md"
+            with patch("cortex.compiler.masking.AsyncOpenAI") as mock_client_cls:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(return_value=response)
+                mock_client_cls.return_value = mock_client
+                result = await masker.mask("Acme Corp owes $100.00")
+
+        assert result.content == "Fully masked by LLM."
+        assert result.llm_masking is True
