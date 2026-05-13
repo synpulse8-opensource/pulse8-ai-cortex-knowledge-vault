@@ -1,10 +1,7 @@
 """Tests for content masking during ingestion."""
 from __future__ import annotations
 
-import re
 from pathlib import Path
-
-import pytest
 
 
 SAMPLE_RULES_MD = """\
@@ -128,3 +125,22 @@ class TestParseMaskingRules:
         masker = ContentMasker(tmp_vault)
         rules = masker.load_rules()
         assert rules is None
+
+    def test_taiwan_banking_rules_file_parses(self):
+        """The example_vault Taiwan banking PII rules file should parse correctly."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        assert rules is not None
+        categories = [r.category for r in rules.rules]
+        assert "National ID Numbers" in categories
+        assert "Bank Account Numbers" in categories
+        assert "Credit Card Numbers" in categories
+        assert "Phone Numbers" in categories
+        assert "Customer Names" in categories
+        assert "Income and Financial Amounts" in categories
+        nid = next(r for r in rules.rules if r.category == "National ID Numbers")
+        assert len(nid.patterns) == 1
+        assert nid.patterns[0] == r"[A-Z][12]\d{8}"
