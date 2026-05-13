@@ -24,6 +24,9 @@ def test_default_settings():
     assert s.default_author == "human"
     assert s.qmd_search_mode == "keyword"
     assert s.qmd_refresh_interval_seconds == 900
+    assert s.masking_enabled is False
+    assert s.masking_rules_path == ".cortex/masking-rules.md"
+    assert s.masking_model == ""
 
 
 def test_settings_from_env(monkeypatch):
@@ -62,3 +65,17 @@ def test_llm_config_from_env(monkeypatch):
     assert s.llm_api_key == "sk-or-test-key"
     assert s.llm_base_url == "https://api.openai.com/v1"
     assert s.compiler_model == "gpt-4o"
+
+
+def test_masking_config_from_env(monkeypatch):
+    """Masking settings should be configurable via env vars."""
+    monkeypatch.setenv("CORTEX_MASKING_ENABLED", "true")
+    monkeypatch.setenv("CORTEX_MASKING_RULES_PATH", ".cortex/custom-rules.md")
+    monkeypatch.setenv("CORTEX_MASKING_MODEL", "anthropic/claude-haiku-3")
+
+    from cortex.config import CortexSettings
+
+    s = CortexSettings()
+    assert s.masking_enabled is True
+    assert s.masking_rules_path == ".cortex/custom-rules.md"
+    assert s.masking_model == "anthropic/claude-haiku-3"
