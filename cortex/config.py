@@ -29,6 +29,10 @@ class CortexSettings(BaseSettings):
     max_context_depth: int = 2
     max_context_notes: int = 8
 
+    masking_enabled: bool = False
+    masking_rules_path: str = ".cortex/masking-rules.md"
+    masking_model: str = ""
+
     default_author: str = "human"
 
     model_config = {"env_prefix": "CORTEX_"}
