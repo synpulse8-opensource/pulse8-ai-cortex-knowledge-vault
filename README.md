@@ -191,6 +191,9 @@ cp .env.example .env
 | `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
 | `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
+| `MASKING_ENABLED`              | No       | `false`                        | Enable content masking during ingestion               |
+| `MASKING_RULES_PATH`           | No       | `.cortex/masking-rules.md`     | Masking rules file path, relative to vault root       |
+| `MASKING_MODEL`                | No       | *(uses `COMPILER_MODEL`)*      | LLM model for context-aware masking                   |
 
 `OPENROUTER_API_KEY` and `CORTEX_LLM_API_KEY` are accepted as aliases for `LLM_API_KEY`.
 
@@ -261,6 +264,48 @@ They connect indirectly: the compiler writes to `wiki/`, the watcher picks those
 2. **PULSE8.ai Cortex** enriches results with graph edges (wikilinks, tags, relationships between matched notes)
 
 QMD answers *"what's relevant?"* — the graph answers *"how are these results connected?"*
+
+</details>
+
+<details>
+<summary><h2>Content masking</h2></summary>
+
+Content masking automatically redacts sensitive information (PII, financial data, internal identifiers, etc.) during file ingestion, before compiled notes are written to the vault.
+
+### How it works
+
+Masking uses a two-layer pipeline:
+
+1. **Regex pre-masking** — deterministic pattern matching for structured data (IDs, phone numbers, account numbers). Fast, predictable, and runs without an API key.
+2. **LLM context-aware masking** — an LLM reviews the pre-masked document and catches anything the regex missed (names, addresses, contextual references). Requires an API key.
+
+If no API key is configured, only regex masking runs.
+
+### Setup
+
+1. Enable masking in your `.env`:
+   ```
+   MASKING_ENABLED=true
+   ```
+
+2. Create a rules file at `.cortex/masking-rules.md` inside your vault (or set `MASKING_RULES_PATH` to a different location). An example rules file for Taiwan banking PII is included at `example_vault/.cortex/masking-rules.md`.
+
+### Rules file format
+
+The rules file uses Markdown with `## Category` headings for natural-language descriptions (consumed by the LLM) and `### Patterns` sub-headings for regex patterns (applied deterministically):
+
+```markdown
+## National ID Numbers
+
+Mask national identification numbers.
+Format: one uppercase letter followed by 9 digits (e.g., A123456789).
+Replace with `[NATIONAL_ID]`.
+
+### Patterns
+- `[A-Z][12]\d{8}`
+```
+
+Each compiled wiki note that was masked includes `masking_applied: true` and a `masking_rules_version` hash in its YAML frontmatter, so you can track which version of the rules was used.
 
 </details>
 
