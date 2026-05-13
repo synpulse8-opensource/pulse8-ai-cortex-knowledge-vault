@@ -9,6 +9,7 @@ from pathlib import Path
 from markitdown import MarkItDown
 from openai import AsyncOpenAI
 
+from cortex.compiler.masking import ContentMasker
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.config import settings
 from cortex.vault.reader import read_note
@@ -97,6 +98,16 @@ class KnowledgeCompiler:
             logger.warning("Skipping %s: empty conversion result", relative_source)
             return []
 
+        masking_applied = False
+        masking_rules_version: str | None = None
+        if settings.masking_enabled:
+            masker = ContentMasker(self.vault_path)
+            mask_result = await masker.mask(md_content)
+            if mask_result.applied_rules > 0 or mask_result.llm_masking:
+                masking_applied = True
+                masking_rules_version = masker.rules_version()
+            md_content = mask_result.content
+
         slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
 
@@ -116,6 +127,9 @@ class KnowledgeCompiler:
             "source_path": relative_source,
             "enrichment_status": "complete" if enrichment_ok else "incomplete",
         }
+        if masking_applied:
+            frontmatter["masking_applied"] = True
+            frontmatter["masking_rules_version"] = masking_rules_version
         if enriched["tags"]:
             frontmatter["tags"] = enriched["tags"]
 

@@ -419,3 +419,128 @@ class TestMaskPipeline:
 
         assert result.content == "Fully masked by LLM."
         assert result.llm_masking is True
+
+
+class TestRulesVersion:
+    """Deliverable 6: rules_version computes SHA-256 of the rules file."""
+
+    def test_rules_version_returns_hash(self, tmp_vault: Path):
+        from cortex.compiler.masking import ContentMasker
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+        version = masker.rules_version()
+        assert version is not None
+        assert version.startswith("sha256:")
+        assert len(version) == len("sha256:") + 64
+
+    def test_rules_version_none_when_missing(self, tmp_vault: Path):
+        from cortex.compiler.masking import ContentMasker
+
+        masker = ContentMasker(tmp_vault)
+        assert masker.rules_version() is None
+
+    def test_rules_version_changes_on_content_change(self, tmp_vault: Path):
+        from cortex.compiler.masking import ContentMasker
+
+        rules_path = tmp_vault / ".cortex" / "masking-rules.md"
+        rules_path.write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+        v1 = masker.rules_version()
+        rules_path.write_text(SAMPLE_RULES_MD + "\n## Extra Rule\n\nMask extra.\n")
+        v2 = masker.rules_version()
+        assert v1 != v2
+
+
+class TestCompilerMaskingIntegration:
+    """Deliverable 5+6: masking step integrated into ingest_source."""
+
+    @pytest.mark.asyncio
+    async def test_ingest_applies_masking_when_enabled(self, tmp_vault: Path):
+        """When masking_enabled=True, ingest_source should mask before enrichment."""
+        import frontmatter as fm
+        from unittest.mock import patch
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        (tmp_vault / "raw" / "sensitive.txt").write_text(
+            "Acme Corp signed PRJ-12345 for $500.00."
+        )
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.masking_enabled = True
+            mock_settings.masking_rules_path = ".cortex/masking-rules.md"
+            mock_settings.masking_model = ""
+            result = await compiler.ingest_source(tmp_vault / "raw" / "sensitive.txt")
+
+        assert len(result) == 1
+        post = fm.load(str(result[0]))
+        assert "Acme Corp" not in post.content
+        assert "PRJ-12345" not in post.content
+        assert "$500.00" not in post.content
+
+    @pytest.mark.asyncio
+    async def test_ingest_skips_masking_when_disabled(self, tmp_vault: Path):
+        """When masking_enabled=False, ingest_source should not mask."""
+        import frontmatter as fm
+        from unittest.mock import patch
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        (tmp_vault / "raw" / "sensitive.txt").write_text(
+            "Acme Corp signed PRJ-12345 for $500.00."
+        )
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.masking_enabled = False
+            result = await compiler.ingest_source(tmp_vault / "raw" / "sensitive.txt")
+
+        post = fm.load(str(result[0]))
+        assert "Acme Corp" in post.content
+
+    @pytest.mark.asyncio
+    async def test_ingest_records_masking_frontmatter(self, tmp_vault: Path):
+        """When masking is applied, frontmatter should include masking_applied and masking_rules_version."""
+        import frontmatter as fm
+        from unittest.mock import patch
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        (tmp_vault / "raw" / "sensitive.txt").write_text(
+            "Acme Corp data here."
+        )
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.masking_enabled = True
+            mock_settings.masking_rules_path = ".cortex/masking-rules.md"
+            mock_settings.masking_model = ""
+            result = await compiler.ingest_source(tmp_vault / "raw" / "sensitive.txt")
+
+        post = fm.load(str(result[0]))
+        assert post.metadata.get("masking_applied") is True
+        assert post.metadata.get("masking_rules_version", "").startswith("sha256:")
+
+    @pytest.mark.asyncio
+    async def test_ingest_no_masking_frontmatter_when_disabled(self, tmp_vault: Path):
+        """When masking is disabled, frontmatter should not have masking fields."""
+        import frontmatter as fm
+        from unittest.mock import patch
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        (tmp_vault / "raw" / "plain.txt").write_text("Normal content.")
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.masking_enabled = False
+            result = await compiler.ingest_source(tmp_vault / "raw" / "plain.txt")
+
+        post = fm.load(str(result[0]))
+        assert "masking_applied" not in post.metadata
+        assert "masking_rules_version" not in post.metadata
