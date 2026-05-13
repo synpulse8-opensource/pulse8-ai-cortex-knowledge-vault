@@ -144,3 +144,118 @@ class TestParseMaskingRules:
         nid = next(r for r in rules.rules if r.category == "National ID Numbers")
         assert len(nid.patterns) == 1
         assert nid.patterns[0] == r"[A-Z][12]\d{8}"
+
+
+class TestRegexMasking:
+    """Deliverable 2: Apply deterministic regex patterns from parsed rules."""
+
+    def _load(self, tmp_vault: Path):
+        from cortex.compiler.masking import ContentMasker
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+        rules = masker.load_rules()
+        return masker, rules
+
+    def test_masks_client_names(self, tmp_vault: Path):
+        """Regex should replace client names with [CLIENT NAMES]."""
+        masker, rules = self._load(tmp_vault)
+        text = "We signed a deal with Acme Corp last week."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "Acme Corp" not in masked
+        assert "[CLIENT NAMES]" in masked
+        assert count >= 1
+
+    def test_masks_client_name_variant(self, tmp_vault: Path):
+        """Regex should also match 'Acme Corporation'."""
+        masker, rules = self._load(tmp_vault)
+        text = "Acme Corporation delivered the project."
+        masked, _ = masker.apply_regex_rules(text, rules)
+        assert "Acme Corporation" not in masked
+        assert "[CLIENT NAMES]" in masked
+
+    def test_masks_financial_figures(self, tmp_vault: Path):
+        """Regex should replace dollar amounts."""
+        masker, rules = self._load(tmp_vault)
+        text = "The contract was worth $1,500,000.00 in total."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "$1,500,000.00" not in masked
+        assert "[FINANCIAL FIGURES]" in masked
+        assert count >= 1
+
+    def test_masks_project_codes(self, tmp_vault: Path):
+        """Regex should replace PRJ-XXXXX codes."""
+        masker, rules = self._load(tmp_vault)
+        text = "PRJ-12345 is on track. Project Phoenix starts next month."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "PRJ-12345" not in masked
+        assert "Project Phoenix" not in masked
+        assert count >= 2
+
+    def test_no_match_returns_original(self, tmp_vault: Path):
+        """If no patterns match, the text should be unchanged."""
+        masker, rules = self._load(tmp_vault)
+        text = "This text has no sensitive content."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert masked == text
+        assert count == 0
+
+    def test_multiple_matches_in_same_text(self, tmp_vault: Path):
+        """Multiple occurrences of the same pattern should all be masked."""
+        masker, rules = self._load(tmp_vault)
+        text = "Acme Corp paid Wayne Enterprises $500.00 for PRJ-9999."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "Acme Corp" not in masked
+        assert "Wayne Enterprises" not in masked
+        assert "$500.00" not in masked
+        assert "PRJ-9999" not in masked
+        assert count >= 4
+
+    def test_invalid_regex_skipped_gracefully(self, tmp_vault: Path):
+        """An invalid regex pattern should be skipped without crashing."""
+        from cortex.compiler.masking import ContentMasker, MaskingRule, MaskingRules
+
+        rules = MaskingRules(
+            rules=[MaskingRule(category="Bad", description="broken", patterns=["[invalid"])],
+            raw_markdown="",
+        )
+        masker = ContentMasker(tmp_vault)
+        masked, count = masker.apply_regex_rules("some text", rules)
+        assert masked == "some text"
+        assert count == 0
+
+    def test_taiwan_national_id_masked(self):
+        """Taiwan national ID pattern should mask e.g. A123456789."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "Customer ID: A123456789, please verify."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "A123456789" not in masked
+        assert count >= 1
+
+    def test_taiwan_phone_masked(self):
+        """Taiwan mobile phone pattern should mask 09xx-xxx-xxx."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "Contact: 0912-345-678 for details."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "0912-345-678" not in masked
+        assert count >= 1
+
+    def test_taiwan_ntd_amount_masked(self):
+        """NT$ amounts should be masked."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "Loan amount: NT$2,500,000.00 approved."
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "NT$2,500,000.00" not in masked
+        assert count >= 1
