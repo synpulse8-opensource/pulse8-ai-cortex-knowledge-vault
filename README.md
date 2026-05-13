@@ -307,6 +307,91 @@ Replace with `[NATIONAL_ID]`.
 
 Each compiled wiki note that was masked includes `masking_applied: true` and a `masking_rules_version` hash in its YAML frontmatter, so you can track which version of the rules was used.
 
+### Sample rules file (Taiwan banking PII)
+
+An example rules file is included at `example_vault/.cortex/masking-rules.md`. It covers the following categories, designed for compliance with Taiwan's Personal Data Protection Act (PDPA) and FSC guidelines:
+
+<details>
+<summary>Click to expand full sample</summary>
+
+```markdown
+# Content Masking Rules — Taiwan Banking PII
+
+## National ID Numbers
+Mask Taiwan national identification numbers (身分證字號).
+Format: one uppercase letter followed by 9 digits (e.g., A123456789).
+Replace with `[NATIONAL_ID]`.
+### Patterns
+- `[A-Z][12]\d{8}`
+
+## Resident Certificate Numbers
+Mask Alien Resident Certificate (ARC) numbers (居留證號).
+Replace with `[RESIDENT_ID]`.
+### Patterns
+- `[A-Z]{2}\d{8}`
+
+## Unified Business Numbers
+Mask unified business numbers (統一編號). Replace with `[BUSINESS_ID]`.
+### Patterns
+- `統編[：:\s]*\d{8}`
+- `UBN[：:\s]*\d{8}`
+
+## Bank Account Numbers
+Mask bank account numbers (12–16 digits). Replace with `[ACCOUNT_NUMBER]`.
+### Patterns
+- `\d{3}-\d{2}-\d{6,8}-\d{1}`
+- `\d{12,16}`
+- `SWIFT[：:\s]*[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?`
+
+## Credit Card Numbers
+Mask credit card numbers (信用卡號). Replace with `[CREDIT_CARD]`.
+### Patterns
+- `\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}`
+- `[45]\d{15}`
+
+## Phone Numbers
+Mask Taiwan phone numbers (mobile and landline). Replace with `[PHONE]`.
+### Patterns
+- `09\d{2}[-\s]?\d{3}[-\s]?\d{3}`
+- `0[2-8][-\s]?\d{3,4}[-\s]?\d{3,4}`
+- `\+886[-\s]?9\d{2}[-\s]?\d{3}[-\s]?\d{3}`
+
+## Email Addresses
+Mask all email addresses. Replace with `[EMAIL]`.
+### Patterns
+- `[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`
+
+## Postal Addresses
+Mask full postal addresses in Taiwan format. Replace with `[ADDRESS]`.
+### Patterns
+- `(?:^|(?<=\s))\d{3}[-\s]?\d{2}(?=\s|$)`
+- `\d{3,5}\s*[^\d\s]{2,}[縣市][^\d\s]*[鄉鎮市區][^\d\s]*[路街道巷弄號樓]\S*`
+
+## Date of Birth
+Mask dates of birth (出生日期). Replace with `[DATE_OF_BIRTH]`.
+### Patterns
+- `民國\s?\d{2,3}\s?年\s?\d{1,2}\s?月\s?\d{1,2}\s?日`
+- `\d{4}[-/]\d{1,2}[-/]\d{1,2}`
+
+## Customer Names
+Mask customer names (Chinese and romanized). Replace with `[CUSTOMER_NAME]`.
+The LLM identifies names from context — no regex patterns needed.
+
+## Passport Numbers
+Mask passport numbers (護照號碼). Replace with `[PASSPORT]`.
+### Patterns
+- `[A-Z]?\d{9}`
+
+## Income and Financial Amounts
+Mask individual financial figures. Replace with `[FINANCIAL_AMOUNT]`.
+### Patterns
+- `NT\$\s?[\d,]+(\.\d{1,2})?`
+- `TWD\s?[\d,]+(\.\d{1,2})?`
+- `新?臺幣\s?[\d,]+(\.\d{1,2})?\s?元`
+```
+
+</details>
+
 </details>
 
 <details>
