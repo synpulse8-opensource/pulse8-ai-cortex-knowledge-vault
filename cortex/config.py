@@ -31,6 +31,8 @@ class CortexSettings(BaseSettings):
 
     default_author: str = "human"
 
+    api_key: str = ""
+
     oidc_tenant_id: str = ""
     oidc_client_id: str = ""
     oidc_client_secret: str = ""

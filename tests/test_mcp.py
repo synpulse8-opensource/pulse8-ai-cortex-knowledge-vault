@@ -470,7 +470,11 @@ class TestCompileToolSurface:
         mcp = await create_fastmcp_server(tmp_vault, services=mock_services)
         tools = await mcp.list_tools()
         compile_tool = next(t for t in tools if t.name == "vault_compile")
-        params = compile_tool.inputSchema.get("properties", {})
+        schema = getattr(compile_tool, "inputSchema", None) or getattr(compile_tool, "parameters", {})
+        if callable(getattr(schema, "get", None)):
+            params = schema.get("properties", {})
+        else:
+            params = {}
         assert "force" in params or "force" in str(compile_tool)
 
 

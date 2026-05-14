@@ -35,7 +35,15 @@ logger = logging.getLogger(__name__)
 
 
 def _build_auth():
-    """Build an OIDCProxy auth provider when OIDC is configured."""
+    """Build an OIDCProxy auth provider when OIDC is configured.
+
+    Skipped when an API key is configured — API key auth uses a simpler
+    ASGI middleware that doesn't advertise OAuth discovery endpoints.
+    """
+    if settings.api_key:
+        logger.info("API key configured — skipping OIDCProxy auth for MCP")
+        return None
+
     if not settings.oidc_enabled:
         return None
 
@@ -255,6 +263,35 @@ async def create_mcp_app(vault_path: Path) -> Starlette:
     )
 
 
+class ApiKeyGuardMiddleware:
+    """ASGI middleware that gates MCP access behind a static API key.
+
+    Used instead of OIDCProxy when ``settings.api_key`` is set.  Requests
+    without a valid ``x-api-key`` header receive a ``401`` with a plain
+    JSON body — no OAuth discovery, no redirect.
+    """
+
+    def __init__(self, app, api_key: str):
+        self.app = app
+        self.api_key = api_key
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            headers = dict(scope.get("headers", []))
+            key_value = headers.get(b"x-api-key", b"").decode()
+            if key_value != self.api_key:
+                from starlette.responses import JSONResponse
+
+                resp = JSONResponse(
+                    {"detail": "Missing or invalid x-api-key header"},
+                    status_code=401,
+                )
+                await resp(scope, receive, send)
+                return
+
+        await self.app(scope, receive, send)
+
+
 def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> Starlette:
     """Mount a FastMCP server on an existing FastAPI app at /mcp.
 
@@ -271,13 +308,18 @@ def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> Starlette:
         stateless_http=True,
         json_response=True,
     )
-    app.mount("/mcp", mcp_app)
 
-    if mcp.auth:
-        well_known_routes = mcp.auth.get_well_known_routes(mcp_path="/")
-        for route in well_known_routes:
-            if isinstance(route, Route):
-                app.routes.insert(0, route)
-                logger.info("Root-level discovery route: %s", route.path)
+    if settings.api_key:
+        mount_target = ApiKeyGuardMiddleware(mcp_app, settings.api_key)
+        app.mount("/mcp", mount_target)
+        logger.info("MCP mounted with API-key guard (no OAuth)")
+    else:
+        app.mount("/mcp", mcp_app)
+        if mcp.auth:
+            well_known_routes = mcp.auth.get_well_known_routes(mcp_path="/")
+            for route in well_known_routes:
+                if isinstance(route, Route):
+                    app.routes.insert(0, route)
+                    logger.info("Root-level discovery route: %s", route.path)
 
     return mcp_app

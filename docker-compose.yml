@@ -39,6 +39,7 @@ services:
       - CORTEX_OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
       - CORTEX_OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
       - CORTEX_OIDC_BASE_URL=${OIDC_BASE_URL:-}
+      - CORTEX_API_KEY=${API_KEY:-}
     depends_on:
       qmd:
         condition: service_healthy

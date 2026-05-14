@@ -31,6 +31,7 @@ apply_defaults() {
     export OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-}"
     export OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
     export OIDC_BASE_URL="${OIDC_BASE_URL:-}"
+    export API_KEY="${API_KEY:-}"
 }
 
 write_env_file() {
@@ -45,6 +46,7 @@ OIDC_TENANT_ID=${OIDC_TENANT_ID:-}
 OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
 OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
 OIDC_BASE_URL=${OIDC_BASE_URL:-}
+API_KEY=${API_KEY:-}
 EOF
 }
 
@@ -77,6 +79,11 @@ prompt_missing_env() {
         echo "  OIDC:         tenant=${OIDC_TENANT_ID} client=${OIDC_CLIENT_ID:-unset} base=${OIDC_BASE_URL:-unset}"
     else
         echo "  OIDC:         disabled"
+    fi
+    if [ -n "${API_KEY:-}" ]; then
+        echo "  API Key:      ${API_KEY:0:6}..."
+    else
+        echo "  API Key:      disabled"
     fi
     echo ""
 }
