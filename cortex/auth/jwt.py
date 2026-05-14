@@ -13,23 +13,23 @@ from cortex.config import settings
 
 logger = logging.getLogger(__name__)
 
-_jwks_client: PyJWKClient | None = None
-_jwks_client_ts: float = 0.0
+_JWKS_CLIENT: PyJWKClient | None = None
+_JWKS_CLIENT_TS: float = 0.0
 _JWKS_CACHE_TTL = 3600  # re-create client every hour to refresh keys
 
 
 def _get_jwks_client() -> PyJWKClient:
     """Return a cached PyJWKClient, refreshing after TTL expires."""
-    global _jwks_client, _jwks_client_ts
+    global _JWKS_CLIENT, _JWKS_CLIENT_TS  # pylint: disable=global-statement
 
     now = time.monotonic()
-    if _jwks_client is None or (now - _jwks_client_ts) > _JWKS_CACHE_TTL:
+    if _JWKS_CLIENT is None or (now - _JWKS_CLIENT_TS) > _JWKS_CACHE_TTL:
         jwks_uri = _discover_jwks_uri()
-        _jwks_client = PyJWKClient(jwks_uri, cache_keys=True)
-        _jwks_client_ts = now
+        _JWKS_CLIENT = PyJWKClient(jwks_uri, cache_keys=True)
+        _JWKS_CLIENT_TS = now
         logger.info("JWKS client initialised from %s", jwks_uri)
 
-    return _jwks_client
+    return _JWKS_CLIENT
 
 
 def _discover_jwks_uri() -> str:

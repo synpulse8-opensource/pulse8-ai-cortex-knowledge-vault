@@ -1,7 +1,6 @@
 """FastMCP HTTP server and Starlette/FastAPI integration."""
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 from pathlib import Path
@@ -10,7 +9,7 @@ from typing import Optional
 from fastapi import FastAPI
 from fastmcp import FastMCP
 from starlette.applications import Starlette
-from starlette.routing import Mount, Route
+from starlette.routing import Route
 
 from cortex.compiler.compiler import KnowledgeCompiler
 from cortex.config import settings

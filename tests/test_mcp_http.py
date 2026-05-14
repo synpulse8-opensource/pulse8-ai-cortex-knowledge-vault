@@ -213,6 +213,7 @@ class TestMCPIngestBase64:
 class TestMainAppMCPMount:
     def test_mcp_mounted_on_fastapi(self, tmp_vault: Path):
         """The FastAPI app should have MCP mounted at /mcp."""
+        import contextlib
         from cortex.graph.builder import build_graph
         from cortex.graph.engine import GraphEngine
         from cortex.search.qmd import QMDSearch
@@ -223,23 +224,28 @@ class TestMainAppMCPMount:
         from fastapi.testclient import TestClient as FastAPITestClient
         from cortex.api.routes import router
 
-        test_app = FastAPI(title="Cortex Test")
-        test_app.include_router(router, prefix="/api/v1")
-
         loop = asyncio.new_event_loop()
 
         graph = GraphEngine(tmp_vault / ".cortex" / "graph.json")
         loop.run_until_complete(graph.load())
         notes = scan_vault(tmp_vault)
+
+        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
+            mcp_server = loop.run_until_complete(create_fastmcp_server(tmp_vault))
+
+        @contextlib.asynccontextmanager
+        async def lifespan(app):
+            mcp_app = mount_mcp_on_app(app, mcp_server)
+            async with mcp_app.router.lifespan_context(mcp_app):
+                yield
+
+        test_app = FastAPI(title="Cortex Test", lifespan=lifespan)
+        test_app.include_router(router, prefix="/api/v1")
         test_app.state.graph = loop.run_until_complete(
             build_graph(notes, tmp_vault / ".cortex" / "graph.json", tmp_vault)
         )
         test_app.state.vault_path = tmp_vault
         test_app.state.qmd = QMDSearch(tmp_vault, "qmd")
-
-        with patch("cortex.search.qmd.QMDSearch._run", new_callable=AsyncMock, return_value=""):
-            mcp_server = loop.run_until_complete(create_fastmcp_server(tmp_vault))
-        mount_mcp_on_app(test_app, mcp_server)
         loop.close()
 
         with FastAPITestClient(test_app, base_url="http://localhost") as client:

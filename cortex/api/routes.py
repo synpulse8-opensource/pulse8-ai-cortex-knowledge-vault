@@ -128,7 +128,7 @@ async def login(redirect_uri: str = ""):
 
 
 @router.get("/auth/callback")
-async def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):
+async def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):  # pylint: disable=unused-argument
     """OAuth 2.0 callback endpoint.
 
     Microsoft redirects here after the user authenticates.  Exchanges
@@ -296,8 +296,6 @@ async def search_endpoint(
     top_k: int = 10,
 ):
     """Search the vault via QMD and return graph-enriched results."""
-    from cortex.config import settings
-
     vault_path = get_vault_path(request)
     graph = get_graph(request)
     qmd = get_qmd(request)
