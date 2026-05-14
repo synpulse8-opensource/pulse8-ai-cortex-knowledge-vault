@@ -54,6 +54,10 @@ def _build_auth():
         client_secret=settings.oidc_client_secret,
         base_url=base_url,
         issuer_url=root_url,
+        forward_resource=False,
+        verify_id_token=True,
+        extra_authorize_params={"scope": "openid profile email"},
+        extra_token_params={"scope": "openid profile email"},
     )
 
 
