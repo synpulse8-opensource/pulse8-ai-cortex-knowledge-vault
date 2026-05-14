@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 UNPROTECTED_PREFIXES = (
     "/api/v1/health",
     "/api/v1/login",
+    "/api/v1/auth/callback",
     "/.well-known/",
     "/mcp",
 )

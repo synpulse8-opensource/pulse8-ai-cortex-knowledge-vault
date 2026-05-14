@@ -56,11 +56,10 @@ class BulkIngestBody(BaseModel):
     dry_run: bool = False
 
 
-class LoginBody(BaseModel):
-    """Request body for ROPC login."""
-    username: str
-    password: str
-    scope: str = ""
+class TokenExchangeBody(BaseModel):
+    """Request body for exchanging an authorization code for tokens."""
+    code: str
+    redirect_uri: str = ""
 
 
 def get_vault_path(request: Request):
@@ -89,27 +88,68 @@ async def health():
     return {"status": "healthy"}
 
 
-@router.post("/login")
-async def login(body: LoginBody):
-    """Exchange username + password for tokens via ROPC grant.
+@router.get("/login")
+async def login(redirect_uri: str = ""):
+    """Start the Authorization Code Flow.
 
-    Requires that the Azure AD app registration has *Allow public client
-    flows* enabled.  Returns the full token response from Microsoft.
+    Returns the Microsoft Entra ID authorization URL.  The caller should
+    open this URL in a browser so the user can authenticate (with MFA if
+    required).  After login, Microsoft redirects to the callback endpoint.
+
+    Pass ``redirect_uri`` if the client wants the final redirect to go
+    somewhere other than the server's default callback URL.
     """
     if not settings.oidc_enabled:
         raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
 
-    scope = body.scope or f"{settings.oidc_client_id}/.default openid profile"
+    import secrets
+    import urllib.parse
 
-    print('scope', scope)
+    state = secrets.token_urlsafe(32)
+    callback = redirect_uri or settings.oidc_redirect_uri
+    scope = f"{settings.oidc_client_id}/.default openid profile"
+
+    params = {
+        "client_id": settings.oidc_client_id,
+        "response_type": "code",
+        "redirect_uri": callback,
+        "scope": scope,
+        "response_mode": "query",
+        "state": state,
+    }
+
+    auth_url = f"{settings.oidc_authorize_url}?{urllib.parse.urlencode(params)}"
+
+    return {
+        "authorization_url": auth_url,
+        "state": state,
+        "redirect_uri": callback,
+    }
+
+
+@router.get("/auth/callback")
+async def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):
+    """OAuth 2.0 callback endpoint.
+
+    Microsoft redirects here after the user authenticates.  Exchanges
+    the authorization code for tokens and returns them.
+    """
+    if error:
+        raise HTTPException(status_code=401, detail=error_description or error)
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
 
     data = {
-        "grant_type": "password",
+        "grant_type": "authorization_code",
         "client_id": settings.oidc_client_id,
         "client_secret": settings.oidc_client_secret,
-        "username": body.username,
-        "password": body.password,
-        "scope": scope,
+        "code": code,
+        "redirect_uri": settings.oidc_redirect_uri,
+        "scope": f"{settings.oidc_client_id}/.default openid profile",
     }
 
     async with httpx.AsyncClient() as client:
@@ -117,7 +157,46 @@ async def login(body: LoginBody):
 
     if resp.status_code != 200:
         detail = resp.json().get("error_description", resp.text)
-        logger.warning("ROPC login failed for %s: %s", body.username, detail)
+        logger.warning("Token exchange failed: %s", detail)
+        raise HTTPException(status_code=401, detail=detail)
+
+    token_data = resp.json()
+    return {
+        "access_token": token_data.get("access_token"),
+        "token_type": token_data.get("token_type", "Bearer"),
+        "expires_in": token_data.get("expires_in"),
+        "refresh_token": token_data.get("refresh_token"),
+        "scope": token_data.get("scope"),
+    }
+
+
+@router.post("/login")
+async def login_token_exchange(body: TokenExchangeBody):
+    """Exchange an authorization code for tokens (programmatic variant).
+
+    Use this when the client already has an authorization code (e.g. from
+    a browser redirect) and wants to exchange it server-side.
+    """
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
+
+    redirect_uri = body.redirect_uri or settings.oidc_redirect_uri
+
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": settings.oidc_client_id,
+        "client_secret": settings.oidc_client_secret,
+        "code": body.code,
+        "redirect_uri": redirect_uri,
+        "scope": f"{settings.oidc_client_id}/.default openid profile",
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(settings.oidc_token_url, data=data, timeout=15)
+
+    if resp.status_code != 200:
+        detail = resp.json().get("error_description", resp.text)
+        logger.warning("Token exchange failed: %s", detail)
         raise HTTPException(status_code=401, detail=detail)
 
     token_data = resp.json()

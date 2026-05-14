@@ -55,8 +55,20 @@ class CortexSettings(BaseSettings):
         )
 
     @property
+    def oidc_authorize_url(self) -> str:
+        return (
+            f"https://login.microsoftonline.com/{self.oidc_tenant_id}"
+            "/oauth2/v2.0/authorize"
+        )
+
+    @property
     def oidc_issuer(self) -> str:
         return f"https://login.microsoftonline.com/{self.oidc_tenant_id}/v2.0"
+
+    @property
+    def oidc_redirect_uri(self) -> str:
+        base = (self.oidc_base_url or f"http://localhost:{self.mcp_sse_port}").rstrip("/")
+        return f"{base}/api/v1/auth/callback"
 
     model_config = {"env_prefix": "CORTEX_"}
 
