@@ -56,6 +56,7 @@ def _build_auth():
         issuer_url=root_url,
         forward_resource=False,
         verify_id_token=True,
+        required_scopes=["openid", "profile", "email"],
         extra_authorize_params={"scope": "openid profile email"},
         extra_token_params={"scope": "openid profile email"},
     )
@@ -254,13 +255,16 @@ async def create_mcp_app(vault_path: Path) -> Starlette:
     )
 
 
-def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> None:
+def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> Starlette:
     """Mount a FastMCP server on an existing FastAPI app at /mcp.
 
     The MCP sub-app is mounted at ``/mcp``.  When auth is enabled, the
     OIDCProxy creates discovery and operational routes that must be
     accessible at the **server root** (not under ``/mcp``).  This
     function extracts those routes and adds them to the parent app.
+
+    Returns the mounted Starlette sub-app so callers can chain its
+    lifespan into the parent app's lifespan.
     """
     mcp_app = mcp.http_app(
         path="/",
@@ -275,3 +279,5 @@ def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> None:
             if isinstance(route, Route):
                 app.routes.insert(0, route)
                 logger.info("Root-level discovery route: %s", route.path)
+
+    return mcp_app

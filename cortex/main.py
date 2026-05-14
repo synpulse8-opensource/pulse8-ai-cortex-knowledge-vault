@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
         "compiler": KnowledgeCompiler(vault_path),
     }
     _mcp_server = await create_fastmcp_server(vault_path, services=shared_services)
-    mount_mcp_on_app(app, _mcp_server)
+    mcp_app = mount_mcp_on_app(app, _mcp_server)
     logger.info("MCP streamable HTTP endpoint mounted at /mcp (shared services)")
 
     watcher = VaultWatcher(vault_path, app.state.graph)
@@ -82,7 +82,8 @@ async def lifespan(app: FastAPI):
             "Periodic QMD refresh skipped — QMD container manages its own timer"
         )
 
-    yield
+    async with mcp_app.router.lifespan_context(mcp_app):
+        yield
 
     if refresh_task is not None:
         refresh_task.cancel()
