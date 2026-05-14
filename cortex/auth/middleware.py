@@ -1,8 +1,9 @@
 """FastAPI middleware that enforces authentication on REST API routes.
 
-Supports two authentication methods:
-- ``x-api-key`` header: static API key (checked against ``settings.api_key``)
-- ``Authorization: Bearer <token>``: JWT validated against Microsoft Entra ID JWKS
+Supports two authentication methods controlled by ``AUTH_METHOD``:
+- ``apikey``: validates ``x-api-key`` header against ``settings.api_key``
+- ``oidc``: validates ``Authorization: Bearer <JWT>`` against Microsoft Entra ID JWKS
+  (also accepts ``x-api-key`` as a fallback when ``api_key`` is configured)
 """
 from __future__ import annotations
 
@@ -13,7 +14,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from cortex.auth.jwt import validate_token
 from cortex.config import settings
 
 logger = logging.getLogger(__name__)
@@ -27,11 +27,15 @@ UNPROTECTED_PREFIXES = (
 )
 
 
-class OIDCAuthMiddleware(BaseHTTPMiddleware):
+class AuthMiddleware(BaseHTTPMiddleware):
     """Reject requests to ``/api/*`` that lack valid credentials.
 
-    Accepts either an ``x-api-key`` header matching the configured API key,
-    or a ``Authorization: Bearer <JWT>`` validated against Microsoft JWKS.
+    Behaviour depends on ``settings.auth_method``:
+
+    - **apikey** — only ``x-api-key`` header is checked.
+    - **oidc** — ``Authorization: Bearer <JWT>`` is validated against
+      Microsoft JWKS.  A valid ``x-api-key`` is also accepted as a
+      convenience fallback.
 
     Paths in ``UNPROTECTED_PREFIXES`` are always allowed through.
     Non-API paths (e.g. ``/mcp``, ``/.well-known``) are also skipped
@@ -52,6 +56,14 @@ class OIDCAuthMiddleware(BaseHTTPMiddleware):
             request.state.user_claims = {"auth_method": "api_key"}
             return await call_next(request)
 
+        if settings.auth_is_apikey:
+            return JSONResponse(
+                {"detail": "Missing or invalid x-api-key header"},
+                status_code=401,
+            )
+
+        from cortex.auth.jwt import validate_token
+
         auth_header = request.headers.get("authorization", "")
         if not auth_header.lower().startswith("bearer "):
             return JSONResponse(
@@ -71,3 +83,6 @@ class OIDCAuthMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"detail": "Invalid token"}, status_code=401)
 
         return await call_next(request)
+
+
+OIDCAuthMiddleware = AuthMiddleware

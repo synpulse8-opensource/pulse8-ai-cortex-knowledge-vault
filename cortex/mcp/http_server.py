@@ -34,13 +34,8 @@ logger = logging.getLogger(__name__)
 
 
 def _build_auth():
-    """Build an OIDCProxy auth provider when OIDC is configured.
-
-    Skipped when an API key is configured — API key auth uses a simpler
-    ASGI middleware that doesn't advertise OAuth discovery endpoints.
-    """
-    if settings.api_key:
-        logger.info("API key configured — skipping OIDCProxy auth for MCP")
+    """Build an OIDCProxy auth provider when auth_method is ``oidc``."""
+    if not settings.auth_is_oidc:
         return None
 
     if not settings.oidc_enabled:
@@ -308,7 +303,7 @@ def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> Starlette:
         json_response=True,
     )
 
-    if settings.api_key:
+    if settings.auth_is_apikey and settings.api_key:
         mount_target = ApiKeyGuardMiddleware(mcp_app, settings.api_key)
         app.mount("/mcp", mount_target)
         logger.info("MCP mounted with API-key guard (no OAuth)")

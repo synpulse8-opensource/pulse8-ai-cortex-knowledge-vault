@@ -96,10 +96,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="PULSE8.ai Cortex", version="0.2.0", lifespan=lifespan)
 
-if settings.oidc_enabled:
-    from cortex.auth.middleware import OIDCAuthMiddleware
+if settings.auth_enabled:
+    from cortex.auth.middleware import AuthMiddleware
 
-    app.add_middleware(OIDCAuthMiddleware)
-    logger.info("OIDC auth middleware enabled for REST API endpoints")
+    app.add_middleware(AuthMiddleware)
+    logger.info("Auth middleware enabled (method=%s)", settings.auth_method)
 
 app.include_router(router, prefix="/api/v1")

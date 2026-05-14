@@ -195,8 +195,9 @@ cp .env.example .env
 | `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
 | `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
-| `API_KEY`                      | No       | —                              | Static API key for `x-api-key` header auth (see [Authentication](#authentication)) |
-| `OIDC_TENANT_ID`               | No       | —                              | Microsoft Entra ID tenant ID (see [Authentication](#authentication)) |
+| `AUTH_METHOD`                  | No       | `none`                         | Authentication method: `none`, `apikey`, or `oidc` (see [Authentication](#authentication)) |
+| `API_KEY`                      | No       | —                              | Static API key for `x-api-key` header (used when `AUTH_METHOD=apikey`) |
+| `OIDC_TENANT_ID`               | No       | —                              | Microsoft Entra ID tenant ID (used when `AUTH_METHOD=oidc`) |
 | `OIDC_CLIENT_ID`               | No       | —                              | Microsoft Entra ID app (client) ID |
 | `OIDC_CLIENT_SECRET`           | No       | —                              | Microsoft Entra ID client secret |
 | `OIDC_BASE_URL`                | No       | `http://localhost:8420`        | Public base URL of the Cortex server (used for OAuth callbacks) |
@@ -208,13 +209,20 @@ cp .env.example .env
 <details>
 <summary><h2>Authentication</h2></summary>
 
-Cortex supports two authentication methods that protect both the REST API (`/api/v1/`) and the MCP endpoint (`/mcp/`). When neither is configured, all endpoints are open.
+Cortex supports two authentication methods that protect both the REST API (`/api/v1/`) and the MCP endpoint (`/mcp/`). Set `AUTH_METHOD` in `.env` to choose:
 
-### API Key (recommended for most setups)
+| `AUTH_METHOD` | Description |
+| ------------- | ----------- |
+| `none`        | Default. All endpoints are open — no authentication required. |
+| `apikey`      | Static API key. Clients pass `x-api-key` header. |
+| `oidc`        | Microsoft Entra ID (Azure AD) with OAuth 2.0 + MFA support. |
 
-The simplest option. Set a static key in `.env`:
+### API Key (`AUTH_METHOD=apikey`)
+
+The simplest option. Set the method and key in `.env`:
 
 ```
+AUTH_METHOD=apikey
 API_KEY=your-secret-api-key
 ```
 
@@ -232,13 +240,14 @@ curl -X POST http://localhost:8420/mcp/ \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{...}}'
 ```
 
-When `API_KEY` is set, OIDC is automatically disabled on the MCP endpoint — no OAuth discovery, no login popups. Requests without a valid key receive a `401`.
+No OAuth discovery endpoints are served — no login popups. Requests without a valid key receive a `401`.
 
-### Microsoft Entra ID (OIDC)
+### Microsoft Entra ID (`AUTH_METHOD=oidc`)
 
-For enterprise environments that require interactive login with MFA support. Set all four OIDC variables in `.env`:
+For enterprise environments that require interactive login with MFA support:
 
 ```
+AUTH_METHOD=oidc
 OIDC_TENANT_ID=your-tenant-id
 OIDC_CLIENT_ID=your-client-id
 OIDC_CLIENT_SECRET=your-client-secret
@@ -246,10 +255,8 @@ OIDC_BASE_URL=http://localhost:8420
 ```
 
 This enables:
-- **REST API**: OAuth 2.0 Authorization Code Flow via `GET /api/v1/login`. After login, pass the access token as `Authorization: Bearer <token>`.
+- **REST API**: OAuth 2.0 Authorization Code Flow via `GET /api/v1/login`. After login, pass the access token as `Authorization: Bearer <token>`. A valid `x-api-key` header is also accepted as a fallback when `API_KEY` is set.
 - **MCP endpoint**: FastMCP's built-in OIDCProxy handles interactive browser-based login.
-
-> **Note:** If both `API_KEY` and OIDC are configured, `API_KEY` takes precedence on the MCP endpoint (OIDC is skipped). On the REST API, both methods are accepted — a valid `x-api-key` header bypasses JWT validation.
 
 ### Azure AD app registration
 

@@ -31,6 +31,8 @@ class CortexSettings(BaseSettings):
 
     default_author: str = "human"
 
+    auth_method: str = "none"
+
     api_key: str = ""
 
     oidc_tenant_id: str = ""
@@ -39,8 +41,21 @@ class CortexSettings(BaseSettings):
     oidc_base_url: str = ""
 
     @property
+    def auth_enabled(self) -> bool:
+        """True when any authentication method is active."""
+        return self.auth_method in ("apikey", "oidc")
+
+    @property
+    def auth_is_apikey(self) -> bool:
+        return self.auth_method == "apikey"
+
+    @property
+    def auth_is_oidc(self) -> bool:
+        return self.auth_method == "oidc"
+
+    @property
     def oidc_enabled(self) -> bool:
-        return bool(self.oidc_tenant_id and self.oidc_client_id)
+        return self.auth_is_oidc and bool(self.oidc_tenant_id and self.oidc_client_id)
 
     @property
     def oidc_config_url(self) -> str:
