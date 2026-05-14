@@ -27,6 +27,10 @@ apply_defaults() {
     export COMPILER_MODEL="${COMPILER_MODEL:-anthropic/claude-sonnet-4}"
     export LLM_BASE_URL="${LLM_BASE_URL:-https://openrouter.ai/api/v1}"
     export QMD_REFRESH_INTERVAL_SECONDS="${QMD_REFRESH_INTERVAL_SECONDS:-900}"
+    export OIDC_TENANT_ID="${OIDC_TENANT_ID:-}"
+    export OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-}"
+    export OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
+    export OIDC_BASE_URL="${OIDC_BASE_URL:-}"
 }
 
 write_env_file() {
@@ -37,6 +41,10 @@ COMPILER_MODEL=${COMPILER_MODEL}
 LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
 VAULT_DIR=${VAULT_DIR}
 QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
+OIDC_TENANT_ID=${OIDC_TENANT_ID:-}
+OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+OIDC_BASE_URL=${OIDC_BASE_URL:-}
 EOF
 }
 
@@ -65,5 +73,10 @@ prompt_missing_env() {
     echo "  LLM Base URL: $LLM_BASE_URL"
     echo "  Vault:        $VAULT_DIR"
     echo "  QMD Refresh:  ${QMD_REFRESH_INTERVAL_SECONDS}s"
+    if [ -n "${OIDC_TENANT_ID:-}" ]; then
+        echo "  OIDC:         tenant=${OIDC_TENANT_ID} client=${OIDC_CLIENT_ID:-unset} base=${OIDC_BASE_URL:-unset}"
+    else
+        echo "  OIDC:         disabled"
+    fi
     echo ""
 }

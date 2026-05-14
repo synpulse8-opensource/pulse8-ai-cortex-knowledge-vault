@@ -31,6 +31,33 @@ class CortexSettings(BaseSettings):
 
     default_author: str = "human"
 
+    oidc_tenant_id: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_base_url: str = ""
+
+    @property
+    def oidc_enabled(self) -> bool:
+        return bool(self.oidc_tenant_id and self.oidc_client_id)
+
+    @property
+    def oidc_config_url(self) -> str:
+        return (
+            f"https://login.microsoftonline.com/{self.oidc_tenant_id}"
+            "/v2.0/.well-known/openid-configuration"
+        )
+
+    @property
+    def oidc_token_url(self) -> str:
+        return (
+            f"https://login.microsoftonline.com/{self.oidc_tenant_id}"
+            "/oauth2/v2.0/token"
+        )
+
+    @property
+    def oidc_issuer(self) -> str:
+        return f"https://login.microsoftonline.com/{self.oidc_tenant_id}/v2.0"
+
     model_config = {"env_prefix": "CORTEX_"}
 
 

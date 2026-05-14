@@ -30,6 +30,8 @@ dependencies = [
     "httpx>=0.28.0",
     "openai>=2.31.0",
     "markitdown[pdf,docx,pptx,xlsx,xls]>=0.1.0",
+    "fastmcp>=2.0.0",
+    "PyJWT[crypto]>=2.9.0",
 ]
 
 [project.optional-dependencies]

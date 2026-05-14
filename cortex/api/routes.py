@@ -1,12 +1,15 @@
 """REST API route handlers for the Cortex vault."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
+import httpx
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
+from cortex.config import settings
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
@@ -14,6 +17,8 @@ from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.reader import read_note, resolve_wikilink, scan_vault
 from cortex.vault.writer import write_note
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -51,6 +56,13 @@ class BulkIngestBody(BaseModel):
     dry_run: bool = False
 
 
+class LoginBody(BaseModel):
+    """Request body for ROPC login."""
+    username: str
+    password: str
+    scope: str = ""
+
+
 def get_vault_path(request: Request):
     """Extract the vault path from application state."""
     return request.app.state.vault_path
@@ -75,6 +87,47 @@ def get_qmd_debounce(request: Request):
 async def health():
     """Liveness probe."""
     return {"status": "healthy"}
+
+
+@router.post("/login")
+async def login(body: LoginBody):
+    """Exchange username + password for tokens via ROPC grant.
+
+    Requires that the Azure AD app registration has *Allow public client
+    flows* enabled.  Returns the full token response from Microsoft.
+    """
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
+
+    scope = body.scope or f"{settings.oidc_client_id}/.default openid profile"
+
+    print('scope', scope)
+
+    data = {
+        "grant_type": "password",
+        "client_id": settings.oidc_client_id,
+        "client_secret": settings.oidc_client_secret,
+        "username": body.username,
+        "password": body.password,
+        "scope": scope,
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(settings.oidc_token_url, data=data, timeout=15)
+
+    if resp.status_code != 200:
+        detail = resp.json().get("error_description", resp.text)
+        logger.warning("ROPC login failed for %s: %s", body.username, detail)
+        raise HTTPException(status_code=401, detail=detail)
+
+    token_data = resp.json()
+    return {
+        "access_token": token_data.get("access_token"),
+        "token_type": token_data.get("token_type", "Bearer"),
+        "expires_in": token_data.get("expires_in"),
+        "refresh_token": token_data.get("refresh_token"),
+        "scope": token_data.get("scope"),
+    }
 
 
 @router.get("/notes/{path:path}")

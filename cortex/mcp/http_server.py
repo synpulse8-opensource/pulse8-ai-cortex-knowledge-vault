@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI
-from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
+from fastmcp import FastMCP
 from starlette.applications import Starlette
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
 
 from cortex.compiler.compiler import KnowledgeCompiler
 from cortex.config import settings
@@ -35,6 +34,29 @@ from cortex.vault.reader import scan_vault_async
 logger = logging.getLogger(__name__)
 
 
+def _build_auth():
+    """Build an OIDCProxy auth provider when OIDC is configured."""
+    if not settings.oidc_enabled:
+        return None
+
+    from fastmcp.server.auth.oidc_proxy import OIDCProxy
+
+    config_url = settings.oidc_config_url
+
+    root_url = (
+        settings.oidc_base_url or f"http://localhost:{settings.mcp_sse_port}"
+    ).rstrip("/")
+    base_url = root_url + "/mcp"
+
+    return OIDCProxy(
+        config_url=config_url,
+        client_id=settings.oidc_client_id,
+        client_secret=settings.oidc_client_secret,
+        base_url=base_url,
+        issuer_url=root_url,
+    )
+
+
 async def create_fastmcp_server(
     vault_path: Path,
     services: dict | None = None,
@@ -44,25 +66,23 @@ async def create_fastmcp_server(
     When *services* is provided the server reuses existing graph, QMD, and
     compiler instances so the MCP endpoint shares state with the REST API
     (and the vault watcher).  When omitted the server bootstraps its own
-    services — useful for standalone ``create_mcp_app()`` deployments.
+    services -- useful for standalone ``create_mcp_app()`` deployments.
     """
-    default_hosts = ["localhost:*", "127.0.0.1:*", "localhost", "127.0.0.1"]
-    if settings.mcp_allowed_hosts:
-        extra = [h.strip() for h in settings.mcp_allowed_hosts.split(",") if h.strip()]
-        default_hosts.extend(extra)
-    security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=default_hosts,
-    )
+    auth = _build_auth()
+
     mcp = FastMCP(
         "PULSE8.ai Cortex",
-        stateless_http=True,
-        json_response=True,
-        streamable_http_path="/",
-        host=settings.mcp_sse_host,
-        port=settings.mcp_sse_port,
-        transport_security=security,
+        auth=auth,
     )
+
+    if auth:
+        logger.info(
+            "MCP OIDC auth enabled — tenant=%s, client_id=%s",
+            settings.oidc_tenant_id,
+            settings.oidc_client_id,
+        )
+    else:
+        logger.info("MCP auth disabled — all MCP endpoints are unauthenticated")
 
     if services is None:
         graph = GraphEngine(vault_path / ".cortex" / "graph.json")
@@ -223,33 +243,31 @@ async def create_fastmcp_server(
 async def create_mcp_app(vault_path: Path) -> Starlette:
     """Create a standalone Starlette app with MCP streamable HTTP at root."""
     mcp = await create_fastmcp_server(vault_path)
-
-    @contextlib.asynccontextmanager
-    async def lifespan(_app: Starlette):
-        async with mcp.session_manager.run():
-            yield
-
-    return Starlette(
-        routes=[Mount("/", app=mcp.streamable_http_app())],
-        lifespan=lifespan,
+    return mcp.http_app(
+        path="/",
+        stateless_http=True,
+        json_response=True,
     )
 
 
 def mount_mcp_on_app(app: FastAPI, mcp: FastMCP) -> None:
     """Mount a FastMCP server on an existing FastAPI app at /mcp.
 
-    Wraps the app's existing lifespan to also run the MCP session manager.
+    The MCP sub-app is mounted at ``/mcp``.  When auth is enabled, the
+    OIDCProxy creates discovery and operational routes that must be
+    accessible at the **server root** (not under ``/mcp``).  This
+    function extracts those routes and adds them to the parent app.
     """
-    original_lifespan = app.router.lifespan_context
+    mcp_app = mcp.http_app(
+        path="/",
+        stateless_http=True,
+        json_response=True,
+    )
+    app.mount("/mcp", mcp_app)
 
-    @contextlib.asynccontextmanager
-    async def combined_lifespan(a: FastAPI):
-        async with mcp.session_manager.run():
-            if original_lifespan:
-                async with original_lifespan(a) as state:
-                    yield state
-            else:
-                yield
-
-    app.router.lifespan_context = combined_lifespan
-    app.mount("/mcp", mcp.streamable_http_app())
+    if mcp.auth:
+        well_known_routes = mcp.auth.get_well_known_routes(mcp_path="/")
+        for route in well_known_routes:
+            if isinstance(route, Route):
+                app.routes.insert(0, route)
+                logger.info("Root-level discovery route: %s", route.path)
