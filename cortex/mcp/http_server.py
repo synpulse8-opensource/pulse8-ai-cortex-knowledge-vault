@@ -78,8 +78,12 @@ async def create_fastmcp_server(
     """
     auth = _build_auth()
 
-    # this is to fix suppress logging from FastMCP
+    # Suppress MCP log-notification forwarding. Without this, any Python log
+    # emitted during tool execution gets forwarded as an MCP notification,
+    # which crashes stateless sessions when the client disconnects first.
     os.environ.setdefault("FASTMCP_LOG_LEVEL", "CRITICAL")
+    logging.getLogger("mcp.server").setLevel(logging.CRITICAL)
+    logging.getLogger("mcp").setLevel(logging.CRITICAL)
 
     mcp = FastMCP(
         "PULSE8.ai Cortex",
