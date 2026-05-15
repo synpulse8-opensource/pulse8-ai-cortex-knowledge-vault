@@ -24,6 +24,9 @@ UNPROTECTED_PREFIXES = (
     "/api/v1/auth/callback",
     "/.well-known/",
     "/mcp",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
 )
 
 

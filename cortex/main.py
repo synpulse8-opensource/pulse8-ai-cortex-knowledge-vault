@@ -94,7 +94,25 @@ async def lifespan(app: FastAPI):
     await watcher.stop()
 
 
-app = FastAPI(title="PULSE8.ai Cortex", version="0.2.0", lifespan=lifespan)
+OPENAPI_TAGS = [
+    {"name": "health", "description": "Health and readiness checks"},
+    {"name": "auth", "description": "Authentication and OAuth2 token exchange"},
+    {"name": "notes", "description": "Read and write vault notes"},
+    {"name": "search", "description": "Semantic search across the vault"},
+    {"name": "graph", "description": "Knowledge graph edge operations"},
+    {"name": "ingest", "description": "Ingest and compile raw sources into notes"},
+]
+
+app = FastAPI(
+    title="PULSE8.ai Cortex",
+    version="0.2.0",
+    description="Knowledge vault API — manage notes, search, graph links, and ingest sources.",
+    openapi_tags=OPENAPI_TAGS,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
+)
 
 if settings.auth_enabled:
     from cortex.auth.middleware import AuthMiddleware

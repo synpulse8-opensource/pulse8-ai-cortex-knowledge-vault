@@ -20,7 +20,7 @@ from cortex.vault.writer import write_note
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["vault"])
 
 
 class WriteNoteBody(BaseModel):
@@ -82,13 +82,13 @@ def get_qmd_debounce(request: Request):
     return request.app.state.qmd_debounce
 
 
-@router.get("/health")
+@router.get("/health", tags=["health"])
 async def health():
     """Liveness probe."""
     return {"status": "healthy"}
 
 
-@router.get("/login")
+@router.get("/login", tags=["auth"])
 async def login(redirect_uri: str = ""):
     """Start the Authorization Code Flow.
 
@@ -127,7 +127,7 @@ async def login(redirect_uri: str = ""):
     }
 
 
-@router.get("/auth/callback")
+@router.get("/auth/callback", tags=["auth"])
 async def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):  # pylint: disable=unused-argument
     """OAuth 2.0 callback endpoint.
 
@@ -170,7 +170,7 @@ async def auth_callback(code: str = "", state: str = "", error: str = "", error_
     }
 
 
-@router.post("/login")
+@router.post("/login", tags=["auth"])
 async def login_token_exchange(body: TokenExchangeBody):
     """Exchange an authorization code for tokens (programmatic variant).
 
@@ -209,7 +209,7 @@ async def login_token_exchange(body: TokenExchangeBody):
     }
 
 
-@router.get("/notes/{path:path}")
+@router.get("/notes/{path:path}", tags=["notes"])
 async def read_note_endpoint(path: str, request: Request):
     """Read a note by vault-relative path."""
     vault_path = get_vault_path(request)
@@ -240,7 +240,7 @@ async def read_note_endpoint(path: str, request: Request):
     }
 
 
-@router.put("/notes/{path:path}")
+@router.put("/notes/{path:path}", tags=["notes"])
 async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
     """Create or update a note with provenance tracking."""
     vault_path = get_vault_path(request)
@@ -287,7 +287,7 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
         raise HTTPException(status_code=404, detail=f"Note not found: {path}") from exc
 
 
-@router.get("/search")
+@router.get("/search", tags=["search"])
 async def search_endpoint(
     q: str,
     request: Request,
@@ -320,7 +320,7 @@ async def search_endpoint(
     return {"query": q, "mode": mode, "results": enriched}
 
 
-@router.post("/links")
+@router.post("/links", tags=["graph"])
 async def create_link_endpoint(body: CreateLinkBody, request: Request):
     """Create a typed edge in the knowledge graph."""
     vault_path = get_vault_path(request)
@@ -340,7 +340,7 @@ async def create_link_endpoint(body: CreateLinkBody, request: Request):
     return {"status": "created", "source": body.source, "target": body.target, "edge_type": body.edge_type}
 
 
-@router.get("/links")
+@router.get("/links", tags=["graph"])
 async def query_links_endpoint(
     source: str,
     request: Request,
@@ -364,7 +364,7 @@ async def query_links_endpoint(
     }
 
 
-@router.delete("/links/{source:path}")
+@router.delete("/links/{source:path}", tags=["graph"])
 async def delete_link_endpoint(
     source: str,
     request: Request,
@@ -386,14 +386,14 @@ async def delete_link_endpoint(
     return {"status": "deleted", "source": source, "target": target, "edge_type": edge_type}
 
 
-@router.get("/graph/stats")
+@router.get("/graph/stats", tags=["graph"])
 async def graph_stats_endpoint(request: Request):
     """Return graph node/edge statistics."""
     graph = get_graph(request)
     return await graph.get_stats()
 
 
-@router.post("/ingest")
+@router.post("/ingest", tags=["ingest"])
 async def ingest_endpoint(body: IngestBody, request: Request):
     """Ingest a raw source file and optionally compile it."""
     vault_path = get_vault_path(request)
@@ -425,7 +425,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
     return result
 
 
-@router.post("/ingest/upload")
+@router.post("/ingest/upload", tags=["ingest"])
 async def ingest_upload_endpoint(
     request: Request,
     file: UploadFile = File(...),
@@ -464,7 +464,7 @@ async def ingest_upload_endpoint(
     return result
 
 
-@router.post("/compile")
+@router.post("/compile", tags=["ingest"])
 async def compile_endpoint(request: Request):
     """Compile all unprocessed raw sources into wiki articles."""
     vault_path = get_vault_path(request)
@@ -506,7 +506,7 @@ async def compile_endpoint(request: Request):
     }
 
 
-@router.post("/bulk-ingest")
+@router.post("/bulk-ingest", tags=["ingest"])
 async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
     """Bulk-ingest files from a server-local directory."""
     from cortex.compiler.bulk import BulkIngestor
