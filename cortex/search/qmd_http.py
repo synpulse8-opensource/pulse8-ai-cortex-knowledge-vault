@@ -1,6 +1,7 @@
 """HTTP client for a remote QMD search container."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import httpx
@@ -16,21 +17,29 @@ class QMDHttpSearch:
         self._client = httpx.AsyncClient(base_url=self.base_url, timeout=30.0)
         self._initialized = False
 
-    async def initialize(self) -> None:
-        """Wait for the QMD server to be ready, falling back to ``/setup``.
+    async def initialize(self, retries: int = 10, delay: float = 3.0) -> None:
+        """Wait for QMD to become reachable, then confirm it's ready.
 
-        The QMD container auto-runs setup on start.  We first check
-        ``/health`` and only call ``/setup`` if the container hasn't
-        finished its own initialization.  This avoids running the
-        expensive setup twice.
+        Retries with exponential backoff to handle the case where QMD
+        starts after Cortex (common in Kubernetes without init containers).
         """
-        try:
-            resp = await self._client.get("/health")
-            if resp.status_code == 200 and resp.json().get("setup_ready"):
-                self._initialized = True
-                return
-        except Exception:
-            logger.debug("QMD /health check failed, falling back to /setup")
+        for attempt in range(1, retries + 1):
+            try:
+                resp = await self._client.get("/health")
+                if resp.status_code == 200 and resp.json().get("setup_ready"):
+                    self._initialized = True
+                    logger.info("QMD ready (attempt %d)", attempt)
+                    return
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                wait = min(delay * attempt, 30.0)
+                logger.info(
+                    "QMD not reachable (attempt %d/%d), retrying in %.0fs",
+                    attempt, retries, wait,
+                )
+                await asyncio.sleep(wait)
+                continue
+            except Exception:
+                break
 
         try:
             resp = await self._client.post("/setup", timeout=300.0)
