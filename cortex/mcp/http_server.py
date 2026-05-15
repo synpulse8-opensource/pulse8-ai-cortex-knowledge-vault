@@ -224,7 +224,10 @@ async def create_fastmcp_server(
         auto_compile: bool = True,
     ) -> str:
         """Ingest a raw source. Accepts text via content or binary via content_base64."""
-        logger.info("MCP tool=vault_ingest filename=%s source_type=%s auto_compile=%s", filename, source_type, auto_compile)
+        logger.info(
+            "MCP tool=vault_ingest filename=%s source_type=%s auto_compile=%s",
+            filename, source_type, auto_compile,
+        )
         import base64
 
         file_bytes = None
