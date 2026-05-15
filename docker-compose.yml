@@ -16,6 +16,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+      - /dev/shm
     security_opt:
       - no-new-privileges:true
 
