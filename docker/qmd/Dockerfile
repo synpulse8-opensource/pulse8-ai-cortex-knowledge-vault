@@ -1,7 +1,7 @@
 FROM node:22-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tini gosu \
+    && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @tobilu/qmd
@@ -14,6 +14,8 @@ RUN mkdir -p /vault /home/qmd/.cache/qmd \
 COPY --chown=qmd:qmd server.mjs /opt/qmd/server.mjs
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+USER qmd
 
 ENV VAULT_PATH=/vault
 ENV QMD_PORT=3100
