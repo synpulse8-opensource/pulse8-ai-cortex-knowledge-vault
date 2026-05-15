@@ -213,7 +213,8 @@ class TestQMDHttpSearch:
         setup_response.status_code = 200
         setup_response.raise_for_status = MagicMock()
 
-        with patch.object(qmd, "_client") as mock_client:
+        with patch.object(qmd, "_client") as mock_client, \
+             patch("cortex.search.qmd_http.asyncio.sleep", new_callable=AsyncMock):
             mock_client.get = AsyncMock(side_effect=httpx.ConnectError("down"))
             mock_client.post = AsyncMock(return_value=setup_response)
             await qmd.initialize()
