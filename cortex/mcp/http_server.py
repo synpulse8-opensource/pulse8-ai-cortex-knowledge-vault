@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -83,7 +84,6 @@ async def create_fastmcp_server(
     mcp = FastMCP(
         "PULSE8.ai Cortex",
         auth=auth,
-        log_level="CRITICAL",
     )
 
     if auth:
@@ -125,6 +125,7 @@ async def create_fastmcp_server(
     @mcp.tool()
     async def vault_read(path: str) -> str:
         """Read a note by path. Returns frontmatter, content, and graph edges."""
+        logger.info("MCP tool=vault_read path=%s", path)
         result = await handle_vault_read(path=path, **services)
         return json.dumps(result, indent=2, default=str)
 
@@ -138,6 +139,7 @@ async def create_fastmcp_server(
         model: Optional[str] = None,
     ) -> str:
         """Create or update a note with provenance tracking. Updates graph and index."""
+        logger.info("MCP tool=vault_write path=%s mode=%s authored_by=%s", path, mode, authored_by)
         result = await handle_vault_write(
             path=path,
             content=content,
@@ -157,6 +159,7 @@ async def create_fastmcp_server(
         top_k: int = 10,
     ) -> str:
         """Search the vault via QMD (keyword, semantic, or hybrid). Enriched with graph edges."""
+        logger.info("MCP tool=vault_search query=%r mode=%s top_k=%d", query, mode, top_k)
         result = await handle_vault_search(
             query=query, mode=mode, collection=collection, top_k=top_k, **services
         )
@@ -171,6 +174,7 @@ async def create_fastmcp_server(
         metadata: Optional[dict] = None,
     ) -> str:
         """Create, query, or delete typed edges in the knowledge graph."""
+        logger.info("MCP tool=vault_link action=%s source=%s target=%s edge_type=%s", action, source, target, edge_type)
         result = await handle_vault_link(
             action=action,
             source=source,
@@ -186,6 +190,7 @@ async def create_fastmcp_server(
         query: str, max_notes: int = 8, max_depth: int = 2
     ) -> str:
         """Build a context window: search, graph BFS expansion, ranked subgraph with contradictions."""
+        logger.info("MCP tool=vault_context query=%r max_notes=%d max_depth=%d", query, max_notes, max_depth)
         result = await build_context_window(
             query=query,
             searcher=services["qmd"],
@@ -219,6 +224,7 @@ async def create_fastmcp_server(
         auto_compile: bool = True,
     ) -> str:
         """Ingest a raw source. Accepts text via content or binary via content_base64."""
+        logger.info("MCP tool=vault_ingest filename=%s source_type=%s auto_compile=%s", filename, source_type, auto_compile)
         import base64
 
         file_bytes = None
@@ -245,6 +251,7 @@ async def create_fastmcp_server(
         Use *force* to recompile all sources regardless of enrichment status.
         Use *path* to limit compilation to a single raw file.
         """
+        logger.info("MCP tool=vault_compile force=%s path=%s", force, path)
         result = await handle_vault_compile(force=force, path=path, **services)
         return json.dumps(result, indent=2, default=str)
 
