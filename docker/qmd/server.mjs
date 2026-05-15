@@ -140,6 +140,18 @@ const server = createServer(async (req, res) => {
         const { stdout } = await qmd(args);
         return json(res, 200, JSON.parse(stdout));
       } catch (e) {
+        if (cmd === "query") {
+          console.warn("Hybrid search failed, falling back to keyword:", e.message);
+          try {
+            const fallbackArgs = ["search", query, "--json", "-n", String(top_k)];
+            if (collection) fallbackArgs.push("-c", collection);
+            const { stdout } = await qmd(fallbackArgs);
+            return json(res, 200, JSON.parse(stdout));
+          } catch (e2) {
+            console.warn("Keyword fallback also failed:", e2.message);
+            return json(res, 200, []);
+          }
+        }
         console.warn("Search command failed:", e.message);
         return json(res, 200, []);
       }
