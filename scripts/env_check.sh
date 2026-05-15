@@ -27,6 +27,12 @@ apply_defaults() {
     export COMPILER_MODEL="${COMPILER_MODEL:-anthropic/claude-sonnet-4}"
     export LLM_BASE_URL="${LLM_BASE_URL:-https://openrouter.ai/api/v1}"
     export QMD_REFRESH_INTERVAL_SECONDS="${QMD_REFRESH_INTERVAL_SECONDS:-900}"
+    export AUTH_METHOD="${AUTH_METHOD:-none}"
+    export API_KEY="${API_KEY:-}"
+    export OIDC_TENANT_ID="${OIDC_TENANT_ID:-}"
+    export OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-}"
+    export OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
+    export OIDC_BASE_URL="${OIDC_BASE_URL:-}"
 }
 
 write_env_file() {
@@ -37,6 +43,12 @@ COMPILER_MODEL=${COMPILER_MODEL}
 LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
 VAULT_DIR=${VAULT_DIR}
 QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
+AUTH_METHOD=${AUTH_METHOD:-none}
+API_KEY=${API_KEY:-}
+OIDC_TENANT_ID=${OIDC_TENANT_ID:-}
+OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+OIDC_BASE_URL=${OIDC_BASE_URL:-}
 EOF
 }
 
@@ -65,5 +77,28 @@ prompt_missing_env() {
     echo "  LLM Base URL: $LLM_BASE_URL"
     echo "  Vault:        $VAULT_DIR"
     echo "  QMD Refresh:  ${QMD_REFRESH_INTERVAL_SECONDS}s"
+    echo "  Auth Method:  ${AUTH_METHOD}"
+    case "$AUTH_METHOD" in
+        apikey)
+            if [ -n "${API_KEY:-}" ]; then
+                echo "  API Key:      ${API_KEY:0:6}..."
+            else
+                echo "  API Key:      ⚠ AUTH_METHOD=apikey but API_KEY is not set"
+            fi
+            ;;
+        oidc)
+            if [ -n "${OIDC_TENANT_ID:-}" ]; then
+                echo "  OIDC:         tenant=${OIDC_TENANT_ID} client=${OIDC_CLIENT_ID:-unset} base=${OIDC_BASE_URL:-unset}"
+            else
+                echo "  OIDC:         ⚠ AUTH_METHOD=oidc but OIDC_TENANT_ID is not set"
+            fi
+            ;;
+        none)
+            echo "  Auth:         disabled (all endpoints open)"
+            ;;
+        *)
+            echo "  Auth:         ⚠ unknown AUTH_METHOD '${AUTH_METHOD}' (expected: none, apikey, oidc)"
+            ;;
+    esac
     echo ""
 }

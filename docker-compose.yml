@@ -35,6 +35,12 @@ services:
       - CORTEX_MCP_TRANSPORT=http
       - CORTEX_QMD_URL=http://qmd:3100
       - CORTEX_QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
+      - CORTEX_AUTH_METHOD=${AUTH_METHOD:-none}
+      - CORTEX_API_KEY=${API_KEY:-}
+      - CORTEX_OIDC_TENANT_ID=${OIDC_TENANT_ID:-}
+      - CORTEX_OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - CORTEX_OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - CORTEX_OIDC_BASE_URL=${OIDC_BASE_URL:-}
     depends_on:
       qmd:
         condition: service_healthy

@@ -31,6 +31,62 @@ class CortexSettings(BaseSettings):
 
     default_author: str = "human"
 
+    auth_method: str = "none"
+
+    api_key: str = ""
+
+    oidc_tenant_id: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_base_url: str = ""
+
+    @property
+    def auth_enabled(self) -> bool:
+        """True when any authentication method is active."""
+        return self.auth_method in ("apikey", "oidc")
+
+    @property
+    def auth_is_apikey(self) -> bool:
+        return self.auth_method == "apikey"
+
+    @property
+    def auth_is_oidc(self) -> bool:
+        return self.auth_method == "oidc"
+
+    @property
+    def oidc_enabled(self) -> bool:
+        return self.auth_is_oidc and bool(self.oidc_tenant_id and self.oidc_client_id)
+
+    @property
+    def oidc_config_url(self) -> str:
+        return (
+            f"https://login.microsoftonline.com/{self.oidc_tenant_id}"
+            "/v2.0/.well-known/openid-configuration"
+        )
+
+    @property
+    def oidc_token_url(self) -> str:
+        return (
+            f"https://login.microsoftonline.com/{self.oidc_tenant_id}"
+            "/oauth2/v2.0/token"
+        )
+
+    @property
+    def oidc_authorize_url(self) -> str:
+        return (
+            f"https://login.microsoftonline.com/{self.oidc_tenant_id}"
+            "/oauth2/v2.0/authorize"
+        )
+
+    @property
+    def oidc_issuer(self) -> str:
+        return f"https://login.microsoftonline.com/{self.oidc_tenant_id}/v2.0"
+
+    @property
+    def oidc_redirect_uri(self) -> str:
+        base = (self.oidc_base_url or f"http://localhost:{self.mcp_sse_port}").rstrip("/")
+        return f"{base}/api/v1/auth/callback"
+
     model_config = {"env_prefix": "CORTEX_"}
 
 

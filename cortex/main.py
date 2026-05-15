@@ -11,7 +11,7 @@ from cortex.api.routes import router
 from cortex.config import settings
 from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
-from cortex.mcp.http_server import create_fastmcp_server
+from cortex.mcp.http_server import create_fastmcp_server, mount_mcp_on_app
 from cortex.search.qmd import QMDSearch
 from cortex.search.qmd_cache import CachedQMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
         "compiler": KnowledgeCompiler(vault_path),
     }
     _mcp_server = await create_fastmcp_server(vault_path, services=shared_services)
-    app.mount("/mcp", _mcp_server.streamable_http_app())
+    mcp_app = mount_mcp_on_app(app, _mcp_server)
     logger.info("MCP streamable HTTP endpoint mounted at /mcp (shared services)")
 
     watcher = VaultWatcher(vault_path, app.state.graph)
@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
             "Periodic QMD refresh skipped — QMD container manages its own timer"
         )
 
-    async with _mcp_server.session_manager.run():
+    async with mcp_app.router.lifespan_context(mcp_app):
         yield
 
     if refresh_task is not None:
@@ -94,5 +94,30 @@ async def lifespan(app: FastAPI):
     await watcher.stop()
 
 
-app = FastAPI(title="PULSE8.ai Cortex", version="0.2.0", lifespan=lifespan)
+OPENAPI_TAGS = [
+    {"name": "health", "description": "Health and readiness checks"},
+    {"name": "auth", "description": "Authentication and OAuth2 token exchange"},
+    {"name": "notes", "description": "Read and write vault notes"},
+    {"name": "search", "description": "Semantic search across the vault"},
+    {"name": "graph", "description": "Knowledge graph edge operations"},
+    {"name": "ingest", "description": "Ingest and compile raw sources into notes"},
+]
+
+app = FastAPI(
+    title="PULSE8.ai Cortex",
+    version="0.2.0",
+    description="Knowledge vault API — manage notes, search, graph links, and ingest sources.",
+    openapi_tags=OPENAPI_TAGS,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan,
+)
+
+if settings.auth_enabled:
+    from cortex.auth.middleware import AuthMiddleware
+
+    app.add_middleware(AuthMiddleware)
+    logger.info("Auth middleware enabled (method=%s)", settings.auth_method)
+
 app.include_router(router, prefix="/api/v1")

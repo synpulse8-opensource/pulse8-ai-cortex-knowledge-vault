@@ -1,12 +1,15 @@
 """REST API route handlers for the Cortex vault."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
+import httpx
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
+from cortex.config import settings
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
@@ -15,7 +18,9 @@ from cortex.vault.models import Edge, EdgeType
 from cortex.vault.reader import read_note, resolve_wikilink, scan_vault
 from cortex.vault.writer import write_note
 
-router = APIRouter()
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["vault"])
 
 
 class WriteNoteBody(BaseModel):
@@ -51,6 +56,12 @@ class BulkIngestBody(BaseModel):
     dry_run: bool = False
 
 
+class TokenExchangeBody(BaseModel):
+    """Request body for exchanging an authorization code for tokens."""
+    code: str
+    redirect_uri: str = ""
+
+
 def get_vault_path(request: Request):
     """Extract the vault path from application state."""
     return request.app.state.vault_path
@@ -71,13 +82,134 @@ def get_qmd_debounce(request: Request):
     return request.app.state.qmd_debounce
 
 
-@router.get("/health")
+@router.get("/health", tags=["health"])
 async def health():
     """Liveness probe."""
     return {"status": "healthy"}
 
 
-@router.get("/notes/{path:path}")
+@router.get("/login", tags=["auth"])
+async def login(redirect_uri: str = ""):
+    """Start the Authorization Code Flow.
+
+    Returns the Microsoft Entra ID authorization URL.  The caller should
+    open this URL in a browser so the user can authenticate (with MFA if
+    required).  After login, Microsoft redirects to the callback endpoint.
+
+    Pass ``redirect_uri`` if the client wants the final redirect to go
+    somewhere other than the server's default callback URL.
+    """
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
+
+    import secrets
+    import urllib.parse
+
+    state = secrets.token_urlsafe(32)
+    callback = redirect_uri or settings.oidc_redirect_uri
+    scope = f"{settings.oidc_client_id}/.default openid profile"
+
+    params = {
+        "client_id": settings.oidc_client_id,
+        "response_type": "code",
+        "redirect_uri": callback,
+        "scope": scope,
+        "response_mode": "query",
+        "state": state,
+    }
+
+    auth_url = f"{settings.oidc_authorize_url}?{urllib.parse.urlencode(params)}"
+
+    return {
+        "authorization_url": auth_url,
+        "state": state,
+        "redirect_uri": callback,
+    }
+
+
+@router.get("/auth/callback", tags=["auth"])
+async def auth_callback(code: str = "", state: str = "", error: str = "", error_description: str = ""):  # pylint: disable=unused-argument
+    """OAuth 2.0 callback endpoint.
+
+    Microsoft redirects here after the user authenticates.  Exchanges
+    the authorization code for tokens and returns them.
+    """
+    if error:
+        raise HTTPException(status_code=401, detail=error_description or error)
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
+
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": settings.oidc_client_id,
+        "client_secret": settings.oidc_client_secret,
+        "code": code,
+        "redirect_uri": settings.oidc_redirect_uri,
+        "scope": f"{settings.oidc_client_id}/.default openid profile",
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(settings.oidc_token_url, data=data, timeout=15)
+
+    if resp.status_code != 200:
+        detail = resp.json().get("error_description", resp.text)
+        logger.warning("Token exchange failed: %s", detail)
+        raise HTTPException(status_code=401, detail=detail)
+
+    token_data = resp.json()
+    return {
+        "access_token": token_data.get("access_token"),
+        "token_type": token_data.get("token_type", "Bearer"),
+        "expires_in": token_data.get("expires_in"),
+        "refresh_token": token_data.get("refresh_token"),
+        "scope": token_data.get("scope"),
+    }
+
+
+@router.post("/login", tags=["auth"])
+async def login_token_exchange(body: TokenExchangeBody):
+    """Exchange an authorization code for tokens (programmatic variant).
+
+    Use this when the client already has an authorization code (e.g. from
+    a browser redirect) and wants to exchange it server-side.
+    """
+    if not settings.oidc_enabled:
+        raise HTTPException(status_code=501, detail="OIDC authentication is not configured")
+
+    redirect_uri = body.redirect_uri or settings.oidc_redirect_uri
+
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": settings.oidc_client_id,
+        "client_secret": settings.oidc_client_secret,
+        "code": body.code,
+        "redirect_uri": redirect_uri,
+        "scope": f"{settings.oidc_client_id}/.default openid profile",
+    }
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(settings.oidc_token_url, data=data, timeout=15)
+
+    if resp.status_code != 200:
+        detail = resp.json().get("error_description", resp.text)
+        logger.warning("Token exchange failed: %s", detail)
+        raise HTTPException(status_code=401, detail=detail)
+
+    token_data = resp.json()
+    return {
+        "access_token": token_data.get("access_token"),
+        "token_type": token_data.get("token_type", "Bearer"),
+        "expires_in": token_data.get("expires_in"),
+        "refresh_token": token_data.get("refresh_token"),
+        "scope": token_data.get("scope"),
+    }
+
+
+@router.get("/notes/{path:path}", tags=["notes"])
 async def read_note_endpoint(path: str, request: Request):
     """Read a note by vault-relative path."""
     vault_path = get_vault_path(request)
@@ -108,7 +240,7 @@ async def read_note_endpoint(path: str, request: Request):
     }
 
 
-@router.put("/notes/{path:path}")
+@router.put("/notes/{path:path}", tags=["notes"])
 async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
     """Create or update a note with provenance tracking."""
     vault_path = get_vault_path(request)
@@ -155,7 +287,7 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
         raise HTTPException(status_code=404, detail=f"Note not found: {path}") from exc
 
 
-@router.get("/search")
+@router.get("/search", tags=["search"])
 async def search_endpoint(
     q: str,
     request: Request,
@@ -164,8 +296,6 @@ async def search_endpoint(
     top_k: int = 10,
 ):
     """Search the vault via QMD and return graph-enriched results."""
-    from cortex.config import settings
-
     vault_path = get_vault_path(request)
     graph = get_graph(request)
     qmd = get_qmd(request)
@@ -190,7 +320,7 @@ async def search_endpoint(
     return {"query": q, "mode": mode, "results": enriched}
 
 
-@router.post("/links")
+@router.post("/links", tags=["graph"])
 async def create_link_endpoint(body: CreateLinkBody, request: Request):
     """Create a typed edge in the knowledge graph."""
     vault_path = get_vault_path(request)
@@ -210,7 +340,7 @@ async def create_link_endpoint(body: CreateLinkBody, request: Request):
     return {"status": "created", "source": body.source, "target": body.target, "edge_type": body.edge_type}
 
 
-@router.get("/links")
+@router.get("/links", tags=["graph"])
 async def query_links_endpoint(
     source: str,
     request: Request,
@@ -234,7 +364,7 @@ async def query_links_endpoint(
     }
 
 
-@router.delete("/links/{source:path}")
+@router.delete("/links/{source:path}", tags=["graph"])
 async def delete_link_endpoint(
     source: str,
     request: Request,
@@ -256,14 +386,14 @@ async def delete_link_endpoint(
     return {"status": "deleted", "source": source, "target": target, "edge_type": edge_type}
 
 
-@router.get("/graph/stats")
+@router.get("/graph/stats", tags=["graph"])
 async def graph_stats_endpoint(request: Request):
     """Return graph node/edge statistics."""
     graph = get_graph(request)
     return await graph.get_stats()
 
 
-@router.post("/ingest")
+@router.post("/ingest", tags=["ingest"])
 async def ingest_endpoint(body: IngestBody, request: Request):
     """Ingest a raw source file and optionally compile it."""
     vault_path = get_vault_path(request)
@@ -295,7 +425,7 @@ async def ingest_endpoint(body: IngestBody, request: Request):
     return result
 
 
-@router.post("/ingest/upload")
+@router.post("/ingest/upload", tags=["ingest"])
 async def ingest_upload_endpoint(
     request: Request,
     file: UploadFile = File(...),
@@ -334,7 +464,7 @@ async def ingest_upload_endpoint(
     return result
 
 
-@router.post("/compile")
+@router.post("/compile", tags=["ingest"])
 async def compile_endpoint(request: Request):
     """Compile all unprocessed raw sources into wiki articles."""
     vault_path = get_vault_path(request)
@@ -376,7 +506,7 @@ async def compile_endpoint(request: Request):
     }
 
 
-@router.post("/bulk-ingest")
+@router.post("/bulk-ingest", tags=["ingest"])
 async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
     """Bulk-ingest files from a server-local directory."""
     from cortex.compiler.bulk import BulkIngestor
