@@ -80,6 +80,7 @@ async def create_fastmcp_server(
     mcp = FastMCP(
         "PULSE8.ai Cortex",
         auth=auth,
+        log_level="CRITICAL",
     )
 
     if auth:
