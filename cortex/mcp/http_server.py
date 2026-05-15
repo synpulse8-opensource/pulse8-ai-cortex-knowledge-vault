@@ -77,6 +77,9 @@ async def create_fastmcp_server(
     """
     auth = _build_auth()
 
+    # this is to fix suppress logging from FastMCP
+    os.environ.setdefault("FASTMCP_LOG_LEVEL", "CRITICAL")
+
     mcp = FastMCP(
         "PULSE8.ai Cortex",
         auth=auth,
