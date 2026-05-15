@@ -1,7 +1,7 @@
 FROM node:22-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tini \
+    && apt-get install -y --no-install-recommends tini su-exec \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @tobilu/qmd
@@ -12,8 +12,8 @@ RUN mkdir -p /vault /home/qmd/.cache/qmd \
     && chown -R qmd:qmd /home/qmd/.cache
 
 COPY --chown=qmd:qmd server.mjs /opt/qmd/server.mjs
-
-USER qmd
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENV VAULT_PATH=/vault
 ENV QMD_PORT=3100
@@ -25,5 +25,5 @@ EXPOSE 3100
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD node -e "fetch('http://localhost:3100/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-ENTRYPOINT ["tini", "--"]
+ENTRYPOINT ["tini", "--", "entrypoint.sh"]
 CMD ["node", "/opt/qmd/server.mjs"]

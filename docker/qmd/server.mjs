@@ -27,7 +27,7 @@ async function runSetup() {
   const subdirs = [];
   try {
     for (const entry of readdirSync(VAULT_PATH, { withFileTypes: true })) {
-      if (entry.isDirectory() && !entry.name.startsWith(".")) {
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "lost+found") {
         subdirs.push(entry.name);
       }
     }
@@ -55,6 +55,10 @@ async function runSetup() {
       }
     }
   }
+
+  try {
+    await qmd(["collection", "remove", "--name", "lost+found"]);
+  } catch { /* not registered — ignore */ }
 
   try {
     await qmd(["context", "add", "qmd://wiki", "Knowledge articles compiled from raw sources"]);
