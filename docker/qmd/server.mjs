@@ -13,6 +13,7 @@ const REFRESH_INTERVAL_S = parseInt(
 );
 
 let setupReady = false;
+let setupRunning = false;
 let refreshTimer = null;
 
 async function qmd(args, timeout = 120_000) {
@@ -24,6 +25,20 @@ async function qmd(args, timeout = 120_000) {
 }
 
 async function runSetup() {
+  if (setupRunning) {
+    console.log("Setup already in progress — skipping");
+    return;
+  }
+  setupRunning = true;
+
+  try {
+    await runSetupInner();
+  } finally {
+    setupRunning = false;
+  }
+}
+
+async function runSetupInner() {
   const subdirs = [];
   try {
     for (const entry of readdirSync(VAULT_PATH, { withFileTypes: true })) {
@@ -48,7 +63,7 @@ async function runSetup() {
       await qmd(["collection", "add", `${VAULT_PATH}/${name}`, "--name", name]);
       console.log(`  collection '${name}' added`);
     } catch (e) {
-      if (e.message && e.message.includes("already exists")) {
+      if (e.message && (e.message.includes("already exists") || e.message.includes("SQLITE_CONSTRAINT"))) {
         console.log(`  collection '${name}' already exists`);
       } else {
         console.warn(`  collection '${name}' failed:`, e.message);
