@@ -11,6 +11,10 @@ const REFRESH_INTERVAL_S = parseInt(
   process.env.QMD_REFRESH_INTERVAL_SECONDS || "900",
   10,
 );
+const EMBED_TIMEOUT_MS = parseInt(
+  process.env.QMD_EMBED_TIMEOUT_MS || "600000",
+  10,
+);
 
 let setupReady = false;
 let setupRunning = false;
@@ -90,7 +94,7 @@ async function runSetupInner() {
   }
 
   try {
-    await qmd(["embed"], 600_000);
+    await qmd(["embed"], EMBED_TIMEOUT_MS);
     console.log("QMD embed complete");
   } catch (e) {
     console.warn("QMD embed warning:", e.message);
@@ -129,7 +133,7 @@ const server = createServer(async (req, res) => {
     if (req.url === "/update") {
       await qmd(["update"]);
       try {
-        await qmd(["embed"], 600_000);
+        await qmd(["embed"], EMBED_TIMEOUT_MS);
       } catch (e) {
         console.warn("embed warning:", e.message);
       }
@@ -184,7 +188,7 @@ async function periodicRefresh() {
   console.log("Periodic refresh: running update + embed");
   try {
     await qmd(["update"]);
-    await qmd(["embed"], 600_000);
+    await qmd(["embed"], EMBED_TIMEOUT_MS);
     console.log("Periodic refresh complete");
   } catch (e) {
     console.warn("Periodic refresh failed:", e.message);
