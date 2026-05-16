@@ -50,6 +50,31 @@ Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, 
 
 To stop: `./scripts/stop.sh`
 
+### Cortex-only mode (macOS / native QMD)
+
+If you want QMD to run natively (e.g. on macOS with Metal GPU acceleration), start only the Cortex container:
+
+```bash
+# Terminal 1: Run QMD natively
+npm install -g @tobilu/qmd
+VAULT_PATH=./example_vault node docker/qmd/server.mjs
+
+# Terminal 2: Start only Cortex in Docker
+./scripts/start.sh --cortex-only
+```
+
+To stop: `./scripts/stop.sh --cortex-only`
+
+### GPU-accelerated QMD (EC2 / Linux with NVIDIA GPU)
+
+For production deployments with NVIDIA GPU acceleration:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build -d
+```
+
+See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance selection, NVIDIA toolkit installation, and cost estimates.
+
 </details>
 
 <details>
@@ -195,6 +220,8 @@ cp .env.example .env
 | `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
 | `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
+| `QMD_EMBED_TIMEOUT_MS`         | No       | `600000`                       | Embed timeout in ms (increase for CPU-only deployments) |
+| `QMD_URL`                      | No       | —                              | External QMD URL for cortex-only mode (e.g. `http://host.docker.internal:3100`) |
 | `AUTH_METHOD`                  | No       | `none`                         | Authentication method: `none`, `apikey`, or `oidc` (see [Authentication](#authentication)) |
 | `API_KEY`                      | No       | —                              | Static API key for `x-api-key` header (used when `AUTH_METHOD=apikey`) |
 | `OIDC_TENANT_ID`               | No       | —                              | Microsoft Entra ID tenant ID (used when `AUTH_METHOD=oidc`) |

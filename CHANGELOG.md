@@ -5,6 +5,25 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] — 2026-05-16
+
+### Added — GPU Support & Flexible Deployment
+
+- **NVIDIA GPU support for QMD**: New `Dockerfile.gpu` (CUDA 12.8 runtime + Node.js 22) and `docker-compose.gpu.yml` overlay enable GPU-accelerated embedding, reranking, and query expansion on EC2. GPU is opt-in — base compose remains CPU-only and works on any machine.
+- **Cortex-only deployment mode**: `./scripts/start.sh --cortex-only` starts only the Cortex container without QMD, allowing QMD to run natively on macOS with Metal GPU acceleration. New `docker-compose.cortex-only.yml` overlay clears `depends_on` and points `CORTEX_QMD_URL` to `host.docker.internal`.
+- **Configurable embed timeout**: New `QMD_EMBED_TIMEOUT_MS` environment variable replaces the hardcoded 600s timeout in `server.mjs`, allowing CPU-only deployments to set a longer window.
+- **EC2 GPU setup guide**: New `docs/ec2-gpu-setup.md` covering instance selection (g4dn.xlarge), NVIDIA driver/toolkit installation, GPU compose deployment, multi-instance scaling, cost estimates, and security checklist.
+
+### Fixed
+
+- **Directory path crash in `read_note`**: `read_note()` now raises `IsADirectoryError` with a clear message instead of letting `frontmatter.load` crash with an unhelpful traceback. The `vault:read` handler catches it gracefully.
+- **Pylint test using wrong Python**: `test_pylint_passes` now uses `sys.executable` instead of bare `python`, preventing false failures when the system Python differs from the venv.
+
+### Tests
+
+- 1 new test for directory path guard in `read_note`
+- All 260 tests passing
+
 ## [0.5.0] — 2026-05-04
 
 ### Added — LLM Enrichment Pipeline
