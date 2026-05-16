@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 
 
 def test_pylint_passes():
@@ -12,7 +13,7 @@ def test_pylint_passes():
     assert tracked, "No tracked .py files found"
 
     result = subprocess.run(
-        ["python", "-m", "pylint", *tracked],
+        [sys.executable, "-m", "pylint", *tracked],
         capture_output=True,
         text=True,
         check=False,
