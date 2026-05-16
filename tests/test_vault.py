@@ -125,6 +125,13 @@ class TestReadNote:
         with pytest.raises(FileNotFoundError):
             read_note(tmp_vault / "wiki" / "nonexistent.md", tmp_vault)
 
+    def test_read_directory_raises(self, tmp_vault: Path):
+        """read_note must raise IsADirectoryError when path is a directory."""
+        from cortex.vault.reader import read_note
+
+        with pytest.raises(IsADirectoryError):
+            read_note(tmp_vault / "wiki", tmp_vault)
+
 
 class TestScanVault:
     def test_scan_finds_all_notes(self, tmp_vault: Path):

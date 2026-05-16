@@ -42,6 +42,8 @@ def read_note(path: Path, vault_root: Path) -> Note:
     """Read a .md file, parse frontmatter, extract wikilinks and metadata."""
     if not path.exists():
         raise FileNotFoundError(f"Note not found: {path}")
+    if path.is_dir():
+        raise IsADirectoryError(f"Path is a directory, not a note: {path}")
 
     post = frontmatter.load(str(path))
     fm: dict[str, Any] = dict(post.metadata)

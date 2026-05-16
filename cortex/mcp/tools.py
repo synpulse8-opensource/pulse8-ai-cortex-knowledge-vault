@@ -48,6 +48,8 @@ async def handle_vault_read(
         }
     except FileNotFoundError:
         return {"error": f"Note not found: {path}"}
+    except IsADirectoryError:
+        return {"error": f"Path is a directory, not a note: {path}"}
     except Exception as e:
         logger.exception("vault:read error")
         return {"error": str(e)}
