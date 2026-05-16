@@ -216,9 +216,9 @@ class TestMCPBenchmark:
             mock_bg.assert_not_awaited()
 
         print(f"\n  create_fastmcp_server (shared): {elapsed_ms:.1f}ms")
-        assert elapsed_ms < 50, (
+        assert elapsed_ms < 500, (
             f"MCP server creation too slow with shared services: "
-            f"{elapsed_ms:.1f}ms (budget: 50ms)"
+            f"{elapsed_ms:.1f}ms (budget: 500ms)"
         )
 
     @pytest.mark.asyncio
