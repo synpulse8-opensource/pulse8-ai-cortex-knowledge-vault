@@ -1,0 +1,5 @@
+services:
+  cortex:
+    depends_on: {}
+    environment:
+      - CORTEX_QMD_URL=${QMD_URL:-http://host.docker.internal:3100}

@@ -33,6 +33,7 @@ apply_defaults() {
     export OIDC_CLIENT_ID="${OIDC_CLIENT_ID:-}"
     export OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
     export OIDC_BASE_URL="${OIDC_BASE_URL:-}"
+    export QMD_URL="${QMD_URL:-}"
 }
 
 write_env_file() {
@@ -49,6 +50,7 @@ OIDC_TENANT_ID=${OIDC_TENANT_ID:-}
 OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
 OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
 OIDC_BASE_URL=${OIDC_BASE_URL:-}
+QMD_URL=${QMD_URL:-}
 EOF
 }
 

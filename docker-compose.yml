@@ -10,6 +10,7 @@ services:
       - VAULT_PATH=/vault
       - QMD_PORT=3100
       - QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
+      - QMD_EMBED_TIMEOUT_MS=${QMD_EMBED_TIMEOUT_MS:-600000}
     ports:
       - "3100:3100"
     restart: unless-stopped

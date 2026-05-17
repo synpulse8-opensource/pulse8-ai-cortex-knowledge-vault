@@ -1,0 +1,12 @@
+services:
+  qmd:
+    build:
+      context: ./docker/qmd
+      dockerfile: Dockerfile.gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
