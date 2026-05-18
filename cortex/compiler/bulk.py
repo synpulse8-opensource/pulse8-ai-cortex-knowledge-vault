@@ -90,9 +90,12 @@ class BulkIngestor:
             if not self.dry_run:
                 dest = self.vault_path / "raw" / src_file.name
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src_file, dest)
+                if src_file.resolve() != dest.resolve():
+                    shutil.copy2(src_file, dest)
+                    logger.info("Copied: %s -> %s", src_file.name, raw_rel)
+                else:
+                    logger.info("Already in raw/: %s", src_file.name)
                 manifest[raw_rel] = file_hash
-                logger.info("Copied: %s -> %s", src_file.name, raw_rel)
 
         if not self.dry_run:
             self.save_manifest(manifest)
