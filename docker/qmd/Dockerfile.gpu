@@ -1,12 +1,22 @@
 FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
 
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends \
+#        tini wget ca-certificates curl \
+#     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+#     && apt-get install -y --no-install-recommends nodejs \
+#     && rm -rf /var/lib/apt/lists/*
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       tini wget ca-certificates curl \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
+       tini wget ca-certificates curl gnupg xz-utils \
+       python3 make g++ build-essential \
+    && curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz -o node.tar.xz \
+    && tar -xf node.tar.xz -C /usr/local --strip-components=1 \
+    && rm node.tar.xz \
+    && node -v \
+    && npm -v
+    
 RUN npm install -g @tobilu/qmd
 
 RUN groupadd -r qmd && useradd -r -g qmd -m -d /home/qmd qmd
