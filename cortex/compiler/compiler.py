@@ -97,14 +97,14 @@ class KnowledgeCompiler:
             logger.warning("Skipping %s: empty conversion result", relative_source)
             return []
 
-        logger.info("Converted %s to %s", relative_source, md_content)
+        logger.info("Converted %s", relative_source)
         slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
 
         enriched = {"content": md_content, "tags": []}
         if settings.llm_api_key:
             enriched = await self.enrich_article(md_content, title)
-
+        logger.info("Enriched %s", relative_source)
         has_tags = bool(enriched["tags"])
         has_links = "[[" in enriched["content"]
         enrichment_ok = settings.llm_api_key and (has_tags or has_links)
