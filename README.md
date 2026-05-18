@@ -38,8 +38,8 @@ Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, 
 
 1. Clone the repository:
   ```bash
-    git clone https://github.com/pulse8-ai/cortex-knowledge-vault.git
-    cd cortex-knowledge-vault
+    git clone https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault.git
+    cd pulse8-ai-cortex-knowledge-vault
   ```
 2. Launch PULSE8.ai Cortex:
   ```bash
@@ -63,6 +63,7 @@ To stop: `./scripts/stop.sh`
 | **MCP Server**       | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client                                |
 | **Bulk Ingest**      | Ingest dozens or hundreds of files at once from a local directory with SHA-256 dedup and bounded concurrency              |
 | **REST API**         | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload and bulk ingest                 |
+| **Content Masking**  | Three-layer PII redaction (regex → Presidio NER → LLM) with configurable rules in Markdown                              |
 | **Vault Watcher**    | Real-time filesystem monitoring — graph stays in sync automatically                                                      |
 | **Zero Database**    | Everything persists as Markdown + JSON on your filesystem                                                                |
 
@@ -274,12 +275,13 @@ Content masking automatically redacts sensitive information (PII, financial data
 
 ### How it works
 
-Masking uses a two-layer pipeline:
+Masking uses a three-layer pipeline:
 
 1. **Regex pre-masking** — deterministic pattern matching for structured data (IDs, phone numbers, account numbers). Fast, predictable, and runs without an API key.
-2. **LLM context-aware masking** — an LLM reviews the pre-masked document and catches anything the regex missed (names, addresses, contextual references). Requires an API key.
+2. **Presidio NER** — [Microsoft Presidio](https://github.com/microsoft/presidio) detects PII entities (names, emails, locations, etc.) using NLP models. Custom recognizers are automatically registered from your masking rules file, combining built-in NER with your domain-specific patterns.
+3. **LLM context-aware masking** — an LLM reviews the pre-masked document and catches anything the first two layers missed (contextual references, implicit identifiers). Requires an API key.
 
-If no API key is configured, only regex masking runs.
+If no API key is configured, only regex and Presidio masking run.
 
 ### Setup
 
@@ -445,8 +447,8 @@ We welcome contributions! Please open an issue to discuss your idea before submi
 
 ```bash
 # Fork and clone the repo
-git clone https://github.com/<your-username>/cortex-knowledge-vault.git
-cd cortex-knowledge-vault
+git clone https://github.com/<your-username>/pulse8-ai-cortex-knowledge-vault.git
+cd pulse8-ai-cortex-knowledge-vault
 
 # Create a branch
 git checkout -b feat/my-feature
@@ -465,7 +467,7 @@ uv run pytest tests/ -v
 <details>
 <summary><h2>Reporting issues</h2></summary>
 
-Use [GitHub Issues](https://github.com/pulse8-ai/cortex-knowledge-vault/issues) to report bugs or request features.
+Use [GitHub Issues](https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/issues) to report bugs or request features.
 
 </details>
 
