@@ -1,4 +1,4 @@
-"""Content masking: regex + LLM-based sensitive content redaction before compilation."""
+"""Content masking: regex + Presidio NER + LLM-based sensitive content redaction before compilation."""
 from __future__ import annotations
 
 import hashlib
@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from openai import AsyncOpenAI
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
 
 from cortex.compiler.prompts import MASKING_SYSTEM_PROMPT
 from cortex.config import settings
@@ -69,6 +71,25 @@ def _parse_rules_markdown(text: str) -> list[MaskingRule]:
     return rules
 
 
+_analyzer: AnalyzerEngine | None = None
+_anonymizer: AnonymizerEngine | None = None
+
+
+def _get_analyzer() -> AnalyzerEngine:
+    """Lazy-initialise the shared Presidio AnalyzerEngine (expensive to construct)."""
+    global _analyzer  # noqa: PLW0603
+    if _analyzer is None:
+        _analyzer = AnalyzerEngine()
+    return _analyzer
+
+
+def _get_anonymizer() -> AnonymizerEngine:
+    global _anonymizer  # noqa: PLW0603
+    if _anonymizer is None:
+        _anonymizer = AnonymizerEngine()
+    return _anonymizer
+
+
 class ContentMasker:
     """Applies masking rules to extracted content before LLM enrichment."""
 
@@ -104,6 +125,21 @@ class ContentMasker:
                 except re.error:
                     logger.warning("Invalid regex pattern in '%s': %s", rule.category, pattern)
         return content, total_matches
+
+    def apply_presidio_masking(self, content: str, language: str = "en") -> tuple[str, int]:
+        """Detect and anonymise PII using Presidio NER + built-in recognizers.
+
+        Returns (masked_content, entity_count).
+        """
+        analyzer = _get_analyzer()
+        anonymizer = _get_anonymizer()
+
+        results = analyzer.analyze(text=content, language=language)
+        if not results:
+            return content, 0
+
+        anonymized = anonymizer.anonymize(text=content, analyzer_results=results)
+        return anonymized.text, len(results)
 
     async def apply_llm_masking(self, content: str, rules: MaskingRules) -> str:
         """Send pre-masked content + rules to LLM for context-aware masking."""

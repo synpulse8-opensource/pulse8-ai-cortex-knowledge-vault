@@ -300,6 +300,50 @@ class TestRegexMasking:
         assert "[CUSTOMER NAMES]" not in masked
 
 
+class TestPresidioMasking:
+    """Presidio NER-based PII detection layer."""
+
+    def test_apply_presidio_masking_detects_email(self, tmp_vault: Path):
+        """Presidio should detect and mask email addresses."""
+        from cortex.compiler.masking import ContentMasker
+
+        masker = ContentMasker(tmp_vault)
+        text = "Please contact john.doe@example.com for details."
+        masked, count = masker.apply_presidio_masking(text)
+        assert "john.doe@example.com" not in masked
+        assert count >= 1
+
+    def test_apply_presidio_masking_detects_phone(self, tmp_vault: Path):
+        """Presidio should detect and mask phone numbers."""
+        from cortex.compiler.masking import ContentMasker
+
+        masker = ContentMasker(tmp_vault)
+        text = "Call me at 212-555-5555 tomorrow."
+        masked, count = masker.apply_presidio_masking(text)
+        assert "212-555-5555" not in masked
+        assert count >= 1
+
+    def test_apply_presidio_masking_detects_person_name(self, tmp_vault: Path):
+        """Presidio should detect English person names via NER."""
+        from cortex.compiler.masking import ContentMasker
+
+        masker = ContentMasker(tmp_vault)
+        text = "The account belongs to John Smith, please verify."
+        masked, count = masker.apply_presidio_masking(text)
+        assert "John Smith" not in masked
+        assert count >= 1
+
+    def test_apply_presidio_masking_no_pii_unchanged(self, tmp_vault: Path):
+        """Text without PII should remain unchanged."""
+        from cortex.compiler.masking import ContentMasker
+
+        masker = ContentMasker(tmp_vault)
+        text = "The transformer architecture uses self-attention."
+        masked, count = masker.apply_presidio_masking(text)
+        assert masked == text
+        assert count == 0
+
+
 class TestLLMMasking:
     """Deliverable 3: LLM context-aware masking via apply_llm_masking."""
 
