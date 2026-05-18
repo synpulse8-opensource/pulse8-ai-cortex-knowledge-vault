@@ -24,6 +24,9 @@ fi
 
 apply_defaults
 
+# ── Validate masking rules if enabled ────────────────────────────────
+check_masking_rules || true
+
 # ── Verify Docker is running ─────────────────────────────────────────
 if ! docker info >/dev/null 2>&1; then
     echo "ERROR: Docker is not running. Please start Docker Desktop and try again."
@@ -42,6 +45,10 @@ echo "  Model:       $COMPILER_MODEL"
 echo "  LLM URL:     $LLM_BASE_URL"
 echo "  QMD Refresh: ${QMD_REFRESH_INTERVAL_SECONDS}s"
 echo "  Masking:     ${MASKING_ENABLED} (rules: ${MASKING_RULES_PATH})"
+if [ "${MASKING_ENABLED:-false}" = "true" ]; then
+echo "  Presidio NER: enabled (regex + NER + LLM pipeline)"
+echo "  Masking Model: ${MASKING_MODEL:-${COMPILER_MODEL} (default)}"
+fi
 echo ""
 
 docker compose up --build -d

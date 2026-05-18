@@ -46,6 +46,19 @@ MASKING_MODEL=${MASKING_MODEL:-}
 EOF
 }
 
+check_masking_rules() {
+    if [ "${MASKING_ENABLED:-false}" = "true" ]; then
+        local vault="${VAULT_DIR:-./example_vault}"
+        local rules_file="${vault}/${MASKING_RULES_PATH:-.cortex/masking-rules.md}"
+        if [ ! -f "$rules_file" ]; then
+            echo "WARNING: Masking is enabled but rules file not found: $rules_file"
+            echo "  Copy the example rules: cp example_vault/.cortex/masking-rules.md $rules_file"
+            return 1
+        fi
+    fi
+    return 0
+}
+
 prompt_missing_env() {
     echo ""
     echo "=== Cortex Configuration ==="

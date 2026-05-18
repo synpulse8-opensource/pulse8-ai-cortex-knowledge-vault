@@ -5,5 +5,5 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "Stopping PULSE8.ai Cortex..."
-docker compose down
+docker compose down --remove-orphans
 echo "All services stopped."
