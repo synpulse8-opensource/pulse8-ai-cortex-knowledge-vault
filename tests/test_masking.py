@@ -262,6 +262,43 @@ class TestRegexMasking:
         assert "NT$2,500,000.00" not in masked
         assert count >= 1
 
+    def test_taiwan_name_spelling_three_chars_masked(self):
+        """Chinese name spelled out character-by-character (3 chars) should be masked."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "我的名字是林木的林，美麗的美，惠顧的惠，請幫我查詢帳戶。"
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "林木的林，美麗的美，惠顧的惠" not in masked
+        assert "[CUSTOMER NAMES]" in masked
+        assert count >= 1
+
+    def test_taiwan_name_spelling_english_comma_masked(self):
+        """Name spelling with English commas should also be masked."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "我叫林木的林,美麗的美,惠顧的惠。"
+        masked, count = masker.apply_regex_rules(text, rules)
+        assert "林木的林,美麗的美,惠顧的惠" not in masked
+        assert "[CUSTOMER NAMES]" in masked
+        assert count >= 1
+
+    def test_taiwan_name_spelling_no_false_positive(self):
+        """Normal Chinese text with 的 should not be falsely matched."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "美麗的風景和壯觀的山脈，令人讚嘆。"
+        masked, _ = masker.apply_regex_rules(text, rules)
+        assert "[CUSTOMER NAMES]" not in masked
+
 
 class TestLLMMasking:
     """Deliverable 3: LLM context-aware masking via apply_llm_masking."""

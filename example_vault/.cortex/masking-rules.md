@@ -121,6 +121,19 @@ or names appearing alongside other PII (e.g., next to an ID number or
 account number). Do not mask names of public figures, companies, or
 place names.
 
+In spoken or transcribed Chinese, people often spell out their name
+character by character using a well-known word that contains the target
+character, e.g. "林木的林，美麗的美，惠顧的惠" spells the name 林美惠.
+The regex below catches the most common 3-character name spelling.
+The LLM should additionally catch:
+- 2-character names (e.g. "國王的王，大人的大")
+- 4-character names with compound surnames (e.g. "歐洲的歐，陽光的陽，美麗的美，惠顧的惠")
+- Variants that use other delimiters (。；、) or phrasing (e.g. "林就是林木的林")
+- Partial spellings where only some characters are explained
+
+### Patterns
+- `([\u4e00-\u9fff])[\u4e00-\u9fff]+的\1[，,]\s*([\u4e00-\u9fff])[\u4e00-\u9fff]+的\2[，,]\s*([\u4e00-\u9fff])[\u4e00-\u9fff]+的\3`
+
 ## Passport Numbers
 
 Mask passport numbers (護照號碼). Taiwan passport numbers consist of
