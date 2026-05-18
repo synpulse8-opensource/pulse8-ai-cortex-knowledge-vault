@@ -15,7 +15,7 @@ from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
 from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
-from cortex.vault.reader import read_note, resolve_wikilink, scan_vault
+from cortex.vault.reader import read_note, resolve_wikilink
 from cortex.vault.writer import write_note
 
 logger = logging.getLogger(__name__)
@@ -464,46 +464,32 @@ async def ingest_upload_endpoint(
     return result
 
 
-@router.post("/compile", tags=["ingest"])
+@router.post("/compile", tags=["ingest"], status_code=202)
 async def compile_endpoint(request: Request):
-    """Compile all unprocessed raw sources into wiki articles."""
+    """Start compiling all unprocessed raw sources (runs in background).
+
+    Returns 202 immediately. Only one compile can run at a time.
+    Poll GET /compile/status for progress.
+    """
+    from cortex.compiler.compiler import start_compile
+
     vault_path = get_vault_path(request)
     qmd_debounce = get_qmd_debounce(request)
 
-    existing_sources: set[str] = set()
-    for note in scan_vault(vault_path):
-        sp = note.frontmatter.get("source_path")
-        if sp:
-            existing_sources.add(sp)
+    try:
+        result = start_compile(vault_path, qmd_debounce)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
-    raw_dir = vault_path / "raw"
-    if not raw_dir.exists():
-        return {"status": "no raw directory", "compiled": 0}
+    return result
 
-    from cortex.compiler.compiler import KnowledgeCompiler
 
-    compiler = KnowledgeCompiler(vault_path)
-    compiled_count = 0
-    all_created: list[str] = []
+@router.get("/compile/status", tags=["ingest"])
+async def compile_status_endpoint():
+    """Check the status of the current or last compile task."""
+    from cortex.compiler.compiler import get_compile_status
 
-    for raw_file in sorted(raw_dir.iterdir()):
-        if raw_file.is_dir():
-            continue
-        rel = str(raw_file.relative_to(vault_path))
-        if rel not in existing_sources:
-            created = await compiler.ingest_source(raw_file)
-            compiled_count += 1
-            all_created.extend(str(p.relative_to(vault_path)) for p in created)
-
-    await rebuild_index(vault_path)
-    qmd_debounce.schedule()
-    await log_operation(vault_path, "api", "vault:compile", f"Compiled {compiled_count} sources")
-
-    return {
-        "status": "compiled",
-        "sources_compiled": compiled_count,
-        "articles_created": all_created,
-    }
+    return get_compile_status()
 
 
 @router.post("/bulk-ingest", tags=["ingest"])

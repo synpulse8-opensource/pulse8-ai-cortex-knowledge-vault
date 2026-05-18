@@ -1,20 +1,26 @@
 """Knowledge compiler: MarkItDown conversion + LLM cross-referencing."""
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import logging
 from pathlib import Path
+from typing import Any
 
 from markitdown import MarkItDown
 from openai import AsyncOpenAI
 
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.config import settings
-from cortex.vault.reader import read_note
+from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.writer import write_note
+from cortex.vault.index import rebuild_index
+from cortex.log.audit import log_operation
 
 logger = logging.getLogger(__name__)
+
+_compile_status: dict[str, Any] = {"running": False, "last_result": None}
 
 def _slug_from_stem(stem: str) -> str:
     """Convert a filename stem to a kebab-case slug."""
@@ -83,12 +89,25 @@ class KnowledgeCompiler:
         except (json.JSONDecodeError, AttributeError):
             return {"content": original, "tags": []}
 
-    async def ingest_source(self, source_path: Path) -> list[Path]:
-        """Convert a raw source file to wiki Markdown, then enrich with LLM if available."""
+    async def ingest_source(
+        self, source_path: Path, timeout: float = 3600.0 # 3600 seconds = 60 minutes
+    ) -> list[Path]:
+        """Convert a raw source file to wiki Markdown, then enrich with LLM if available.
+
+        Args:
+            source_path: Path to the raw file to ingest.
+            timeout: Max seconds for the full ingest (conversion + enrichment).
+        """
         relative_source = str(source_path.relative_to(self.vault_path))
         logger.info("Ingesting %s", relative_source)
         try:
-            result = self._md.convert_local(str(source_path))
+            result = await asyncio.wait_for(
+                asyncio.to_thread(self._md.convert_local, str(source_path)),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Skipping %s: conversion timed out after %.0fs", relative_source, timeout)
+            return []
         except Exception as exc:
             logger.warning("Skipping %s: %s", relative_source, exc)
             return []
@@ -198,3 +217,81 @@ class KnowledgeCompiler:
                 content = path.read_text()
                 content += f"\n\n> [!contradiction]\n> {details}\n"
                 path.write_text(content)
+
+
+async def _run_compile(vault_path: Path, qmd_debounce) -> None:
+    """Background compile task — processes all uncompiled raw sources."""
+    try:
+        existing_sources: set[str] = set()
+        for note in scan_vault(vault_path):
+            sp = note.frontmatter.get("source_path")
+            if sp:
+                existing_sources.add(sp)
+
+        raw_dir = vault_path / "raw"
+        if not raw_dir.exists():
+            _compile_status["last_result"] = {"status": "no raw directory", "compiled": 0}
+            return
+
+        compiler = KnowledgeCompiler(vault_path)
+        compiled_count = 0
+        failed_count = 0
+        all_created: list[str] = []
+
+        for raw_file in sorted(raw_dir.iterdir()):
+            if raw_file.is_dir():
+                continue
+            rel = str(raw_file.relative_to(vault_path))
+            if rel not in existing_sources:
+                try:
+                    created = await compiler.ingest_source(raw_file)
+                    compiled_count += 1
+                    all_created.extend(str(p.relative_to(vault_path)) for p in created)
+                except Exception:  # pylint: disable=broad-exception-caught
+                    logger.exception("Failed to compile %s", rel)
+                    failed_count += 1
+
+        await rebuild_index(vault_path)
+        qmd_debounce.schedule()
+        await log_operation(
+            vault_path, "api", "vault:compile", f"Compiled {compiled_count} sources"
+        )
+
+        _compile_status["last_result"] = {
+            "status": "completed",
+            "sources_compiled": compiled_count,
+            "sources_failed": failed_count,
+            "articles_created": all_created,
+        }
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.exception("Compile task failed")
+        _compile_status["last_result"] = {"status": "error", "detail": str(exc)}
+    finally:
+        _compile_status["running"] = False
+
+
+def start_compile(vault_path: Path, qmd_debounce) -> dict[str, Any]:
+    """Start the background compile task. Returns immediately.
+
+    Raises ValueError if a compile is already running.
+    """
+    if _compile_status["running"]:
+        raise ValueError("A compile task is already running")
+
+    raw_dir = vault_path / "raw"
+    if not raw_dir.exists():
+        return {"status": "no raw directory", "compiled": 0}
+
+    _compile_status["running"] = True
+    _compile_status["last_result"] = None
+    asyncio.create_task(_run_compile(vault_path, qmd_debounce))
+
+    return {"status": "accepted", "message": "Compile started in background"}
+
+
+def get_compile_status() -> dict[str, Any]:
+    """Return the current compile task status."""
+    return {
+        "running": _compile_status["running"],
+        "last_result": _compile_status["last_result"],
+    }

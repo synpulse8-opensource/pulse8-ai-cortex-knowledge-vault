@@ -199,13 +199,11 @@ class TestCompileEndpoint:
         vault_path = app_client.app.state.vault_path
         (vault_path / "raw" / "compile-api-test.txt").write_text("Compile me via API.")
 
-        with patch.object(app_client.app.state.qmd_debounce, "schedule") as mock_schedule:
-            with patch("cortex.compiler.compiler.KnowledgeCompiler") as MockCompiler:  # pylint: disable=invalid-name
-                mock_instance = MockCompiler.return_value
-                mock_instance.ingest_source = AsyncMock(return_value=[])
+        with patch.object(app_client.app.state.qmd_debounce, "schedule"):
+            with patch("cortex.compiler.compiler.KnowledgeCompiler"):
                 response = app_client.post("/api/v1/compile")
-            assert response.status_code == 200
-            mock_schedule.assert_called_once()
+            assert response.status_code == 202
+            assert response.json()["status"] == "accepted"
 
 
 class TestBulkIngestEndpoint:
