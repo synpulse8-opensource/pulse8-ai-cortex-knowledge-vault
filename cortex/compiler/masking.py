@@ -72,23 +72,23 @@ def _parse_rules_markdown(text: str) -> list[MaskingRule]:
     return rules
 
 
-_analyzer: AnalyzerEngine | None = None
-_anonymizer: AnonymizerEngine | None = None
+_ANALYZER: AnalyzerEngine | None = None
+_ANONYMIZER: AnonymizerEngine | None = None
 
 
 def _get_analyzer() -> AnalyzerEngine:
     """Lazy-initialise the shared Presidio AnalyzerEngine (expensive to construct)."""
-    global _analyzer  # noqa: PLW0603
-    if _analyzer is None:
-        _analyzer = AnalyzerEngine()
-    return _analyzer
+    global _ANALYZER  # noqa: PLW0603
+    if _ANALYZER is None:
+        _ANALYZER = AnalyzerEngine()
+    return _ANALYZER
 
 
 def _get_anonymizer() -> AnonymizerEngine:
-    global _anonymizer  # noqa: PLW0603
-    if _anonymizer is None:
-        _anonymizer = AnonymizerEngine()
-    return _anonymizer
+    global _ANONYMIZER  # noqa: PLW0603
+    if _ANONYMIZER is None:
+        _ANONYMIZER = AnonymizerEngine()
+    return _ANONYMIZER
 
 
 class ContentMasker:

@@ -347,7 +347,7 @@ class TestPresidioMasking:
 class TestPresidioCustomRecognizers:
     """Custom masking-rules.md patterns registered as Presidio recognizers."""
 
-    def test_presidio_with_custom_rules_masks_taiwan_nid(self, tmp_vault: Path):
+    def test_presidio_with_custom_rules_masks_taiwan_nid(self):
         """Taiwan national ID pattern from rules file should work as a Presidio recognizer."""
         from cortex.compiler.masking import ContentMasker
 
@@ -359,7 +359,7 @@ class TestPresidioCustomRecognizers:
         assert "A123456789" not in masked
         assert count >= 1
 
-    def test_presidio_with_custom_rules_masks_name_spelling(self, tmp_vault: Path):
+    def test_presidio_with_custom_rules_masks_name_spelling(self):
         """Chinese name spelling pattern from rules should work as Presidio recognizer."""
         from cortex.compiler.masking import ContentMasker
 
@@ -371,7 +371,7 @@ class TestPresidioCustomRecognizers:
         assert "林木的林，美麗的美，惠顧的惠" not in masked
         assert count >= 1
 
-    def test_presidio_custom_rules_combined_with_builtin(self, tmp_vault: Path):
+    def test_presidio_custom_rules_combined_with_builtin(self):
         """Custom rules + built-in Presidio recognizers should both fire."""
         from cortex.compiler.masking import ContentMasker
 
