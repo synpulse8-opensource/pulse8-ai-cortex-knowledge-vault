@@ -86,18 +86,18 @@ class KnowledgeCompiler:
     async def ingest_source(self, source_path: Path) -> list[Path]:
         """Convert a raw source file to wiki Markdown, then enrich with LLM if available."""
         relative_source = str(source_path.relative_to(self.vault_path))
-
+        logger.info("Ingesting %s", relative_source)
         try:
             result = self._md.convert_local(str(source_path))
         except Exception as exc:
             logger.warning("Skipping %s: %s", relative_source, exc)
             return []
+        logger.info("Converted %s", relative_source)
         md_content = (result.text_content or "").strip()
         if not md_content:
             logger.warning("Skipping %s: empty conversion result", relative_source)
             return []
 
-        logger.info("Converted %s", relative_source)
         slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
 
