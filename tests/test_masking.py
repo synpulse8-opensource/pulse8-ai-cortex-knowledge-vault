@@ -344,6 +344,47 @@ class TestPresidioMasking:
         assert count == 0
 
 
+class TestPresidioCustomRecognizers:
+    """Custom masking-rules.md patterns registered as Presidio recognizers."""
+
+    def test_presidio_with_custom_rules_masks_taiwan_nid(self, tmp_vault: Path):
+        """Taiwan national ID pattern from rules file should work as a Presidio recognizer."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "Customer ID: A123456789, please verify."
+        masked, count = masker.apply_presidio_masking(text, rules=rules)
+        assert "A123456789" not in masked
+        assert count >= 1
+
+    def test_presidio_with_custom_rules_masks_name_spelling(self, tmp_vault: Path):
+        """Chinese name spelling pattern from rules should work as Presidio recognizer."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "我的名字是林木的林，美麗的美，惠顧的惠。"
+        masked, count = masker.apply_presidio_masking(text, rules=rules)
+        assert "林木的林，美麗的美，惠顧的惠" not in masked
+        assert count >= 1
+
+    def test_presidio_custom_rules_combined_with_builtin(self, tmp_vault: Path):
+        """Custom rules + built-in Presidio recognizers should both fire."""
+        from cortex.compiler.masking import ContentMasker
+
+        vault = Path(__file__).resolve().parent.parent / "example_vault"
+        masker = ContentMasker(vault)
+        rules = masker.load_rules()
+        text = "Contact john@example.com, NID: A123456789"
+        masked, count = masker.apply_presidio_masking(text, rules=rules)
+        assert "john@example.com" not in masked
+        assert "A123456789" not in masked
+        assert count >= 2
+
+
 class TestLLMMasking:
     """Deliverable 3: LLM context-aware masking via apply_llm_masking."""
 

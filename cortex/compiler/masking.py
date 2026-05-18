@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from openai import AsyncOpenAI
-from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
 from presidio_anonymizer import AnonymizerEngine
 
 from cortex.compiler.prompts import MASKING_SYSTEM_PROMPT
@@ -127,15 +127,46 @@ class ContentMasker:
                     logger.warning("Invalid regex pattern in '%s': %s", rule.category, pattern)
         return content, total_matches
 
-    def apply_presidio_masking(self, content: str, language: str = "en") -> tuple[str, int]:
-        """Detect and anonymise PII using Presidio NER + built-in recognizers.
+    @staticmethod
+    def _build_custom_recognizers(rules: MaskingRules) -> list[PatternRecognizer]:
+        """Convert masking-rules.md regex patterns into Presidio PatternRecognizers."""
+        recognizers: list[PatternRecognizer] = []
+        for rule in rules.rules:
+            if not rule.patterns:
+                continue
+            entity_type = rule.category.upper().replace(" ", "_")
+            patterns = [
+                Pattern(name=f"{entity_type}_{i}", regex=p, score=0.85)
+                for i, p in enumerate(rule.patterns)
+            ]
+            recognizers.append(
+                PatternRecognizer(
+                    supported_entity=entity_type,
+                    patterns=patterns,
+                    supported_language="en",
+                )
+            )
+        return recognizers
+
+    def apply_presidio_masking(
+        self,
+        content: str,
+        language: str = "en",
+        rules: MaskingRules | None = None,
+    ) -> tuple[str, int]:
+        """Detect and anonymise PII using Presidio NER + built-in + custom recognizers.
 
         Returns (masked_content, entity_count).
         """
         analyzer = _get_analyzer()
         anonymizer = _get_anonymizer()
 
-        results = analyzer.analyze(text=content, language=language)
+        ad_hoc_recognizers = self._build_custom_recognizers(rules) if rules else None
+        results = analyzer.analyze(
+            text=content,
+            language=language,
+            ad_hoc_recognizers=ad_hoc_recognizers,
+        )
         if not results:
             return content, 0
 
@@ -185,7 +216,7 @@ class ContentMasker:
 
         masked, regex_count = self.apply_regex_rules(content, rules)
 
-        masked, presidio_count = self.apply_presidio_masking(masked)
+        masked, presidio_count = self.apply_presidio_masking(masked, rules=rules)
 
         llm_used = False
         if settings.llm_api_key:
