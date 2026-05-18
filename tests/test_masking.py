@@ -502,6 +502,25 @@ class TestMaskPipeline:
         assert result.llm_masking is True
 
 
+    @pytest.mark.asyncio
+    async def test_mask_pipeline_includes_presidio(self, tmp_vault: Path):
+        """mask() should run Presidio NER to catch PII that regex rules miss."""
+        from unittest.mock import patch
+        from cortex.compiler.masking import ContentMasker
+
+        (tmp_vault / ".cortex" / "masking-rules.md").write_text(SAMPLE_RULES_MD)
+        masker = ContentMasker(tmp_vault)
+        with patch("cortex.compiler.masking.settings") as mock_settings:
+            mock_settings.llm_api_key = ""
+            mock_settings.masking_rules_path = ".cortex/masking-rules.md"
+            result = await masker.mask(
+                "Contact john.doe@example.com about Acme Corp deal."
+            )
+        assert "john.doe@example.com" not in result.content
+        assert "Acme Corp" not in result.content
+        assert result.presidio_entities > 0
+
+
 class TestRulesVersion:
     """Deliverable 6: rules_version computes SHA-256 of the rules file."""
 

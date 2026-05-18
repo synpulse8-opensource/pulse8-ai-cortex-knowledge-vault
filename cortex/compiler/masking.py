@@ -42,6 +42,7 @@ class MaskingResult:
     content: str
     applied_rules: int
     llm_masking: bool
+    presidio_entities: int = 0
 
 
 def _parse_rules_markdown(text: str) -> list[MaskingRule]:
@@ -177,16 +178,23 @@ class ContentMasker:
         return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
     async def mask(self, content: str) -> MaskingResult:
-        """Full masking pipeline: load rules, apply regex, then LLM."""
+        """Full masking pipeline: regex → Presidio NER → LLM."""
         rules = self.load_rules()
         if rules is None:
             return MaskingResult(content=content, applied_rules=0, llm_masking=False)
 
         masked, regex_count = self.apply_regex_rules(content, rules)
 
+        masked, presidio_count = self.apply_presidio_masking(masked)
+
         llm_used = False
         if settings.llm_api_key:
             masked = await self.apply_llm_masking(masked, rules)
             llm_used = True
 
-        return MaskingResult(content=masked, applied_rules=regex_count, llm_masking=llm_used)
+        return MaskingResult(
+            content=masked,
+            applied_rules=regex_count,
+            llm_masking=llm_used,
+            presidio_entities=presidio_count,
+        )
