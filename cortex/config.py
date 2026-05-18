@@ -18,6 +18,7 @@ class CortexSettings(BaseSettings):
     llm_base_url: str = "https://openrouter.ai/api/v1"
     compiler_model: str = "anthropic/claude-sonnet-4"
     compiler_max_tokens: int = 4096
+    compiler_max_file_size_mb: int = 50
 
     qmd_refresh_interval_seconds: int = 900
 

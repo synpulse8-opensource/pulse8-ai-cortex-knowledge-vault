@@ -138,7 +138,7 @@ class TestCompileBatch:
         ingestor.copy_new_files()
         raw_paths = list((tmp_vault / "raw").iterdir())
 
-        mock_ingest = AsyncMock(side_effect=lambda p: [tmp_vault / "wiki" / f"{p.stem}.md"])
+        mock_ingest = AsyncMock(side_effect=lambda p, **kw: [tmp_vault / "wiki" / f"{p.stem}.md"])
         mock_xref = AsyncMock()
 
         with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
@@ -164,7 +164,7 @@ class TestCompileBatch:
 
         call_count = 0
 
-        async def _side_effect(p: Path) -> list[Path]:
+        async def _side_effect(p: Path, **_kw) -> list[Path]:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -188,7 +188,7 @@ class TestCompileBatch:
         with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
             instance = mock_cls.return_value
             instance.ingest_source = AsyncMock(
-                side_effect=lambda p: [tmp_vault / "wiki" / f"{p.stem}.md"]
+                side_effect=lambda p, **kw: [tmp_vault / "wiki" / f"{p.stem}.md"]
             )
             instance.compile_cross_references = AsyncMock()
 
@@ -206,7 +206,7 @@ class TestRunPipeline:
         with patch("cortex.compiler.bulk.KnowledgeCompiler") as mock_cls:
             instance = mock_cls.return_value
             instance.ingest_source = AsyncMock(
-                side_effect=lambda p: [tmp_vault / "wiki" / f"{p.stem}.md"]
+                side_effect=lambda p, **kw: [tmp_vault / "wiki" / f"{p.stem}.md"]
             )
             instance.compile_cross_references = AsyncMock()
 

@@ -119,7 +119,7 @@ class BulkIngestor:
             async with semaphore:
                 logger.info("[%d/%d] Compiling %s...", idx + 1, total, raw_path.name)
                 try:
-                    return await compiler.ingest_source(raw_path)
+                    return await compiler.ingest_source(raw_path, force=self.force)
                 except Exception:
                     logger.exception("Failed to compile %s", raw_path.name)
                     return []

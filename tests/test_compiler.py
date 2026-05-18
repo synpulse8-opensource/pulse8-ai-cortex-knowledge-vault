@@ -178,6 +178,7 @@ class TestLLMEnrichment:
 
         with patch("cortex.compiler.compiler.settings") as mock_settings:
             mock_settings.llm_api_key = "test-key"
+            mock_settings.compiler_max_file_size_mb = 50
             with patch.object(
                 compiler.client.chat.completions, "create",
                 new_callable=AsyncMock, return_value=mock_response,
@@ -200,6 +201,7 @@ class TestLLMEnrichment:
             mock_settings.llm_base_url = "https://openrouter.ai/api/v1"
             mock_settings.compiler_model = "test"
             mock_settings.compiler_max_tokens = 4096
+            mock_settings.compiler_max_file_size_mb = 50
             result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
 
         assert len(result) == 1
@@ -227,6 +229,7 @@ class TestEnrichmentStatus:
             mock_settings.llm_base_url = "https://test"
             mock_settings.compiler_model = "test"
             mock_settings.compiler_max_tokens = 4096
+            mock_settings.compiler_max_file_size_mb = 50
             with patch.object(
                 compiler.client.chat.completions, "create",
                 new_callable=AsyncMock, return_value=mock_response,
@@ -252,6 +255,7 @@ class TestEnrichmentStatus:
             mock_settings.llm_base_url = "https://test"
             mock_settings.compiler_model = "test"
             mock_settings.compiler_max_tokens = 4096
+            mock_settings.compiler_max_file_size_mb = 50
             with patch.object(
                 compiler.client.chat.completions, "create",
                 new_callable=AsyncMock, return_value=mock_response,
@@ -276,6 +280,7 @@ class TestEnrichmentStatus:
             mock_settings.llm_base_url = "https://test"
             mock_settings.compiler_model = "test"
             mock_settings.compiler_max_tokens = 4096
+            mock_settings.compiler_max_file_size_mb = 50
             result = await compiler.ingest_source(
                 tmp_vault / "raw" / "transformer-paper.txt"
             )

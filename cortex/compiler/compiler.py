@@ -90,16 +90,32 @@ class KnowledgeCompiler:
             return {"content": original, "tags": []}
 
     async def ingest_source(
-        self, source_path: Path, timeout: float = 3600.0 # 3600 seconds = 60 minutes
+        self, source_path: Path, timeout: float = 3600.0, force: bool = False
     ) -> list[Path]:
         """Convert a raw source file to wiki Markdown, then enrich with LLM if available.
 
         Args:
             source_path: Path to the raw file to ingest.
             timeout: Max seconds for the full ingest (conversion + enrichment).
+            force: If True, re-compile even if wiki article is up-to-date.
         """
         relative_source = str(source_path.relative_to(self.vault_path))
-        logger.info("Ingesting %s", relative_source)
+        file_size_mb = source_path.stat().st_size / (1024 * 1024)
+        if file_size_mb > settings.compiler_max_file_size_mb:
+            logger.warning(
+                "Skipping %s: file too large (%.1f MB > %d MB limit)",
+                relative_source, file_size_mb, settings.compiler_max_file_size_mb,
+            )
+            return []
+
+        slug = _slug_from_stem(source_path.stem)
+        wiki_path = self.vault_path / "wiki" / f"{slug}.md"
+        if wiki_path.exists() and not force:
+            if source_path.stat().st_mtime <= wiki_path.stat().st_mtime:
+                logger.info("Skipping %s: wiki already up-to-date", relative_source)
+                return [wiki_path]
+
+        logger.info("Ingesting %s (%.1f MB)", relative_source, file_size_mb)
         try:
             result = await asyncio.wait_for(
                 asyncio.to_thread(self._md.convert_local, str(source_path)),
@@ -117,7 +133,6 @@ class KnowledgeCompiler:
             logger.warning("Skipping %s: empty conversion result", relative_source)
             return []
 
-        slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
 
         enriched = {"content": md_content, "tags": []}
@@ -128,8 +143,7 @@ class KnowledgeCompiler:
         has_links = "[[" in enriched["content"]
         enrichment_ok = settings.llm_api_key and (has_tags or has_links)
 
-        filename = f"{slug}.md"
-        note_path = self.vault_path / "wiki" / filename
+        note_path = wiki_path
 
         frontmatter: dict = {
             "title": title,
