@@ -97,7 +97,7 @@ class KnowledgeCompiler:
             logger.warning("Skipping %s: empty conversion result", relative_source)
             return []
 
-        logger.info(f"Converted {relative_source} to {md_content}")
+        logger.info("Converted %s to %s", relative_source, md_content)
         slug = _slug_from_stem(source_path.stem)
         title = _title_from_markdown(md_content, source_path.stem)
 
@@ -129,7 +129,7 @@ class KnowledgeCompiler:
             authored_by="markitdown",
             model=self.model if settings.llm_api_key else None,
         )
-        logger.info(f"Wrote note {title} to {note_path}")
+        logger.info("Wrote note %s to %s", title, note_path)
 
         return [note_path]
 
