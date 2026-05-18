@@ -19,6 +19,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY cortex/ cortex/
 COPY scripts/ scripts/
 RUN uv sync --frozen --no-dev
+RUN uv run python -m spacy download en_core_web_sm
 
 RUN mkdir -p /vault/raw /vault/wiki /vault/agents /vault/sessions /vault/daily /vault/.cortex
 
