@@ -5,6 +5,41 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] — 2026-05-18
+
+### Added — Authentication & Security
+
+- **API key authentication**: New `AUTH_METHOD=apikey` mode — clients pass `x-api-key` header. Simple, stateless, no OAuth popups.
+- **Microsoft Entra ID (OIDC)**: New `AUTH_METHOD=oidc` mode with OAuth 2.0 Authorization Code Flow + MFA support. Interactive browser-based login for enterprise environments.
+- **OpenAPI specification**: Auto-generated OpenAPI docs served via FastAPI.
+
+### Added — GPU Support & Flexible Deployment
+
+- **NVIDIA GPU support for QMD**: New `Dockerfile.gpu` (CUDA 12.8 runtime + Node.js 22) and `docker-compose.gpu.yml` overlay enable GPU-accelerated embedding, reranking, and query expansion on EC2.
+- **Cortex-only deployment mode**: `./scripts/start.sh --cortex-only` starts only the Cortex container without QMD, allowing QMD to run natively on macOS with Metal GPU acceleration.
+- **Configurable embed timeout**: New `QMD_EMBED_TIMEOUT_MS` environment variable replaces the hardcoded 600s timeout.
+- **EC2 GPU setup guide**: New `docs/ec2-gpu-setup.md` covering instance selection, NVIDIA driver installation, and cost estimates.
+
+### Added — CI/CD & Operations
+
+- **JFrog build & push workflow**: Automated container image builds and publishing.
+- **Enhanced logging**: Ingestion and compilation steps now emit structured logs for observability.
+- **Import constraints**: Compiler enforces import boundaries for cleaner module architecture.
+
+### Fixed
+
+- **SameFileError in bulk ingest**: Prevented crash when source and destination are the same file.
+- **Dockerfile.gpu Node version**: Updated to a newer Node.js version for compatibility.
+- **Directory path crash in `read_note`**: Raises `IsADirectoryError` with a clear message instead of crashing.
+- **Pylint test using wrong Python**: Uses `sys.executable` instead of bare `python`.
+- **Flaky perf test**: Adjusted budget for CI runners.
+- **QMD model download race**: Embed no longer starts before model download completes.
+- **Permission and logging issues**: Various fixes for Docker volume permissions and log suppression.
+
+### Changed
+
+- **Development status**: Promoted from Beta to Production/Stable.
+
 ## [0.6.0] — 2026-05-16
 
 ### Added — GPU Support & Flexible Deployment

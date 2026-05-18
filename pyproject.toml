@@ -1,6 +1,6 @@
 [project]
 name = "pulse8-ai-cortex-knowledge-vault"
-version = "0.7.0"
+version = "1.0.0"
 description = "PULSE8.ai Cortex — agent-native knowledge OS built on Markdown files"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -10,7 +10,7 @@ authors = [
 ]
 keywords = ["knowledge-graph", "mcp", "llm", "markdown", "wiki", "obsidian"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
