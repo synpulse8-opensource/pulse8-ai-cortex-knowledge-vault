@@ -12,6 +12,7 @@ from markitdown import MarkItDown
 from openai import AsyncOpenAI
 
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
+from cortex.compiler.ingest_manifest import record_skipped_file
 from cortex.config import settings
 from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.writer import write_note
@@ -102,10 +103,12 @@ class KnowledgeCompiler:
         relative_source = str(source_path.relative_to(self.vault_path))
         file_size_mb = source_path.stat().st_size / (1024 * 1024)
         if file_size_mb > settings.compiler_max_file_size_mb:
-            logger.warning(
-                "Skipping %s: file too large (%.1f MB > %d MB limit)",
-                relative_source, file_size_mb, settings.compiler_max_file_size_mb,
+            reason = (
+                f"file too large ({file_size_mb:.1f} MB > "
+                f"{settings.compiler_max_file_size_mb} MB limit)"
             )
+            logger.warning("Skipping %s: %s", relative_source, reason)
+            record_skipped_file(self.vault_path, source_path, reason)
             return []
 
         slug = _slug_from_stem(source_path.stem)
@@ -113,6 +116,7 @@ class KnowledgeCompiler:
         if wiki_path.exists() and not force:
             if source_path.stat().st_mtime <= wiki_path.stat().st_mtime:
                 logger.info("Skipping %s: wiki already up-to-date", relative_source)
+                record_skipped_file(self.vault_path, source_path, "wiki already up-to-date")
                 return [wiki_path]
 
         logger.info("Ingesting %s (%.1f MB)", relative_source, file_size_mb)
@@ -122,15 +126,21 @@ class KnowledgeCompiler:
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
-            logger.warning("Skipping %s: conversion timed out after %.0fs", relative_source, timeout)
+            reason = f"conversion timed out after {timeout:.0f}s"
+            logger.warning("Skipping %s: %s", relative_source, reason)
+            record_skipped_file(self.vault_path, source_path, reason)
             return []
         except Exception as exc:
-            logger.warning("Skipping %s: %s", relative_source, exc)
+            reason = f"conversion failed: {exc}"
+            logger.warning("Skipping %s: %s", relative_source, reason)
+            record_skipped_file(self.vault_path, source_path, reason)
             return []
         logger.info("Converted %s", relative_source)
         md_content = (result.text_content or "").strip()
         if not md_content:
-            logger.warning("Skipping %s: empty conversion result", relative_source)
+            reason = "empty conversion result"
+            logger.warning("Skipping %s: %s", relative_source, reason)
+            record_skipped_file(self.vault_path, source_path, reason)
             return []
 
         title = _title_from_markdown(md_content, source_path.stem)
@@ -259,10 +269,14 @@ async def _run_compile(vault_path: Path, qmd_debounce) -> None:
             if rel not in existing_sources:
                 try:
                     created = await compiler.ingest_source(raw_file)
-                    compiled_count += 1
-                    all_created.extend(str(p.relative_to(vault_path)) for p in created)
-                except Exception:  # pylint: disable=broad-exception-caught
+                    if created:
+                        compiled_count += 1
+                        all_created.extend(str(p.relative_to(vault_path)) for p in created)
+                    else:
+                        failed_count += 1
+                except Exception as exc:  # pylint: disable=broad-exception-caught
                     logger.exception("Failed to compile %s", rel)
+                    record_skipped_file(vault_path, raw_file, f"compile failed: {exc}")
                     failed_count += 1
 
         await rebuild_index(vault_path)
