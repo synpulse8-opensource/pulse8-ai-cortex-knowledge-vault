@@ -101,17 +101,22 @@ class TestCopyToRaw:
     def test_skips_already_ingested(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
         ingestor.copy_new_files()
+        for raw_path in sorted((tmp_vault / "raw").iterdir()):
+            ingestor.record_compiled_file(raw_path)
 
         copied, skipped = ingestor.copy_new_files()
         assert len(copied) == 0
         assert len(skipped) == 3
 
-    def test_updates_manifest_after_copy(self, tmp_vault: Path, source_dir: Path) -> None:
+    def test_updates_manifest_after_compile(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
         ingestor.copy_new_files()
+        assert ingestor.load_manifest() == {}
+
+        ingestor.record_compiled_file(tmp_vault / "raw" / "paper1.txt")
         manifest = ingestor.load_manifest()
         assert "raw/paper1.txt" in manifest
-        assert manifest["raw/paper1.txt"].startswith("sha256:")
+        assert manifest["raw/paper1.txt"] == ingestor.hash_file(tmp_vault / "raw" / "paper1.txt")
 
     def test_force_bypasses_manifest(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir, force=True)
@@ -179,6 +184,9 @@ class TestCompileBatch:
             created = await ingestor.compile_batch(raw_paths)
 
         assert len(created) == len(raw_paths) - 1
+        manifest = ingestor.load_manifest()
+        assert len(manifest) == len(raw_paths) - 1
+        assert f"raw/{raw_paths[0].name}" not in manifest
 
     async def test_respects_concurrency_limit(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir, concurrency=1)

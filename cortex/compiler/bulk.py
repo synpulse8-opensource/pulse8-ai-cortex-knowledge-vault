@@ -19,9 +19,10 @@ MANIFEST_FILENAME = "ingest-manifest.json"
 class BulkIngestor:
     """Ingest files from a local directory into the vault in bulk.
 
-    Scans a source directory, deduplicates via a SHA-256 manifest stored
-    in ``.cortex/ingest-manifest.json``, copies new files to ``raw/``,
-    compiles them with bounded concurrency, then rebuilds the index once.
+    Scans a source directory, copies new files to ``raw/``, compiles them with
+    bounded concurrency, then rebuilds the index once. The SHA-256 manifest
+    in ``.cortex/ingest-manifest.json`` records successfully compiled raw
+    files immediately after each compile so progress survives interruption.
     """
 
     def __init__(
@@ -66,7 +67,10 @@ class BulkIngestor:
         self.manifest_path.write_text(json.dumps(manifest, indent=2))
 
     def copy_new_files(self) -> tuple[list[Path], list[Path]]:
-        """Copy new source files to ``raw/``, skipping duplicates via manifest.
+        """Copy new source files to ``raw/``, skipping files already compiled.
+
+        Dedup uses the ingest manifest, which records hashes only after a
+        successful compile. Copying alone does not update the manifest.
 
         Returns (copied, skipped) lists of source paths.
         """
@@ -79,11 +83,10 @@ class BulkIngestor:
 
         for src_file in files:
             file_hash = self.hash_file(src_file)
-            raw_rel = f"raw/{src_file.name}"
 
             if not self.force and file_hash in known_hashes:
                 skipped.append(src_file)
-                logger.info("Skipping (duplicate): %s", src_file.name)
+                logger.info("Skipping (already compiled): %s", src_file.name)
                 continue
 
             copied.append(src_file)
@@ -92,15 +95,19 @@ class BulkIngestor:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 if src_file.resolve() != dest.resolve():
                     shutil.copy2(src_file, dest)
-                    logger.info("Copied: %s -> %s", src_file.name, raw_rel)
+                    logger.info("Copied: %s -> raw/%s", src_file.name, src_file.name)
                 else:
                     logger.info("Already in raw/: %s", src_file.name)
-                manifest[raw_rel] = file_hash
-
-        if not self.dry_run:
-            self.save_manifest(manifest)
 
         return copied, skipped
+
+    def record_compiled_file(self, raw_path: Path) -> None:
+        """Record one successfully compiled raw file in the ingest manifest."""
+        logger.info("Recorded compiled file: %s", raw_path.name)
+        manifest = self.load_manifest()
+        raw_rel = f"raw/{raw_path.name}"
+        manifest[raw_rel] = self.hash_file(raw_path)
+        self.save_manifest(manifest)
 
     async def compile_batch(self, raw_paths: list[Path]) -> list[Path]:
         """Compile a batch of raw files with bounded concurrency.
@@ -112,6 +119,7 @@ class BulkIngestor:
 
         compiler = KnowledgeCompiler(self.vault_path)
         semaphore = asyncio.Semaphore(self.concurrency)
+        manifest_lock = asyncio.Lock()
         all_created: list[Path] = []
         total = len(raw_paths)
 
@@ -119,10 +127,13 @@ class BulkIngestor:
             async with semaphore:
                 logger.info("[%d/%d] Compiling %s...", idx + 1, total, raw_path.name)
                 try:
-                    return await compiler.ingest_source(raw_path, force=self.force)
+                    created = await compiler.ingest_source(raw_path, force=self.force)
                 except Exception:
                     logger.exception("Failed to compile %s", raw_path.name)
                     return []
+                async with manifest_lock:
+                    self.record_compiled_file(raw_path)
+                return created
 
         tasks = [_compile_one(i, p) for i, p in enumerate(raw_paths)]
         results = await asyncio.gather(*tasks)
