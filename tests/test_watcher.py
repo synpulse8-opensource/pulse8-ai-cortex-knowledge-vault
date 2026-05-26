@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from watchfiles import Change
@@ -28,6 +29,26 @@ class TestVaultWatcher:
         watcher = VaultWatcher(relative, graph)
         assert watcher.vault_root.is_absolute()
         assert watcher.vault_root == tmp_vault
+
+    @pytest.mark.asyncio
+    async def test_handle_changes_batch_persists_once(self, tmp_vault: Path):
+        """Multiple graph updates in one batch should produce a single disk write."""
+        from cortex.vault.watcher import VaultWatcher
+        from cortex.graph.engine import GraphEngine
+
+        graph = GraphEngine(tmp_vault / ".cortex" / "graph.json")
+        await graph.load()
+
+        watcher = VaultWatcher(tmp_vault, graph)
+        with patch.object(graph, "_persist", new_callable=AsyncMock) as mock_persist:
+            async with graph.batch():
+                await watcher._handle_change(tmp_vault / "wiki" / "transformers.md")
+                await watcher._handle_change(tmp_vault / "wiki" / "attention-mechanisms.md")
+
+            assert mock_persist.await_count == 1
+
+        assert graph.graph.has_node("wiki/transformers.md")
+        assert graph.graph.has_node("wiki/attention-mechanisms.md")
 
     @pytest.mark.asyncio
     async def test_handle_change_reads_note(self, tmp_vault: Path):
