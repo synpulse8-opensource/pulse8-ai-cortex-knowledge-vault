@@ -5,6 +5,12 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] — 2026-05-27
+
+### Removed
+
+- **Internal JFrog CI workflow**: Removed `build-container-jfrog.yml` which referenced the private `synpulse-group/s8-actions` action, causing every push to `main` on the opensource repo to fail with "Unable to resolve action".
+
 ## [1.0.1] — 2026-05-27
 
 ### Fixed
