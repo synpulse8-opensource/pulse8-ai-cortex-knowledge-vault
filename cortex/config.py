@@ -16,7 +16,7 @@ class CortexSettings(BaseSettings):
 
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
-    compiler_model: str = "anthropic/claude-sonnet-4"
+    compiler_model: str = "qwen/qwen3.5-flash-02-23" # "google/gemini-2.5-flash"
     compiler_max_tokens: int = 4096
     compiler_max_file_size_mb: int = 50
 

@@ -289,6 +289,98 @@ class TestEnrichmentStatus:
         assert post.metadata.get("enrichment_status") == "incomplete"
 
 
+class TestIngestSkipManifest:
+    """ingest_source records compiler-level skip reasons in the skip manifest."""
+
+    @pytest.mark.asyncio
+    async def test_file_too_large_recorded(self, tmp_vault: Path):
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.compiler.ingest_manifest import load_skip_manifest
+
+        large_file = tmp_vault / "raw" / "huge.txt"
+        large_file.write_bytes(b"x" * 1024)
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.compiler_max_file_size_mb = 0
+            result = await compiler.ingest_source(large_file)
+
+        assert result == []
+        manifest = load_skip_manifest(tmp_vault)
+        assert "raw/huge.txt" in manifest
+        assert manifest["raw/huge.txt"]["reason"].startswith("file too large")
+
+    @pytest.mark.asyncio
+    async def test_wiki_up_to_date_recorded(self, tmp_vault: Path):
+        import os
+        import time
+
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.compiler.ingest_manifest import load_skip_manifest
+
+        raw_file = tmp_vault / "raw" / "transformer-paper.txt"
+        wiki_file = tmp_vault / "wiki" / "transformer-paper.md"
+        wiki_file.parent.mkdir(parents=True, exist_ok=True)
+        raw_file.write_text("raw content")
+        wiki_file.write_text("# Existing\n")
+        now = time.time()
+        os.utime(raw_file, (now - 10, now - 10))
+        os.utime(wiki_file, (now, now))
+
+        compiler = KnowledgeCompiler(tmp_vault)
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.compiler_max_file_size_mb = 50
+            result = await compiler.ingest_source(raw_file)
+
+        assert result == [wiki_file]
+        manifest = load_skip_manifest(tmp_vault)
+        assert manifest["raw/transformer-paper.txt"]["reason"] == "wiki already up-to-date"
+
+    @pytest.mark.asyncio
+    async def test_empty_conversion_recorded(self, tmp_vault: Path):
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.compiler.ingest_manifest import load_skip_manifest
+
+        raw_file = tmp_vault / "raw" / "empty.txt"
+        raw_file.write_text("content")
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        empty_result = MagicMock()
+        empty_result.text_content = "   "
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.compiler_max_file_size_mb = 50
+            mock_settings.llm_api_key = ""
+            with patch.object(compiler._md, "convert_local", return_value=empty_result):
+                result = await compiler.ingest_source(raw_file)
+
+        assert result == []
+        manifest = load_skip_manifest(tmp_vault)
+        assert manifest["raw/empty.txt"]["reason"] == "empty conversion result"
+
+    @pytest.mark.asyncio
+    async def test_conversion_failure_recorded(self, tmp_vault: Path):
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.compiler.ingest_manifest import load_skip_manifest
+
+        raw_file = tmp_vault / "raw" / "broken.txt"
+        raw_file.write_text("content")
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.compiler.compiler.settings") as mock_settings:
+            mock_settings.compiler_max_file_size_mb = 50
+            with patch.object(
+                compiler._md,
+                "convert_local",
+                side_effect=RuntimeError("unsupported format"),
+            ):
+                result = await compiler.ingest_source(raw_file)
+
+        assert result == []
+        manifest = load_skip_manifest(tmp_vault)
+        assert manifest["raw/broken.txt"]["reason"] == "conversion failed: unsupported format"
+
+
 class TestTitleAndSlugHelpers:
     """Unit tests for _slug_from_stem and _title_from_markdown helpers."""
 

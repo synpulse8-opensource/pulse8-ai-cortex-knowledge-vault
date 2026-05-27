@@ -23,10 +23,13 @@ class VaultWatcher:
         self.graph = graph
         self._task: asyncio.Task | None = None
         self._cortex_dir = str(self.vault_root / ".cortex")
+        self._raw_dir = str(self.vault_root / "raw")
 
     def _watch_filter(self, _change: Change, path: str) -> bool:
-        """Filter for watchfiles: only accept .md files outside .cortex/."""
+        """Filter for watchfiles: only accept .md files outside .cortex/ and raw/."""
         if path.startswith(self._cortex_dir):
+            return False
+        if path.startswith(self._raw_dir):
             return False
         return path.endswith(".md")
 
@@ -49,14 +52,15 @@ class VaultWatcher:
         """Main watch loop using watchfiles."""
         try:
             async for changes in awatch(self.vault_root, watch_filter=self._watch_filter):
-                for change_type, path_str in changes:
-                    path = Path(path_str)
-                    rel = path.relative_to(self.vault_root)
+                async with self.graph.batch():
+                    for change_type, path_str in changes:
+                        path = Path(path_str)
+                        rel = path.relative_to(self.vault_root)
 
-                    if change_type in (Change.added, Change.modified):
-                        await self._handle_change(path)
-                    elif change_type == Change.deleted:
-                        await self._handle_delete(str(rel))
+                        if change_type in (Change.added, Change.modified):
+                            await self._handle_change(path)
+                        elif change_type == Change.deleted:
+                            await self._handle_delete(str(rel))
 
                 await rebuild_index(self.vault_root)
         except Exception:
@@ -65,10 +69,14 @@ class VaultWatcher:
     async def _handle_change(self, path: Path) -> None:
         """Handle a new or modified .md file."""
         rel = path.relative_to(self.vault_root)
-        if rel.parts[0] == ".cortex":
+        if rel.parts[0] in (".cortex", "raw"):
             return
 
         try:
+            rel_path = str(rel)
+            if self.graph.graph.has_node(rel_path):
+                await self.graph.remove_note_node(rel_path)
+
             note = read_note(path, self.vault_root)
             await self.graph.add_note_node(note)
 

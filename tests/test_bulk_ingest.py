@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from cortex.compiler.bulk import BulkIngestor
+from cortex.compiler.bulk import MANIFEST_SKIP_FILENAME, BulkIngestor
 
 
 @pytest.fixture
@@ -85,6 +85,10 @@ class TestManifestDedup:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
         assert ingestor.manifest_path == tmp_vault / ".cortex" / "ingest-manifest.json"
 
+    def test_skip_manifest_path(self, tmp_vault: Path, source_dir: Path) -> None:
+        ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
+        assert ingestor.skip_manifest_path == tmp_vault / ".cortex" / MANIFEST_SKIP_FILENAME
+
 
 class TestCopyToRaw:
     """BulkIngestor.copy_new_files() copies files to raw/, skipping duplicates."""
@@ -101,17 +105,29 @@ class TestCopyToRaw:
     def test_skips_already_ingested(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
         ingestor.copy_new_files()
+        for raw_path in sorted((tmp_vault / "raw").iterdir()):
+            ingestor.record_compiled_file(raw_path)
 
         copied, skipped = ingestor.copy_new_files()
         assert len(copied) == 0
         assert len(skipped) == 3
 
-    def test_updates_manifest_after_copy(self, tmp_vault: Path, source_dir: Path) -> None:
+        skip_manifest = ingestor.load_skip_manifest()
+        assert len(skip_manifest) == 3
+        for src_file in skipped:
+            entry = skip_manifest[f"raw/{src_file.name}"]
+            assert entry["reason"] == "already compiled"
+            assert entry["hash"] == ingestor.hash_file(src_file)
+
+    def test_updates_manifest_after_compile(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir)
         ingestor.copy_new_files()
+        assert ingestor.load_manifest() == {}
+
+        ingestor.record_compiled_file(tmp_vault / "raw" / "paper1.txt")
         manifest = ingestor.load_manifest()
         assert "raw/paper1.txt" in manifest
-        assert manifest["raw/paper1.txt"].startswith("sha256:")
+        assert manifest["raw/paper1.txt"] == ingestor.hash_file(tmp_vault / "raw" / "paper1.txt")
 
     def test_force_bypasses_manifest(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir, force=True)
@@ -179,6 +195,15 @@ class TestCompileBatch:
             created = await ingestor.compile_batch(raw_paths)
 
         assert len(created) == len(raw_paths) - 1
+        manifest = ingestor.load_manifest()
+        assert len(manifest) == len(raw_paths) - 1
+        assert f"raw/{raw_paths[0].name}" not in manifest
+
+        skip_manifest = ingestor.load_skip_manifest()
+        assert len(skip_manifest) == 1
+        failed_entry = skip_manifest[f"raw/{raw_paths[0].name}"]
+        assert failed_entry["reason"] == "compile failed: LLM timeout"
+        assert failed_entry["hash"] == ingestor.hash_file(raw_paths[0])
 
     async def test_respects_concurrency_limit(self, tmp_vault: Path, source_dir: Path) -> None:
         ingestor = BulkIngestor(vault_path=tmp_vault, source_dir=source_dir, concurrency=1)

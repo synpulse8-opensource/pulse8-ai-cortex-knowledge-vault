@@ -14,7 +14,7 @@ def test_default_settings():
     assert s.qmd_url == ""
     assert s.llm_api_key == ""
     assert s.llm_base_url == "https://openrouter.ai/api/v1"
-    assert s.compiler_model == "anthropic/claude-sonnet-4"
+    assert s.compiler_model == "qwen/qwen3.5-flash-02-23"
     assert s.compiler_max_tokens == 4096
     assert s.mcp_transport == "stdio"
     assert s.mcp_sse_host == "0.0.0.0"

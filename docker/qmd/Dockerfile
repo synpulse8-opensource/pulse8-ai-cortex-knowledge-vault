@@ -1,7 +1,11 @@
 FROM node:22-slim
 
+ENV PYTHON=/usr/bin/python3
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tini wget ca-certificates \
+    && apt-get install -y --no-install-recommends \
+       tini wget ca-certificates \
+       python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @tobilu/qmd
