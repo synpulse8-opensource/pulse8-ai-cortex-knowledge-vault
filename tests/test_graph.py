@@ -248,11 +248,7 @@ class TestGraphEngineBatchEdges:
     @pytest.mark.asyncio
     async def test_get_edges_batch_avoids_coroutine_overhead(self, tmp_path: Path):
         """Batch edge lookup should use a direct loop, not asyncio.gather on sync ops."""
-        import cortex.graph.engine as engine_mod
         from cortex.graph.engine import GraphEngine
-
-        assert not hasattr(engine_mod, "asyncio"), \
-            "engine module should not import asyncio — batch uses a direct sync loop"
 
         engine = GraphEngine(tmp_path / "graph.json")
         await engine.load()
@@ -260,6 +256,20 @@ class TestGraphEngineBatchEdges:
 
         result = await engine.get_edges_batch(["wiki/a.md"])
         assert "wiki/a.md" in result
+
+    @pytest.mark.asyncio
+    async def test_persist_offloads_to_thread(self, tmp_path: Path):
+        """Graph JSON writes must not block the event loop."""
+        from unittest.mock import AsyncMock, patch
+
+        from cortex.graph.engine import GraphEngine
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        with patch("cortex.graph.engine.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+            await engine.add_note_node(_make_note("wiki/a.md", "A"))
+            mock_thread.assert_awaited_once()
 
 
 class TestGraphEngineQueries:

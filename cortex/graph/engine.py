@@ -1,9 +1,11 @@
 """NetworkX-backed graph engine with JSON persistence."""
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
 
@@ -46,8 +48,7 @@ class GraphEngine:
         await self._persist()
 
     async def _persist(self) -> None:
-        """Write graph JSON to disk unconditionally."""
-        self.graph_path.parent.mkdir(parents=True, exist_ok=True)
+        """Write graph JSON to disk without blocking the event loop."""
         nodes = [
             {"id": n, "attrs": dict(self.graph.nodes[n])} for n in self.graph.nodes
         ]
@@ -55,6 +56,11 @@ class GraphEngine:
         for u, v, _key, d in self.graph.edges(data=True, keys=True):
             edges.append({"source": u, "target": v, "attrs": dict(d)})
         data = {"nodes": nodes, "edges": edges}
+        await asyncio.to_thread(self._write_graph_file, self.graph_path, data)
+
+    def _write_graph_file(self, data: dict[str, Any]) -> None:
+        """Synchronous graph JSON write (runs in a thread pool)."""
+        self.graph_path.parent.mkdir(parents=True, exist_ok=True)
         self.graph_path.write_text(json.dumps(data, indent=2, default=str))
 
     async def add_note_node(self, note: Note) -> None:

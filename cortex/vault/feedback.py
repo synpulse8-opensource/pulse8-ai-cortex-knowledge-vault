@@ -120,10 +120,11 @@ async def create_feedback(
         authored_by=authored_by,
     )
 
-    await graph.add_note_node(note)
-    await _add_graph_edges(
-        graph, note.path, tags, related_paths, note.wikilinks, vault_root
-    )
+    async with graph.batch():
+        await graph.add_note_node(note)
+        await _add_graph_edges(
+            graph, note.path, tags, related_paths, note.wikilinks, vault_root
+        )
 
     if qmd_debounce is not None:
         qmd_debounce.schedule()

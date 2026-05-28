@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -50,6 +50,25 @@ async def test_create_feedback_writes_file_and_graph_edges(feedback_vault: Path)
     assert graph.graph.has_edge(result["path"], "tag:search-quality")
     assert graph.graph.has_edge(result["path"], "wiki/target.md")
     qmd_debounce.schedule.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_create_feedback_persists_graph_once(feedback_vault: Path):
+    from cortex.vault.feedback import create_feedback
+
+    graph = GraphEngine(feedback_vault / ".cortex" / "graph.json")
+    await graph.load()
+
+    with patch.object(graph, "_persist", new_callable=AsyncMock) as mock_persist:
+        await create_feedback(
+            vault_root=feedback_vault,
+            graph=graph,
+            qmd_debounce=MagicMock(),
+            content="Batch persist test.",
+            tags=["t1", "t2"],
+            related_paths=["wiki/target.md"],
+        )
+        assert mock_persist.await_count == 1
 
 
 @pytest.mark.asyncio

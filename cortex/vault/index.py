@@ -1,10 +1,16 @@
 """Vault index builder — auto-generates .cortex/index.md."""
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from cortex.vault.models import Note
-from cortex.vault.reader import scan_vault
+from cortex.vault.reader import scan_vault_async
+
+
+def _write_index_file(index_path: Path, content: str) -> None:
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    index_path.write_text(content)
 
 
 async def rebuild_index(vault_root: Path, notes: list[Note] | None = None) -> None:
@@ -14,7 +20,7 @@ async def rebuild_index(vault_root: Path, notes: list[Note] | None = None) -> No
     """
     index_path = vault_root / ".cortex" / "index.md"
     if notes is None:
-        notes = scan_vault(vault_root)
+        notes = await scan_vault_async(vault_root)
 
     sections: dict[str, list[str]] = {
         "wiki": [],
@@ -45,5 +51,4 @@ async def rebuild_index(vault_root: Path, notes: list[Note] | None = None) -> No
             lines.append(f"\n## {section.title()}\n")
             lines.extend(sorted(items))
 
-    index_path.parent.mkdir(parents=True, exist_ok=True)
-    index_path.write_text("\n".join(lines))
+    await asyncio.to_thread(_write_index_file, index_path, "\n".join(lines))
