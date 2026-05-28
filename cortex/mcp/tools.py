@@ -147,7 +147,10 @@ async def handle_vault_search(
                 {"source": e.source, "target": e.target, "edge_type": e.edge_type.value}
                 for e in edges
             ]
-            enriched.append({**r, "edges": edge_dicts})
+            # docid is from qmd. It's meaningless to the user.
+            enriched.append(
+                {k: v for k, v in r.items() if k != "docid"} | {"edges": edge_dicts}
+            )
 
         await log_operation(vault_path, "mcp", "vault:search", f"Search: {query}")
         return {"query": query, "mode": mode, "results": enriched}
