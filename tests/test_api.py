@@ -296,3 +296,29 @@ class TestBulkIngestEndpoint:
             force=True,
             dry_run=False,
         )
+
+
+class TestFeedbackEndpoints:
+    def test_list_feedbacks_empty(self, app_client):
+        (app_client.app.state.vault_path / "feedback").mkdir(exist_ok=True)
+        response = app_client.get("/api/v1/feedbacks")
+        assert response.status_code == 200
+        assert response.json()["feedbacks"] == []
+
+    def test_post_and_delete_feedback(self, app_client):
+        vault = app_client.app.state.vault_path
+        (vault / "feedback").mkdir(exist_ok=True)
+        response = app_client.post(
+            "/api/v1/feedbacks",
+            json={
+                "content": "Missing doc in search",
+                "tags": ["search"],
+                "related_paths": ["wiki/transformers.md"],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["path"].startswith("feedback/")
+        filename = data["path"].split("/")[-1]
+        delete_resp = app_client.delete(f"/api/v1/feedbacks/{filename}")
+        assert delete_resp.status_code == 200

@@ -121,6 +121,56 @@ async def handle_vault_write(
         return {"error": str(e)}
 
 
+async def handle_vault_feedback(
+    content: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    tags: Optional[list[str]] = None,
+    related_paths: Optional[list[str]] = None,
+    qmd_debounce: Any = None,
+    authored_by: str = "human",
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Create a feedback note with tags and optional related paths."""
+    from cortex.vault.feedback import create_feedback
+
+    try:
+        result = await create_feedback(
+            vault_root=vault_path,
+            graph=graph,
+            qmd_debounce=qmd_debounce,
+            content=content,
+            tags=tags,
+            related_paths=related_paths,
+            authored_by=authored_by,
+        )
+        await log_operation(vault_path, "mcp", "vault:feedback", f"Feedback {result['path']}")
+        return result
+    except ValueError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        logger.exception("vault:feedback error")
+        return {"error": str(e)}
+
+
+async def handle_vault_list_feedbacks(
+    vault_path: Path,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """List feedback notes (metadata only, newest first)."""
+    from cortex.vault.feedback import list_feedbacks
+
+    try:
+        feedbacks = list_feedbacks(vault_path)
+        await log_operation(
+            vault_path, "mcp", "vault:list_feedbacks", f"Listed {len(feedbacks)} feedback(s)"
+        )
+        return {"feedbacks": feedbacks, "count": len(feedbacks)}
+    except Exception as e:
+        logger.exception("vault:list_feedbacks error")
+        return {"error": str(e)}
+
+
 async def handle_vault_search(
     query: str,
     vault_path: Path,

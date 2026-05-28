@@ -15,6 +15,8 @@ from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
 from cortex.mcp.tools import (
     handle_vault_compile,
+    handle_vault_feedback,
+    handle_vault_list_feedbacks,
     handle_vault_ingest,
     handle_vault_link,
     handle_vault_read,
@@ -106,6 +108,35 @@ def _tool_definitions() -> list[Tool]:
             },
         ),
         Tool(
+            name="vault_feedback",
+            description="Submit user feedback. Saved under feedback/ with tags and links to related notes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "content": {"type": "string", "description": "Feedback text"},
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional tags",
+                    },
+                    "related_paths": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional vault paths to link (must exist)",
+                    },
+                },
+                "required": ["content"],
+            },
+        ),
+        Tool(
+            name="vault_list_feedbacks",
+            description="List feedback notes in the vault (metadata only: path, preview, tags, related_paths).",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        Tool(
             name="vault_context",
             description="Build a context window: search → graph BFS expansion → ranked subgraph with contradictions.",
             inputSchema={
@@ -169,6 +200,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         "vault_link": handle_vault_link,
         "vault_ingest": handle_vault_ingest,
         "vault_compile": handle_vault_compile,
+        "vault_feedback": handle_vault_feedback,
+        "vault_list_feedbacks": handle_vault_list_feedbacks,
     }
 
     handler = handlers.get(name)

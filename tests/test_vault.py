@@ -75,6 +75,13 @@ class TestInferNodeType:
 
         assert infer_node_type("wiki/transformers.md", {}) == NodeType.NOTE
 
+    def test_infer_feedback_node_type(self):
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("feedback/2026-05-28T16-45-00.md", {}) == NodeType.FEEDBACK
+        assert infer_node_type("feedback/x.md", {"type": "feedback"}) == NodeType.FEEDBACK
+
 
 class TestReadNote:
     def test_read_wiki_note(self, tmp_vault: Path):

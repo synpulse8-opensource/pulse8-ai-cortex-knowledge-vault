@@ -56,6 +56,13 @@ class BulkIngestBody(BaseModel):
     dry_run: bool = False
 
 
+class FeedbackBody(BaseModel):
+    """Request body for creating feedback."""
+    content: str
+    tags: list[str] | None = None
+    related_paths: list[str] | None = None
+
+
 class TokenExchangeBody(BaseModel):
     """Request body for exchanging an authorization code for tokens."""
     code: str
@@ -527,3 +534,70 @@ async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
     )
 
     return result
+
+
+@router.get("/feedbacks", tags=["feedback"])
+async def list_feedbacks_endpoint(request: Request):
+    """List feedback notes (metadata only)."""
+    from cortex.vault.feedback import list_feedbacks
+
+    vault_path = get_vault_path(request)
+    return {"feedbacks": list_feedbacks(vault_path)}
+
+
+@router.get("/feedbacks/{filename}", tags=["feedback"])
+async def read_feedback_endpoint(filename: str, request: Request):
+    """Read a single feedback note with graph edges."""
+    from cortex.vault.feedback import read_feedback
+
+    vault_path = get_vault_path(request)
+    graph = get_graph(request)
+    try:
+        return await read_feedback(vault_path, graph, filename)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/feedbacks", tags=["feedback"])
+async def create_feedback_endpoint(body: FeedbackBody, request: Request):
+    """Create a feedback note."""
+    from cortex.vault.feedback import create_feedback
+
+    vault_path = get_vault_path(request)
+    graph = get_graph(request)
+    qmd_debounce = get_qmd_debounce(request)
+
+    try:
+        result = await create_feedback(
+            vault_root=vault_path,
+            graph=graph,
+            qmd_debounce=qmd_debounce,
+            content=body.content,
+            tags=body.tags,
+            related_paths=body.related_paths,
+            authored_by="api",
+        )
+        await log_operation(vault_path, "api", "vault:feedback", f"Feedback {result['path']}")
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/feedbacks/{filename}", tags=["feedback"])
+async def delete_feedback_endpoint(filename: str, request: Request):
+    """Delete a feedback note."""
+    from cortex.vault.feedback import delete_feedback
+
+    vault_path = get_vault_path(request)
+    graph = get_graph(request)
+    qmd_debounce = get_qmd_debounce(request)
+
+    try:
+        return await delete_feedback(
+            vault_root=vault_path,
+            graph=graph,
+            qmd_debounce=qmd_debounce,
+            filename=filename,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

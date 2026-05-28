@@ -21,6 +21,7 @@ async def rebuild_index(vault_root: Path, notes: list[Note] | None = None) -> No
         "agents": [],
         "sessions": [],
         "daily": [],
+        "feedback": [],
         "raw": [],
     }
 

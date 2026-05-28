@@ -113,6 +113,50 @@ class TestVaultSearchTool:
             assert result["results"][0]["path"] == "wiki/transformers.md"
 
 
+class TestVaultFeedbackTool:
+    @pytest.mark.asyncio
+    async def test_handle_vault_feedback(self, mcp_services):
+        from unittest.mock import MagicMock
+
+        from cortex.mcp.tools import handle_vault_feedback
+
+        (mcp_services["vault_path"] / "feedback").mkdir(exist_ok=True)
+        qmd_debounce = MagicMock()
+
+        result = await handle_vault_feedback(
+            content="MCP search was wrong",
+            tags=["mcp"],
+            related_paths=["wiki/transformers.md"],
+            qmd_debounce=qmd_debounce,
+            **mcp_services,
+        )
+        assert result["status"] == "created"
+        assert result["path"].startswith("feedback/")
+
+    @pytest.mark.asyncio
+    async def test_handle_vault_list_feedbacks(self, mcp_services):
+        from unittest.mock import MagicMock
+
+        from cortex.mcp.tools import handle_vault_feedback, handle_vault_list_feedbacks
+
+        (mcp_services["vault_path"] / "feedback").mkdir(exist_ok=True)
+        await handle_vault_feedback(
+            content="List me",
+            tags=["test"],
+            related_paths=["wiki/transformers.md"],
+            qmd_debounce=MagicMock(),
+            **mcp_services,
+        )
+
+        result = await handle_vault_list_feedbacks(**mcp_services)
+        assert result["count"] >= 1
+        assert len(result["feedbacks"]) == result["count"]
+        item = result["feedbacks"][0]
+        assert item["path"].startswith("feedback/")
+        assert "preview" in item
+        assert "content" not in item
+
+
 class TestVaultLinkTool:
     @pytest.mark.asyncio
     async def test_create_link(self, mcp_services):

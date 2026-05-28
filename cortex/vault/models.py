@@ -15,6 +15,7 @@ class NodeType(str, Enum):
     SESSION = "session"
     RAW_SOURCE = "raw_source"
     TAG = "tag"
+    FEEDBACK = "feedback"
 
 
 class EdgeType(str, Enum):

@@ -19,6 +19,8 @@ from cortex.graph.context import build_context_window
 from cortex.graph.engine import GraphEngine
 from cortex.mcp.tools import (
     handle_vault_compile,
+    handle_vault_feedback,
+    handle_vault_list_feedbacks,
     handle_vault_ingest,
     handle_vault_link,
     handle_vault_read,
@@ -187,6 +189,29 @@ async def create_fastmcp_server(
             metadata=metadata,
             **services,
         )
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool()
+    async def vault_feedback(
+        content: str,
+        tags: Optional[list[str]] = None,
+        related_paths: Optional[list[str]] = None,
+    ) -> str:
+        """Submit user feedback. Saved under feedback/ with tags and links to related notes."""
+        logger.info("MCP tool=vault_feedback tags=%s related_paths=%s", tags, related_paths)
+        result = await handle_vault_feedback(
+            content=content,
+            tags=tags,
+            related_paths=related_paths,
+            **services,
+        )
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool()
+    async def vault_list_feedbacks() -> str:
+        """List feedback notes in the vault (metadata only: path, preview, tags, related_paths)."""
+        logger.info("MCP tool=vault_list_feedbacks")
+        result = await handle_vault_list_feedbacks(**services)
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool()

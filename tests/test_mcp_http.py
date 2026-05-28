@@ -86,7 +86,7 @@ class TestMCPHttpServer:
         assert response.status_code == 200
 
     def test_mcp_lists_tools(self, mcp_http_client: TestClient):
-        """After initialize, list_tools should return our 7 vault tools."""
+        """After initialize, list_tools should return our 9 vault tools."""
         headers = _init_mcp_session(mcp_http_client)
 
         list_resp = mcp_http_client.post(
@@ -105,7 +105,9 @@ class TestMCPHttpServer:
         assert "vault_context" in tool_names
         assert "vault_ingest" in tool_names
         assert "vault_compile" in tool_names
-        assert len(tool_names) == 7
+        assert "vault_feedback" in tool_names
+        assert "vault_list_feedbacks" in tool_names
+        assert len(tool_names) == 9
 
 
 class TestMCPHttpToolCalls:

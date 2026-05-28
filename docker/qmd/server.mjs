@@ -85,6 +85,9 @@ async function runSetupInner() {
   try {
     await qmd(["context", "add", "qmd://agents", "Agent definition files"]);
   } catch { /* already exists */ }
+  try {
+    await qmd(["context", "add", "qmd://feedback", "User feedback on MCP responses and knowledge quality"]);
+  } catch { /* already exists */ }
 
   try {
     await qmd(["update"]);

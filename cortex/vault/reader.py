@@ -34,6 +34,8 @@ def infer_node_type(path: str, fm: dict[str, Any]) -> NodeType:
         return NodeType.MEMORY
     if path.endswith(".session.md"):
         return NodeType.SESSION
+    if path.startswith("feedback/"):
+        return NodeType.FEEDBACK
 
     return NodeType.NOTE
 
@@ -130,7 +132,7 @@ def build_wikilink_index(vault_root: Path) -> dict[str, str]:
     Priority: wiki/ > agents/ > sessions/ > daily/ > other dirs.
     First match wins for duplicate stems.
     """
-    search_dirs = ["wiki", "agents", "sessions", "daily"]
+    search_dirs = ["wiki", "agents", "sessions", "daily", "feedback"]
     index: dict[str, str] = {}
 
     for subdir in search_dirs:
@@ -157,7 +159,7 @@ def resolve_wikilink(link: str, vault_root: Path, _index: dict[str, str] | None 
     if _index is not None:
         return _index.get(link)
 
-    search_dirs = ["wiki", "agents", "sessions", "daily"]
+    search_dirs = ["wiki", "agents", "sessions", "daily", "feedback"]
 
     for subdir in search_dirs:
         candidate = vault_root / subdir / f"{link}.md"
