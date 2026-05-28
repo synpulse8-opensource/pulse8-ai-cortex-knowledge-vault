@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 class VaultWatcher:
     """Watch vault filesystem for changes and keep graph/index in sync."""
 
+    # POSIX NAME_MAX is commonly 255 bytes for a single path component.
+    # We stay below that to avoid OSError: [Errno 36] File name too long
+    # when resolving wikilinks by trying candidate filenames like "{link}.md".
+    _MAX_WIKILINK_FILENAME_BYTES = 240
+
     def __init__(self, vault_root: Path, graph: GraphEngine) -> None:
         self.vault_root = vault_root.resolve()
         self.graph = graph
@@ -81,7 +86,18 @@ class VaultWatcher:
             await self.graph.add_note_node(note)
 
             for link in note.wikilinks:
-                resolved = resolve_wikilink(link, self.vault_root)
+                if len(f"{link}.md".encode("utf-8")) > self._MAX_WIKILINK_FILENAME_BYTES:
+                    logger.debug(
+                        "Skipping wikilink resolution (filename too long): %s (%d bytes)",
+                        link,
+                        len(f"{link}.md".encode("utf-8")),
+                    )
+                    continue
+                try:
+                    resolved = resolve_wikilink(link, self.vault_root)
+                except OSError:
+                    logger.exception("Skipping wikilink resolution due to OS error: %s", link)
+                    continue
                 if resolved:
                     await self.graph.add_edge(
                         Edge(

@@ -126,3 +126,24 @@ class TestVaultWatcher:
         assert watcher._watch_filter(Change.modified, str(tmp_vault / "wiki" / "image.png")) is False
         assert watcher._watch_filter(Change.modified, str(tmp_vault / ".DS_Store")) is False
         assert watcher._watch_filter(Change.modified, str(tmp_vault / "wiki" / "note.md")) is True
+
+    @pytest.mark.asyncio
+    async def test_handle_change_skips_overlong_wikilink(self, tmp_vault: Path):
+        """Overlong wikilinks should not crash _handle_change (NAME_MAX guard)."""
+        from cortex.vault.watcher import VaultWatcher
+        from cortex.graph.engine import GraphEngine
+
+        long_link = "a" * 400
+        note_path = tmp_vault / "wiki" / "overlong-link.md"
+        note_path.write_text(
+            "# Overlong Link\n\n"
+            f"See: [[{long_link}]]\n"
+        )
+
+        graph = GraphEngine(tmp_vault / ".cortex" / "graph.json")
+        await graph.load()
+
+        watcher = VaultWatcher(tmp_vault, graph)
+        await watcher._handle_change(note_path)
+
+        assert graph.graph.has_node("wiki/overlong-link.md")
