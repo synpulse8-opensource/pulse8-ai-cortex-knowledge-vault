@@ -56,7 +56,7 @@ class GraphEngine:
         for u, v, _key, d in self.graph.edges(data=True, keys=True):
             edges.append({"source": u, "target": v, "attrs": dict(d)})
         data = {"nodes": nodes, "edges": edges}
-        await asyncio.to_thread(self._write_graph_file, self.graph_path, data)
+        await asyncio.to_thread(self._write_graph_file, data)
 
     def _write_graph_file(self, data: dict[str, Any]) -> None:
         """Synchronous graph JSON write (runs in a thread pool)."""
