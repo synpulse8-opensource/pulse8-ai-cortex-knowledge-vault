@@ -132,6 +132,16 @@ class TestReadNote:
         with pytest.raises(IsADirectoryError):
             read_note(tmp_vault / "wiki", tmp_vault)
 
+    def test_read_non_markdown_raises(self, tmp_vault: Path):
+        from cortex.vault.reader import read_note
+
+        pdf = tmp_vault / "raw" / "sample.pdf"
+        pdf.parent.mkdir(parents=True, exist_ok=True)
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        with pytest.raises(ValueError, match="not a markdown note"):
+            read_note(pdf, tmp_vault)
+
 
 class TestScanVault:
     def test_scan_finds_all_notes(self, tmp_vault: Path):

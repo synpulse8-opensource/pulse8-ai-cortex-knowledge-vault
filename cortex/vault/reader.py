@@ -44,6 +44,8 @@ def read_note(path: Path, vault_root: Path) -> Note:
         raise FileNotFoundError(f"Note not found: {path}")
     if path.is_dir():
         raise IsADirectoryError(f"Path is a directory, not a note: {path}")
+    if path.suffix.lower() != ".md":
+        raise ValueError(f"Path is not a markdown note: {path}")
 
     post = frontmatter.load(str(path))
     fm: dict[str, Any] = dict(post.metadata)

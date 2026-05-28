@@ -219,6 +219,10 @@ async def read_note_endpoint(path: str, request: Request):
         note = read_note(vault_path / path, vault_path)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Note not found: {path}") from exc
+    except IsADirectoryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     edges = await graph.get_edges(note.path)
     edge_dicts = [
