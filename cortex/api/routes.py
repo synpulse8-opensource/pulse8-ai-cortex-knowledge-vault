@@ -507,6 +507,7 @@ async def compile_status_endpoint():
 async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
     """Bulk-ingest files from a server-local directory."""
     from cortex.compiler.bulk import BulkIngestor
+    logger.info("Bulk ingest request received: %s", body)
 
     vault_path = get_vault_path(request)
     source_dir = Path(body.source_dir)
@@ -525,7 +526,10 @@ async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
         dry_run=body.dry_run,
     )
 
+    logger.info("Starting bulk ingest with ingestor: %s", ingestor)
     result = await ingestor.run()
+
+    logger.info("Bulk ingest result: %s", result)
 
     await log_operation(
         vault_path, "api", "vault:bulk-ingest",
