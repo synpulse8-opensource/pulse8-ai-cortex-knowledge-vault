@@ -105,6 +105,8 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 | `vault_context` | Build a context window: search → graph traversal → ranked subgraph |
 | `vault_ingest`  | Ingest raw content or binary files (supports `content_base64` for binary) |
 | `vault_compile` | Compile unprocessed raw sources into wiki Markdown via MarkItDown         |
+| `vault_feedback` | Submit feedback on vault quality (`status: OPEN`; optional `related_paths` of `.md` notes) |
+| `vault_list_feedbacks` | List feedback note metadata (paths, tags, status; not full body) |
 
 </details>
 

@@ -74,7 +74,6 @@ cython_debug/
 .ruff_cache/
 .vscode/
 .idea/
-.cursor/
 *.swp
 *.swo
 *~
