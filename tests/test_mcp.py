@@ -130,7 +130,7 @@ class TestVaultFeedbackTool:
             qmd_debounce=qmd_debounce,
             **mcp_services,
         )
-        assert result["status"] == "created"
+        assert result["status"] == "OPEN"
         assert result["path"].startswith("feedback/")
 
     @pytest.mark.asyncio

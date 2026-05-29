@@ -41,6 +41,9 @@ class CortexSettings(BaseSettings):
     oidc_client_secret: str = ""
     oidc_base_url: str = ""
 
+    teams_webhook_url: str = ""
+    teams_app_base_url: str = ""
+
     @property
     def auth_enabled(self) -> bool:
         """True when any authentication method is active."""

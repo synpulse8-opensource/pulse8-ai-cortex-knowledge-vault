@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from cortex.graph.engine import GraphEngine
+from cortex.notify.teams import notify_new_feedback
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.reader import read_note, resolve_wikilink
 from cortex.vault.writer import write_note
@@ -107,6 +108,7 @@ async def create_feedback(
     frontmatter = {
         "type": "feedback",
         "title": title,
+        "status": "OPEN",
         "tags": tags,
         "related_paths": related_paths,
     }
@@ -129,13 +131,27 @@ async def create_feedback(
     if qmd_debounce is not None:
         qmd_debounce.schedule()
 
+    created_at = note.frontmatter.get("created_at")
+    feedback_status = str(note.frontmatter.get("status") or "OPEN")
+
+    await notify_new_feedback(
+        path=note.path,
+        title=note.title,
+        content=content.strip(),
+        tags=tags,
+        related_paths=related_paths,
+        status=feedback_status,
+        authored_by=authored_by,
+        created_at=str(created_at) if created_at else None,
+    )
+
     return {
         "path": note.path,
         "title": note.title,
-        "created_at": note.frontmatter.get("created_at"),
+        "created_at": created_at,
         "tags": tags,
         "related_paths": related_paths,
-        "status": "created",
+        "status": feedback_status,
     }
 
 

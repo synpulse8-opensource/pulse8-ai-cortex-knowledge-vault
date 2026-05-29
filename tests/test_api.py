@@ -319,6 +319,7 @@ class TestFeedbackEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["path"].startswith("feedback/")
+        assert data["status"] == "OPEN"
         filename = data["path"].split("/")[-1]
         delete_resp = app_client.delete(f"/api/v1/feedbacks/{filename}")
         assert delete_resp.status_code == 200

@@ -34,6 +34,8 @@ apply_defaults() {
     export OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET:-}"
     export OIDC_BASE_URL="${OIDC_BASE_URL:-}"
     export QMD_URL="${QMD_URL:-}"
+    export TEAMS_WEBHOOK_URL="${TEAMS_WEBHOOK_URL:-}"
+    export TEAMS_APP_BASE_URL="${TEAMS_APP_BASE_URL:-}"
 }
 
 write_env_file() {
@@ -51,6 +53,8 @@ OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
 OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
 OIDC_BASE_URL=${OIDC_BASE_URL:-}
 QMD_URL=${QMD_URL:-}
+TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+TEAMS_APP_BASE_URL=${TEAMS_APP_BASE_URL:-}
 EOF
 }
 
@@ -102,5 +106,15 @@ prompt_missing_env() {
             echo "  Auth:         ⚠ unknown AUTH_METHOD '${AUTH_METHOD}' (expected: none, apikey, oidc)"
             ;;
     esac
+    if [ -n "${TEAMS_WEBHOOK_URL:-}" ]; then
+        echo "  Teams:        feedback notifications enabled"
+        if [ -n "${TEAMS_APP_BASE_URL:-}" ]; then
+            echo "  Teams link:   $TEAMS_APP_BASE_URL"
+        else
+            echo "  Teams link:   (unset — optional TEAMS_APP_BASE_URL for card button)"
+        fi
+    else
+        echo "  Teams:        disabled (TEAMS_WEBHOOK_URL not set)"
+    fi
     echo ""
 }

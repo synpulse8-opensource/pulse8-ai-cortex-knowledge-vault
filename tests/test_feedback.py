@@ -40,6 +40,7 @@ async def test_create_feedback_writes_file_and_graph_edges(feedback_vault: Path)
 
     assert result["path"].startswith("feedback/")
     assert result["path"].endswith(".md")
+    assert result["status"] == "OPEN"
     file_path = feedback_vault / result["path"]
     assert file_path.exists()
     text = file_path.read_text()
@@ -50,6 +51,32 @@ async def test_create_feedback_writes_file_and_graph_edges(feedback_vault: Path)
     assert graph.graph.has_edge(result["path"], "tag:search-quality")
     assert graph.graph.has_edge(result["path"], "wiki/target.md")
     qmd_debounce.schedule.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_create_feedback_calls_teams_notify(feedback_vault: Path, monkeypatch):
+    from cortex.config import settings
+    from cortex.vault.feedback import create_feedback
+
+    monkeypatch.setattr(settings, "teams_webhook_url", "")
+
+    graph = GraphEngine(feedback_vault / ".cortex" / "graph.json")
+    await graph.load()
+
+    with patch(
+        "cortex.vault.feedback.notify_new_feedback", new_callable=AsyncMock
+    ) as mock_notify:
+        await create_feedback(
+            vault_root=feedback_vault,
+            graph=graph,
+            qmd_debounce=MagicMock(),
+            content="Notify me",
+            tags=["t"],
+        )
+        mock_notify.assert_awaited_once()
+        kwargs = mock_notify.await_args.kwargs
+        assert kwargs["content"] == "Notify me"
+        assert kwargs["status"] == "OPEN"
 
 
 @pytest.mark.asyncio
