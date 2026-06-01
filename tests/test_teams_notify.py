@@ -95,5 +95,3 @@ async def test_notify_logs_http_error_without_raising(monkeypatch):
             tags=[],
             related_paths=[],
         )
-
-
