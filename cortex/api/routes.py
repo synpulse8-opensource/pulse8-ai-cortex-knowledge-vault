@@ -61,6 +61,7 @@ class FeedbackBody(BaseModel):
     content: str
     tags: list[str] | None = None
     related_paths: list[str] | None = None
+    authored_by: str | None = None
 
 
 class TokenExchangeBody(BaseModel):
@@ -565,11 +566,19 @@ async def read_feedback_endpoint(filename: str, request: Request):
 @router.post("/feedbacks", tags=["feedback"])
 async def create_feedback_endpoint(body: FeedbackBody, request: Request):
     """Create a feedback note."""
+    from cortex.auth.identity import author_from_claims
     from cortex.vault.feedback import create_feedback
 
     vault_path = get_vault_path(request)
     graph = get_graph(request)
     qmd_debounce = get_qmd_debounce(request)
+
+    claims = getattr(request.state, "user_claims", None)
+    authored_by = (
+        body.authored_by
+        or author_from_claims(claims)
+        or "api"
+    )
 
     try:
         result = await create_feedback(
@@ -579,7 +588,7 @@ async def create_feedback_endpoint(body: FeedbackBody, request: Request):
             content=body.content,
             tags=body.tags,
             related_paths=body.related_paths,
-            authored_by="api",
+            authored_by=authored_by,
         )
         await log_operation(vault_path, "api", "vault:feedback", f"Feedback {result['path']}")
         return result

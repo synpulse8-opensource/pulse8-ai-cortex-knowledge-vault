@@ -314,12 +314,14 @@ class TestFeedbackEndpoints:
                 "content": "Missing doc in search",
                 "tags": ["search"],
                 "related_paths": ["wiki/transformers.md"],
+                "authored_by": "test.user@example.com",
             },
         )
         assert response.status_code == 200
         data = response.json()
         assert data["path"].startswith("feedback/")
         assert data["status"] == "OPEN"
+        assert data["authored_by"] == "test.user@example.com"
         filename = data["path"].split("/")[-1]
         delete_resp = app_client.delete(f"/api/v1/feedbacks/{filename}")
         assert delete_resp.status_code == 200

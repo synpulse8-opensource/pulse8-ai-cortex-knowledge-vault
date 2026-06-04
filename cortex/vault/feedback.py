@@ -149,6 +149,7 @@ async def create_feedback(
         "path": note.path,
         "title": note.title,
         "created_at": created_at,
+        "authored_by": note.provenance.authored_by,
         "tags": tags,
         "related_paths": related_paths,
         "status": feedback_status,
@@ -167,6 +168,7 @@ def list_feedbacks(vault_root: Path) -> list[dict[str, Any]]:
         items.append({
             "path": note.path,
             "created_at": note.frontmatter.get("created_at"),
+            "authored_by": note.provenance.authored_by,
             "preview": _preview(note.content),
             "tags": note.tags,
             "related_paths": note.frontmatter.get("related_paths", []),

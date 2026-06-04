@@ -129,12 +129,14 @@ async def test_list_feedbacks_metadata_only(feedback_vault: Path):
         content="First line preview text.",
         tags=["t1"],
         related_paths=["wiki/target.md"],
+        authored_by="jane.doe@example.com",
     )
 
     items = list_feedbacks(feedback_vault)
     assert len(items) == 1
     item = items[0]
     assert item["path"].startswith("feedback/")
+    assert item["authored_by"] == "jane.doe@example.com"
     assert item["preview"] == "First line preview text."
     assert item["tags"] == ["t1"]
     assert item["related_paths"] == ["wiki/target.md"]

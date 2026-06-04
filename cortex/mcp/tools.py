@@ -131,7 +131,7 @@ async def handle_vault_feedback(
     authored_by: str = "human",
     **_kwargs: Any,
 ) -> dict[str, Any]:
-    """Create a feedback note with tags and optional related paths."""
+    """Create a feedback note with tags, author name, and optional related paths."""
     from cortex.vault.feedback import create_feedback
 
     try:

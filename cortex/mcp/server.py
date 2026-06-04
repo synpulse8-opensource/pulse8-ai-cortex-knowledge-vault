@@ -124,13 +124,21 @@ def _tool_definitions() -> list[Tool]:
                         "items": {"type": "string"},
                         "description": "Optional vault paths to link (must exist)",
                     },
+                    "authored_by": {
+                        "type": "string",
+                        "default": "human",
+                        "description": "Author display name (e.g. user email or full name)",
+                    },
                 },
                 "required": ["content"],
             },
         ),
         Tool(
             name="vault_list_feedbacks",
-            description="List feedback notes in the vault (metadata only: path, preview, tags, related_paths).",
+            description=(
+                "List feedback notes in the vault (metadata only: path, preview, "
+                "tags, related_paths, authored_by)."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {},

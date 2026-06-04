@@ -127,11 +127,13 @@ class TestVaultFeedbackTool:
             content="MCP search was wrong",
             tags=["mcp"],
             related_paths=["wiki/transformers.md"],
+            authored_by="mace.smith@example.com",
             qmd_debounce=qmd_debounce,
             **mcp_services,
         )
         assert result["status"] == "OPEN"
         assert result["path"].startswith("feedback/")
+        assert result["authored_by"] == "mace.smith@example.com"
 
     @pytest.mark.asyncio
     async def test_handle_vault_list_feedbacks(self, mcp_services):
@@ -153,6 +155,7 @@ class TestVaultFeedbackTool:
         assert len(result["feedbacks"]) == result["count"]
         item = result["feedbacks"][0]
         assert item["path"].startswith("feedback/")
+        assert item["authored_by"] == "human"
         assert "preview" in item
         assert "content" not in item
 
