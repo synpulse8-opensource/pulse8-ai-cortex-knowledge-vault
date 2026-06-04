@@ -44,7 +44,7 @@ jobs:
         uses: synpulse-group/s8-actions/custom-build-push-container@main
         with:
           docker-build-context-location: ./docker/qmd
-          docker-file-path: ./docker/qmd/Dockerfile
+          docker-file-path: ./docker/qmd/Dockerfile.gpu
           jfrog-user: ${{ secrets.JFROG_USER_PULSE8_AI }}
           jfrog-password: ${{ secrets.JFROG_ACCESS_TOKEN_PULSE8_AI }}
           image-name-suffix: -cortex-vault-qmd-dev
