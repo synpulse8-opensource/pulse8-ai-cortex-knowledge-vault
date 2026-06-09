@@ -9,6 +9,7 @@ from pathlib import Path
 from cortex.graph.engine import GraphEngine
 from cortex.search.qmd import QMDSearch
 from cortex.vault.models import ContextWindow, Edge, EdgeType, Note
+from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.reader import read_note
 
 logger = logging.getLogger(__name__)
@@ -34,9 +35,10 @@ async def build_context_window(
     """
     search_results = await searcher.search(query, mode=mode, top_k=max_notes * 2)
 
+    path_index = build_path_index_from_graph(graph)
     scores: dict[str, float] = {}
     for r in search_results:
-        path = r.get("path", "")
+        path = resolve_note_path(r.get("path", ""), vault_root, path_index=path_index)
         if path and graph.graph.has_node(path):
             scores[path] = r.get("score", 0.0)
 

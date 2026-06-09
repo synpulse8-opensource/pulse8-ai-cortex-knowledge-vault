@@ -15,6 +15,7 @@ from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
 from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
+from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.reader import read_note, resolve_wikilink
 from cortex.vault.writer import write_note
 
@@ -224,6 +225,7 @@ async def read_note_endpoint(path: str, request: Request):
     graph = get_graph(request)
 
     try:
+        path = resolve_note_path(path, vault_path, graph=graph)
         note = read_note(vault_path / path, vault_path)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"Note not found: {path}") from exc
@@ -315,18 +317,21 @@ async def search_endpoint(
 
     raw_results = await qmd.search(q, mode=effective_mode, collection=collection, top_k=top_k)
 
-    paths = [r.get("path", "") for r in raw_results]
-    edges_by_path = await graph.get_edges_batch(paths)
+    path_index = build_path_index_from_graph(graph)
+    resolved_paths = [
+        resolve_note_path(r.get("path", ""), vault_path, path_index=path_index)
+        for r in raw_results
+    ]
+    edges_by_path = await graph.get_edges_batch(resolved_paths)
 
     enriched = []
-    for r in raw_results:
-        path = r.get("path", "")
+    for r, path in zip(raw_results, resolved_paths, strict=True):
         edges = edges_by_path.get(path, [])
         edge_dicts = [
             {"source": e.source, "target": e.target, "edge_type": e.edge_type.value}
             for e in edges
         ]
-        enriched.append({**r, "edges": edge_dicts})
+        enriched.append({**r, "path": path, "edges": edge_dicts})
 
     await log_operation(vault_path, "api", "vault:search", f"Search: {q}")
     return {"query": q, "mode": mode, "results": enriched}
