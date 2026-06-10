@@ -1,5 +1,7 @@
 FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
 
+ARG QMD_COMMIT=6366024
+
 # RUN apt-get update \
 #     && apt-get install -y --no-install-recommends \
 #        tini wget ca-certificates curl \
@@ -16,8 +18,17 @@ RUN apt-get update \
     && rm node.tar.xz \
     && node -v \
     && npm -v
-    
-RUN npm install -g @tobilu/qmd
+
+# Pin QMD to a git commit; switch to `npm install -g @tobilu/qmd` once released.
+WORKDIR /opt/qmd-src
+RUN wget -qO- "https://github.com/tobi/qmd/archive/${QMD_COMMIT}.tar.gz" | tar xz --strip-components=1 \
+    && npm install \
+    && npm install typescript@^5.9.3 \
+    && npm run build \
+    && npm install -g . \
+    && cd / \
+    && rm -rf /opt/qmd-src
+WORKDIR /
 
 RUN groupadd -r qmd && useradd -r -g qmd -m -d /home/qmd qmd
 

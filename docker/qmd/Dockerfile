@@ -1,5 +1,7 @@
 FROM node:22-slim
 
+ARG QMD_COMMIT=6366024
+
 ENV PYTHON=/usr/bin/python3
 
 RUN apt-get update \
@@ -8,7 +10,16 @@ RUN apt-get update \
        python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @tobilu/qmd
+# Pin QMD to a git commit; switch to `npm install -g @tobilu/qmd` once released.
+WORKDIR /opt/qmd-src
+RUN wget -qO- "https://github.com/tobi/qmd/archive/${QMD_COMMIT}.tar.gz" | tar xz --strip-components=1 \
+    && npm install \
+    && npm install typescript@^5.9.3 \
+    && npm run build \
+    && npm install -g . \
+    && cd / \
+    && rm -rf /opt/qmd-src
+WORKDIR /
 
 RUN groupadd -r qmd && useradd -r -g qmd -m -d /home/qmd qmd
 
