@@ -25,9 +25,8 @@ RUN wget -qO- "https://github.com/tobi/qmd/archive/${QMD_COMMIT}.tar.gz" | tar x
     && npm install \
     && npm install typescript@^5.9.3 \
     && npm run build \
-    && npm install -g . \
-    && cd / \
-    && rm -rf /opt/qmd-src
+    && npm install -g .
+# Keep /opt/qmd-src: `npm install -g .` symlinks the global bin to this tree.
 WORKDIR /
 
 RUN groupadd -r qmd && useradd -r -g qmd -m -d /home/qmd qmd
