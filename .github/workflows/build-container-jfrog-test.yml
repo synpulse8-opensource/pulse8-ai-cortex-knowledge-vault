@@ -3,7 +3,7 @@ name: "Build and push Cortex container to JFrog"
 on:
   push:
     branches:
-      - "dev"
+      - "test"
   workflow_dispatch:
 
 env:
@@ -29,7 +29,7 @@ jobs:
           docker-file-path: ./Dockerfile # using our custom Dockerfile in the repo root
           jfrog-user: ${{ secrets.JFROG_USER_PULSE8_AI }} # no need to change - available in all workflows in the organisation
           jfrog-password: ${{ secrets.JFROG_ACCESS_TOKEN_PULSE8_AI }} # no need to change - available in all workflows in the organisation
-          image-name-suffix: -cortex-vault-dev
+          image-name-suffix: -cortex-vault-test
           target-repository: "sp-artifactory-dso-internal-pulse8-ai"
 
 
@@ -47,5 +47,5 @@ jobs:
           docker-file-path: ./docker/qmd/Dockerfile.gpu
           jfrog-user: ${{ secrets.JFROG_USER_PULSE8_AI }}
           jfrog-password: ${{ secrets.JFROG_ACCESS_TOKEN_PULSE8_AI }}
-          image-name-suffix: -cortex-vault-qmd-dev
+          image-name-suffix: -cortex-vault-qmd-test
           target-repository: "sp-artifactory-dso-internal-pulse8-ai"
