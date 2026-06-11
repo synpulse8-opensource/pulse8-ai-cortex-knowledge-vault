@@ -106,3 +106,24 @@ class TestBuildPathIndexFromGraph:
 
         index = build_path_index_from_graph(graph)
         assert index[path_lookup_key("wiki2/Knowledge-vault/01-Clients/foo.md")] == rel
+
+    def test_returns_cached_index_when_graph_unchanged(self):
+        """Repeat calls without graph mutation must return the memoized dict (no rebuild)."""
+        graph = GraphEngine(Path("/tmp/unused-graph.json"))
+        graph.graph.add_node("wiki/a.md", node_type=NodeType.NOTE.value, title="A")
+
+        first = build_path_index_from_graph(graph)
+        second = build_path_index_from_graph(graph)
+        assert second is first
+
+    def test_cache_invalidated_after_node_add(self):
+        """Adding a node must produce a fresh index containing the new entry."""
+        graph = GraphEngine(Path("/tmp/unused-graph.json"))
+        graph.graph.add_node("wiki/a.md", node_type=NodeType.NOTE.value, title="A")
+
+        first = build_path_index_from_graph(graph)
+        graph.graph.add_node("wiki/b.md", node_type=NodeType.NOTE.value, title="B")
+        second = build_path_index_from_graph(graph)
+
+        assert second is not first
+        assert path_lookup_key("wiki/b.md") in second

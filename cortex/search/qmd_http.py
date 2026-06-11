@@ -93,8 +93,12 @@ class QMDHttpSearch:
         if collection:
             payload["collection"] = collection
 
+        from cortex.config import settings
+
         try:
-            resp = await self._client.post("/search", json=payload)
+            resp = await self._client.post(
+                "/search", json=payload, timeout=settings.qmd_search_timeout_seconds
+            )
             if resp.status_code != 200:
                 logger.warning("QMD search returned %d", resp.status_code)
                 return []

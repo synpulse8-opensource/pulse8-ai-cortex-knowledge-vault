@@ -222,6 +222,7 @@ cp .env.example .env
 | `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
 | `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
+| `CORTEX_QMD_CACHE_TTL_SECONDS` | No       | `30`                           | TTL for the search-result cache; raise it on read-heavy vaults to skip repeat QMD calls |
 | `QMD_EMBED_TIMEOUT_MS`         | No       | `600000`                       | Embed timeout in ms (increase for CPU-only deployments) |
 | `QMD_URL`                      | No       | —                              | External QMD URL for cortex-only mode (e.g. `http://host.docker.internal:3100`) |
 | `AUTH_METHOD`                  | No       | `none`                         | Authentication method: `none`, `apikey`, or `oidc` (see [Authentication](#authentication)) |

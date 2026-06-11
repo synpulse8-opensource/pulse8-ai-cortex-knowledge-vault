@@ -68,6 +68,20 @@ class TestGraphEnginePersistence:
         assert engine2.graph.has_node("wiki/test.md")
 
 
+class TestGraphMutationVersion:
+    @pytest.mark.asyncio
+    async def test_version_bumps_on_node_add(self, tmp_path: Path):
+        """mutation_version must change when a node is added (cache-invalidation signal)."""
+        from cortex.graph.engine import GraphEngine
+
+        engine = GraphEngine(tmp_path / "graph.json")
+        await engine.load()
+
+        v0 = engine.mutation_version
+        await engine.add_note_node(_make_note("wiki/a.md", "A"))
+        assert engine.mutation_version != v0
+
+
 class TestGraphEngineNodes:
     @pytest.mark.asyncio
     async def test_add_note_node(self, tmp_path: Path):

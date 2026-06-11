@@ -102,6 +102,47 @@ class TestSearchBenchmark:
         )
 
     @pytest.mark.asyncio
+    async def test_vault_read_offloads_slow_note_parse(self, large_vault: Path, bench_graph):
+        """A slow synchronous note parse must not freeze the event loop.
+
+        Simulates a large note (80ms sync parse). If read_note runs on the
+        loop thread, a concurrent ticker cannot tick during the parse; when
+        offloaded to a thread, the loop stays responsive.
+        """
+        from cortex.mcp import tools
+        from cortex.vault.reader import read_note as real_read_note
+
+        def slow_read(path, vault_root):
+            time.sleep(0.08)
+            return real_read_note(path, vault_root)
+
+        ticks = 0
+        done = False
+
+        async def ticker():
+            nonlocal ticks
+            while not done:
+                await asyncio.sleep(0.005)
+                ticks += 1
+
+        task = asyncio.create_task(ticker())
+        with patch.object(tools, "read_note", side_effect=slow_read):
+            result = await tools.handle_vault_read(
+                path="wiki/note-0.md",
+                vault_path=large_vault,
+                graph=bench_graph,
+            )
+        done = True
+        await task
+
+        assert "error" not in result
+        print(f"\n  Ticker progress during 80ms blocked parse: {ticks} ticks")
+        assert ticks >= 5, (
+            f"Event loop frozen during note parse ({ticks} ticks) — "
+            "read_note must be offloaded to a thread"
+        )
+
+    @pytest.mark.asyncio
     async def test_build_context_window_under_200ms(self, large_vault: Path, bench_graph):
         """Full context window build should complete in <200ms with mocked QMD."""
         from cortex.graph.context import build_context_window
@@ -156,6 +197,35 @@ class TestSearchBenchmark:
               f"{len(result.get('results', []))} results")
         assert elapsed_ms < 100, f"vault_search too slow: {elapsed_ms:.1f}ms (budget: 100ms)"
         assert "error" not in result
+
+    @pytest.mark.asyncio
+    async def test_repeated_searches_reuse_path_index(self, large_vault: Path, bench_graph):
+        """Path index must be built once across repeated searches, not per call."""
+        from cortex.mcp.tools import handle_vault_search
+        from cortex.vault import paths as paths_mod
+
+        mock_qmd = AsyncMock()
+        mock_qmd.search = AsyncMock(return_value=[
+            {"path": f"wiki/note-{i}.md", "score": 0.9 - i * 0.05}
+            for i in range(10)
+        ])
+
+        with patch.object(
+            paths_mod, "path_lookup_key", wraps=paths_mod.path_lookup_key
+        ) as spy:
+            for i in range(5):
+                await handle_vault_search(
+                    query=f"bench-{i}", vault_path=large_vault,
+                    graph=bench_graph, qmd=mock_qmd, mode="keyword", top_k=10,
+                )
+            call_count = spy.call_count
+
+        # 1 index build (~100 nodes) + 10 result-path lookups × 5 searches.
+        # Without memoization this would be ≥ 5 × (100 + 10) = 550 calls.
+        print(f"\n  path_lookup_key calls across 5 searches: {call_count}")
+        assert call_count < 300, (
+            f"Path index appears to be rebuilt per search ({call_count} slug calls)"
+        )
 
     @pytest.mark.asyncio
     async def test_concurrent_searches_scale(self, large_vault: Path, bench_graph):

@@ -7,6 +7,42 @@ from unittest.mock import AsyncMock
 import pytest
 
 
+class TestCacheTTLConfig:
+    def test_settings_expose_qmd_cache_ttl_with_default(self):
+        """CORTEX_QMD_CACHE_TTL_SECONDS must be configurable, defaulting to 30s."""
+        from cortex.config import CortexSettings
+
+        assert CortexSettings().qmd_cache_ttl_seconds == 30.0
+
+    def test_cache_uses_configured_ttl(self, monkeypatch):
+        """CachedQMDSearch default TTL must come from settings."""
+        from cortex.config import settings as app_settings
+        from cortex.search.qmd_cache import CachedQMDSearch
+
+        monkeypatch.setattr(app_settings, "qmd_cache_ttl_seconds", 120.0)
+        cached = CachedQMDSearch(AsyncMock())
+        assert cached._ttl == 120.0
+
+
+class TestCacheSkipsFailures:
+    @pytest.mark.asyncio
+    async def test_empty_results_are_not_cached(self):
+        """A failed/empty search (e.g. QMD timeout) must not be pinned in the cache."""
+        from cortex.search.qmd_cache import CachedQMDSearch
+
+        inner = AsyncMock()
+        inner.search = AsyncMock(side_effect=[[], [{"path": "wiki/a.md", "score": 0.9}]])
+
+        cached = CachedQMDSearch(inner, ttl_seconds=300)
+
+        first = await cached.search("transformers", mode="hybrid")
+        assert first == []
+
+        second = await cached.search("transformers", mode="hybrid")
+        assert second == [{"path": "wiki/a.md", "score": 0.9}]
+        assert inner.search.await_count == 2, "empty result must not be served from cache"
+
+
 class TestCachedQMDSearch:
     @pytest.mark.asyncio
     async def test_identical_queries_hit_cache(self):

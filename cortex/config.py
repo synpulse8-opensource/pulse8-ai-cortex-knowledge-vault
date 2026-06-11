@@ -12,7 +12,7 @@ class CortexSettings(BaseSettings):
 
     qmd_bin: str = "qmd"
     qmd_url: str = ""
-    qmd_search_mode: str = "keyword"
+    qmd_search_mode: str = "hybrid"
 
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
@@ -21,6 +21,10 @@ class CortexSettings(BaseSettings):
     compiler_max_file_size_mb: int = 50
 
     qmd_refresh_interval_seconds: int = 900
+    qmd_cache_ttl_seconds: float = 30.0
+    # Hybrid search on CPU-only hosts can take minutes (query expansion +
+    # embed + rerank); 30s silently truncated those searches to [].
+    qmd_search_timeout_seconds: float = 120.0
 
     mcp_transport: str = "stdio"
     mcp_sse_host: str = "0.0.0.0"

@@ -33,13 +33,25 @@ def path_lookup_key(rel_path: str) -> str:
 
 
 def build_path_index_from_graph(graph: GraphEngine) -> dict[str, str]:
-    """Map normalized path keys to graph node ids (canonical vault-relative paths)."""
+    """Map normalized path keys to graph node ids (canonical vault-relative paths).
+
+    Memoized per graph mutation_version: rebuilding cost is O(nodes × regex),
+    which showed up as per-call overhead on every MCP search/read. The cache
+    lives on the engine instance and is invalidated whenever the graph changes.
+    """
+    version = graph.mutation_version
+    cached = getattr(graph, "_path_index_cache", None)
+    if cached is not None and cached[0] == version:
+        return cached[1]
+
     index: dict[str, str] = {}
     for node_id in graph.graph.nodes:
         node = str(node_id)
         if not node.endswith(".md"):
             continue
         index[path_lookup_key(node)] = node
+
+    graph._path_index_cache = (version, index)
     return index
 
 

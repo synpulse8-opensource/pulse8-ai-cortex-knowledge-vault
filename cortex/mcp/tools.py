@@ -1,6 +1,7 @@
 """Tool handler implementations shared by MCP and REST surfaces."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any, Optional
@@ -27,7 +28,9 @@ async def handle_vault_read(
     """Read a note by path. Returns frontmatter, content, and edges."""
     try:
         path = resolve_note_path(path, vault_path, graph=graph)
-        note = read_note(vault_path / path, vault_path)
+        # Offloaded: file I/O + YAML parse would otherwise block the event
+        # loop and serialize concurrent MCP requests.
+        note = await asyncio.to_thread(read_note, vault_path / path, vault_path)
         edges = await graph.get_edges(note.path)
         edge_dicts = [
             {

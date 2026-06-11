@@ -19,6 +19,21 @@ class GraphEngine:
         self.graph: nx.MultiDiGraph = nx.MultiDiGraph()
         self.graph_path = graph_path
         self._batch_active = False
+        self._version = 0
+
+    @property
+    def mutation_version(self) -> tuple[int, int, int]:
+        """Cheap change token for cache invalidation.
+
+        Combines an explicit counter (bumped by engine mutators) with node and
+        edge counts so direct ``engine.graph`` mutations (e.g. tag nodes added
+        by builder/watcher) are also detected.
+        """
+        return (
+            self._version,
+            self.graph.number_of_nodes(),
+            self.graph.number_of_edges(),
+        )
 
     async def load(self) -> None:
         """Load graph from JSON. Create empty graph if file is missing."""
@@ -71,12 +86,14 @@ class GraphEngine:
             title=note.title,
             authored_by=note.provenance.authored_by,
         )
+        self._version += 1
         await self.save()
 
     async def remove_note_node(self, path: str) -> None:
         """Remove a node and all its edges."""
         if self.graph.has_node(path):
             self.graph.remove_node(path)
+            self._version += 1
             await self.save()
 
     async def add_edge(self, edge: Edge) -> None:

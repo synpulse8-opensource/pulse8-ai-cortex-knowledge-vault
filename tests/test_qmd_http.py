@@ -161,6 +161,29 @@ class TestQMDHttpSearch:
             assert call_kwargs["timeout"] >= 120
 
     @pytest.mark.asyncio
+    async def test_search_uses_configurable_timeout(self, monkeypatch):
+        """search() must use settings.qmd_search_timeout_seconds, not the 30s client default.
+
+        Hybrid mode on CPU-only hosts routinely exceeds 30s; the timeout
+        made Cortex silently return [] while QMD was still working.
+        """
+        from cortex.config import settings as app_settings
+        from cortex.search.qmd_http import QMDHttpSearch
+
+        monkeypatch.setattr(app_settings, "qmd_search_timeout_seconds", 240.0)
+
+        qmd = QMDHttpSearch(base_url="http://qmd:3100")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = []
+
+        with patch.object(qmd, "_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            await qmd.search("query", mode="hybrid")
+            call_kwargs = mock_client.post.call_args[1]
+            assert call_kwargs.get("timeout") == 240.0
+
+    @pytest.mark.asyncio
     async def test_initialize_polls_health_before_calling_setup(self):
         """If /health shows setup_ready=true, skip /setup entirely."""
         from cortex.search.qmd_http import QMDHttpSearch

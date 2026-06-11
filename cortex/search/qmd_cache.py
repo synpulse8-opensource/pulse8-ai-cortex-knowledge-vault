@@ -15,7 +15,10 @@ class CachedQMDSearch:
     The cache is fully invalidated on ``update()`` or after ``ttl_seconds``.
     """
 
-    def __init__(self, inner: Any, ttl_seconds: float = 30.0) -> None:
+    def __init__(self, inner: Any, ttl_seconds: float | None = None) -> None:
+        if ttl_seconds is None:
+            from cortex.config import settings
+            ttl_seconds = settings.qmd_cache_ttl_seconds
         self._inner = inner
         self._ttl = ttl_seconds
         self._cache: dict[tuple, tuple[float, list[dict]]] = {}
@@ -49,7 +52,11 @@ class CachedQMDSearch:
         results = await self._inner.search(
             query, mode=mode, collection=collection, top_k=top_k
         )
-        self._cache[key] = (now, results)
+        # Don't cache empty result sets: QMD backends return [] on timeouts
+        # and transport errors, and pinning a transient failure for the full
+        # TTL would silently blank out search.
+        if results:
+            self._cache[key] = (now, results)
         return results
 
     async def close(self) -> None:

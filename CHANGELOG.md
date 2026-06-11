@@ -5,6 +5,18 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] — 2026-05-27
+
+### Removed
+
+- **Internal JFrog CI workflow**: Removed `build-container-jfrog.yml` which referenced the private `synpulse-group/s8-actions` action, causing every push to `main` on the opensource repo to fail with "Unable to resolve action".
+
+## [1.0.1] — 2026-05-27
+
+### Fixed
+
+- **fastmcp dependency floor**: Bumped `fastmcp` from `>=2.0.0` to `>=3.0.0` in `pyproject.toml`. The codebase uses fastmcp 3.x APIs (`FastMCP`, `OIDCProxy`, `http_app`) which are unavailable in 2.x. The loose lower bound caused namespace-package corruption resulting in `ImportError: cannot import name 'FastMCP'`, breaking 15 tests.
+
 ## [1.0.0] — 2026-05-18
 
 ### Added — Authentication & Security
