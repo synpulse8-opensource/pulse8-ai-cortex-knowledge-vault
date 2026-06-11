@@ -83,9 +83,11 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 |                      |                                                                                                         |
 | -------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Knowledge Graph**  | Typed graph engine (NetworkX) — wikilinks, tags, and custom edges, auto-maintained on every file change                  |
-| **Full-Text Search** | BM25 keyword search via QMD with optional hybrid (vector + reranking) mode                                               |
+| **Full-Text Search** | QMD search with hybrid (BM25 + vector + re-ranking) by default; keyword and semantic modes selectable. Results cached with a configurable TTL. |
 | **File Compiler**    | Converts raw sources (PDF, DOCX, PPTX, XLSX, HTML, images, etc.) to Markdown via [MarkItDown](https://github.com/microsoft/markitdown). LLM used only for cross-referencing. |
 | **MCP Server**       | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client                                |
+| **Feedback & Notifications** | `vault_feedback` captures quality feedback as notes; optional Microsoft Teams webhook posts an adaptive card per submission |
+| **Daily Activity Log** | Every write/ingest/compile is mirrored into `daily/<date>.md` as a greppable, wikilinked timeline                       |
 | **Bulk Ingest**      | Ingest dozens or hundreds of files at once from a local directory with SHA-256 dedup and bounded concurrency              |
 | **REST API**         | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload and bulk ingest                 |
 | **Vault Watcher**    | Real-time filesystem monitoring — graph stays in sync automatically                                                      |
@@ -256,7 +258,9 @@ cp .env.example .env
 | `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
 | `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
 | `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
-| `CORTEX_QMD_CACHE_TTL_SECONDS` | No       | `30`                           | TTL for the search-result cache; raise it on read-heavy vaults to skip repeat QMD calls |
+| `QMD_SEARCH_MODE`              | No       | `hybrid`                       | Default search mode when unspecified: `hybrid` (BM25 + vector + re-rank), `semantic`, or `keyword` |
+| `QMD_CACHE_TTL_SECONDS`        | No       | `30`                           | TTL for the search-result cache; raise it on read-heavy vaults to skip repeat QMD calls |
+| `QMD_SEARCH_TIMEOUT_SECONDS`   | No       | `120`                          | Per-request search timeout (increase for hybrid on CPU-only hosts) |
 | `QMD_EMBED_TIMEOUT_MS`         | No       | `600000`                       | Embed timeout in ms (increase for CPU-only deployments) |
 | `QMD_URL`                      | No       | —                              | External QMD URL for cortex-only mode (e.g. `http://host.docker.internal:3100`) |
 | `AUTH_METHOD`                  | No       | `none`                         | Authentication method: `none`, `apikey`, or `oidc` (see [Authentication](#authentication)) |
@@ -265,8 +269,10 @@ cp .env.example .env
 | `OIDC_CLIENT_ID`               | No       | —                              | Microsoft Entra ID app (client) ID |
 | `OIDC_CLIENT_SECRET`           | No       | —                              | Microsoft Entra ID client secret |
 | `OIDC_BASE_URL`                | No       | `http://localhost:8420`        | Public base URL of the Cortex server (used for OAuth callbacks) |
+| `TEAMS_WEBHOOK_URL`            | No       | —                              | Incoming webhook / Power Automate URL; posts an adaptive card on each new feedback note |
+| `TEAMS_APP_BASE_URL`           | No       | —                              | Optional public Cortex base URL for a "View in Cortex" link on the Teams card |
 
-`OPENROUTER_API_KEY` and `CORTEX_LLM_API_KEY` are accepted as aliases for `LLM_API_KEY`.
+`OPENROUTER_API_KEY` and `CORTEX_LLM_API_KEY` are accepted as aliases for `LLM_API_KEY`. Variables above are set in `.env` (Docker reads them via Compose) and map to the `CORTEX_*` settings used by the app.
 
 </details>
 

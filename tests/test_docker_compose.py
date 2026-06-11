@@ -39,6 +39,26 @@ def test_env_check_persists_qmd_cache_ttl():
     )
 
 
+def test_cortex_service_passes_qmd_search_mode_and_timeout():
+    """Search mode and timeout must reach the container so Docker users can tune them."""
+    compose_path = REPO_ROOT / "docker-compose.yml"
+    env = yaml.safe_load(compose_path.read_text())["services"]["cortex"]["environment"]
+
+    mode = [e for e in env if e.startswith("CORTEX_QMD_SEARCH_MODE=")]
+    timeout = [e for e in env if e.startswith("CORTEX_QMD_SEARCH_TIMEOUT_SECONDS=")]
+    assert mode, "Expected CORTEX_QMD_SEARCH_MODE in cortex environment"
+    assert "${QMD_SEARCH_MODE:-hybrid}" in mode[0]
+    assert timeout, "Expected CORTEX_QMD_SEARCH_TIMEOUT_SECONDS in cortex environment"
+    assert "${QMD_SEARCH_TIMEOUT_SECONDS:-120}" in timeout[0]
+
+
+def test_env_check_persists_search_mode_and_timeout():
+    """env_check.sh must persist the search-mode/timeout knobs across .env regens."""
+    content = (REPO_ROOT / "scripts" / "env_check.sh").read_text()
+    assert "QMD_SEARCH_MODE=${QMD_SEARCH_MODE" in content
+    assert "QMD_SEARCH_TIMEOUT_SECONDS=${QMD_SEARCH_TIMEOUT_SECONDS" in content
+
+
 def test_env_example_documents_qmd_cache_ttl():
     """.env.example must document the QMD cache TTL knob."""
     content = (REPO_ROOT / ".env.example").read_text()
