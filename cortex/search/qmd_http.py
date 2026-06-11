@@ -14,7 +14,7 @@ class QMDHttpSearch:
 
     def __init__(self, base_url: str = "http://localhost:3100") -> None:
         self.base_url = base_url.rstrip("/")
-        self._client = httpx.AsyncClient(base_url=self.base_url, timeout=30.0)
+        self._client = httpx.AsyncClient(base_url=self.base_url, timeout=120.0)
         self._initialized = False
 
     async def initialize(self, retries: int = 10, delay: float = 3.0) -> None:
