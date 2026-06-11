@@ -169,6 +169,7 @@ async def create_fastmcp_server(
         result = await handle_vault_search(
             query=query, mode=mode, collection=collection, top_k=top_k, **services
         )
+        logger.info("MCP tool=vault_search result=%s", result)
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool()
