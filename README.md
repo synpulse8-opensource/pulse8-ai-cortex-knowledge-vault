@@ -141,10 +141,44 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
            │
 ┌──────────▼───────────────────────────────────┐
 │  Vault (bind-mounted volume)                 │
-│  wiki/ raw/ agents/ sessions/ daily/         │
+│  wiki/ raw/ agents/ sessions/ daily/ feedback/ │
 │  .cortex/ (graph.json, index.md, log.md)     │
 └──────────────────────────────────────────────┘
 ```
+
+</details>
+
+<details>
+<summary><h2>Vault layout</h2></summary>
+
+The vault is a plain directory of Markdown files organised by purpose. Cortex classifies each file into a typed node (`NodeType`) used by the graph engine and exposed in REST and MCP responses.
+
+| Folder        | `NodeType`   | Purpose                                                              |
+| ------------- | ------------ | -------------------------------------------------------------------- |
+| `wiki/`       | `note`       | Compiled, interlinked knowledge articles                             |
+| `raw/`        | `raw_source` | Unprocessed sources (PDF, DOCX, TXT, …) the compiler reads from      |
+| `agents/`     | `agent_def`  | Agent definitions                                                    |
+| `sessions/`   | `session`    | Per-session notes / conversation transcripts                         |
+| `daily/`      | `daily`      | Daily notes (Obsidian Daily Notes convention)                        |
+| `feedback/`   | `feedback`   | Feedback on vault quality (`status`, `related_paths`)                |
+| `.cortex/`    | _(skipped)_  | Cortex internals — `graph.json`, `index.md`, `log.md`, manifests     |
+
+### How classification works
+
+Order of precedence (first match wins):
+
+1. **Frontmatter `type:`** — explicit override always wins (e.g. `type: note` in `agents/foo.md` resolves to `NodeType.NOTE`)
+2. **Folder prefix** — files under `raw/ agents/ sessions/ daily/ feedback/` inherit the folder's type with no filename suffix needed (e.g. `daily/2026-06-10.md` → `daily`)
+3. **Filename suffix** (backward-compatible) — `.agent.md`, `.session.md`, `.memory.md` are still honored anywhere (e.g. `wiki/legacy.agent.md` → `agent_def`)
+4. **Default** — `NodeType.NOTE`
+
+In practice this means you can drop `YYYY-MM-DD.md` straight into `daily/`, or an unsuffixed `planner.md` into `agents/`, and the graph and API will classify them correctly without any renaming.
+
+### Daily activity log
+
+Every `vault_write`, `vault_ingest`, and successful `compile` event (MCP **and** REST paths) is automatically mirrored into today's UTC daily note at `daily/YYYY-MM-DD.md`. The file is created on first event of the day and each subsequent event appends a `## [HH:MM] event | summary` block plus a `[[wiki-stem]]` wikilink (so the watcher draws a `LINKS_TO` edge to the affected note). The format follows the Karpathy log.md greppable-prefix pattern — `grep "^## \[" daily/2026-06-10.md` gives a clean timeline of the day.
+
+Writes targeting `daily/`, `feedback/`, or `.cortex/` are deliberately **not** mirrored (would be self-referential noise). The hidden `.cortex/log.md` audit log is unaffected and continues to receive every operation.
 
 </details>
 

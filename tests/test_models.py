@@ -15,6 +15,13 @@ def test_node_type_values():
     assert NodeType.TAG == "tag"
 
 
+def test_node_type_daily_exists():
+    """NodeType.DAILY supports the daily-notes folder convention."""
+    from cortex.vault.models import NodeType
+
+    assert NodeType.DAILY == "daily"
+
+
 def test_edge_type_values():
     from cortex.vault.models import EdgeType
 

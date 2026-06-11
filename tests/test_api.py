@@ -83,6 +83,23 @@ class TestNotesEndpoints:
             assert response.status_code == 200
             mock_schedule.assert_called_once()
 
+    def test_write_note_appends_daily_log_entry(self, app_client, tmp_vault: Path):
+        """REST write must produce a daily-log mirror entry (parity with MCP)."""
+        from datetime import datetime, timezone
+        fixed = datetime(2026, 6, 10, 7, 30, tzinfo=timezone.utc)
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            response = app_client.put(
+                "/api/v1/notes/wiki/api-daily-log.md",
+                json={"content": "# Daily-log via REST"},
+            )
+            assert response.status_code == 200
+
+        daily_path = tmp_vault / "daily" / "2026-06-10.md"
+        assert daily_path.exists()
+        content = daily_path.read_text(encoding="utf-8")
+        assert "vault:write" in content
+        assert "[[api-daily-log]]" in content
+
 
 class TestSearchEndpoint:
     def test_search(self, app_client):
@@ -152,6 +169,28 @@ class TestIngestEndpoint:
             )
             assert response.status_code == 200
             mock_schedule.assert_called_once()
+
+    def test_ingest_appends_daily_log_entry(self, app_client, tmp_vault: Path):
+        """REST ingest must produce a daily-log mirror entry (parity with MCP)."""
+        from datetime import datetime, timezone
+        fixed = datetime(2026, 6, 10, 11, 11, tzinfo=timezone.utc)
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            response = app_client.post(
+                "/api/v1/ingest",
+                json={
+                    "content": "raw text via api",
+                    "filename": "api-daily-ingest.txt",
+                    "source_type": "text",
+                    "auto_compile": False,
+                },
+            )
+            assert response.status_code == 200
+
+        daily_path = tmp_vault / "daily" / "2026-06-10.md"
+        assert daily_path.exists()
+        content = daily_path.read_text(encoding="utf-8")
+        assert "vault:ingest" in content
+        assert "raw/api-daily-ingest.txt" in content
 
 
 class TestIngestUploadEndpoint:

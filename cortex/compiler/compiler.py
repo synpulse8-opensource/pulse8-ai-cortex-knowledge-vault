@@ -14,6 +14,7 @@ from openai import AsyncOpenAI
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.compiler.ingest_manifest import record_skipped_file
 from cortex.config import settings
+from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.writer import write_note
 from cortex.vault.index import rebuild_index
@@ -173,6 +174,17 @@ class KnowledgeCompiler:
             model=self.model if settings.llm_api_key else None,
         )
         logger.info("Wrote note %s to %s", title, note_path)
+
+        wiki_rel = str(note_path.relative_to(self.vault_path))
+        try:
+            await append_daily_log_entry(
+                self.vault_path,
+                event="compile",
+                summary=f"Compiled {relative_source} -> {wiki_rel}",
+                wiki_path=wiki_rel,
+            )
+        except Exception:
+            logger.exception("daily-log append failed for compile %s", wiki_rel)
 
         return [note_path]
 

@@ -13,11 +13,20 @@ from cortex.config import settings
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
+from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.reader import read_note, resolve_wikilink
 from cortex.vault.writer import write_note
+
+# Mirrors `_DAILY_LOG_EXCLUDED_PREFIXES` in cortex.mcp.tools. Kept in sync
+# manually because REST routes do not delegate to the MCP handlers.
+_DAILY_LOG_EXCLUDED_PREFIXES = ("daily/", "feedback/", ".cortex/")
+
+
+def _should_log_to_daily(rel_path: str) -> bool:
+    return not rel_path.startswith(_DAILY_LOG_EXCLUDED_PREFIXES)
 
 logger = logging.getLogger(__name__)
 
@@ -293,6 +302,17 @@ async def write_note_endpoint(path: str, body: WriteNoteBody, request: Request):
         qmd_debounce.schedule()
         await log_operation(vault_path, body.authored_by, "vault:write", f"Wrote {path}")
 
+        if _should_log_to_daily(note.path):
+            try:
+                await append_daily_log_entry(
+                    vault_path,
+                    event="vault:write",
+                    summary=f"Wrote {note.path}",
+                    wiki_path=note.path,
+                )
+            except Exception:
+                logger.exception("daily-log append failed for %s", note.path)
+
         return {"path": note.path, "title": note.title, "status": "written"}
 
     except FileExistsError as exc:
@@ -423,6 +443,15 @@ async def ingest_endpoint(body: IngestBody, request: Request):
     rel_path = f"raw/{body.filename}"
     await log_operation(vault_path, "api", "vault:ingest", f"Ingested {rel_path}")
 
+    try:
+        await append_daily_log_entry(
+            vault_path,
+            event="vault:ingest",
+            summary=f"Ingested {rel_path}",
+        )
+    except Exception:
+        logger.exception("daily-log append failed for ingest %s", rel_path)
+
     result: dict[str, Any] = {
         "path": rel_path,
         "status": "ingested",
@@ -461,6 +490,15 @@ async def ingest_upload_endpoint(
 
     rel_path = f"raw/{filename}"
     await log_operation(vault_path, "api", "vault:ingest", f"Ingested {rel_path}")
+
+    try:
+        await append_daily_log_entry(
+            vault_path,
+            event="vault:ingest",
+            summary=f"Ingested {rel_path}",
+        )
+    except Exception:
+        logger.exception("daily-log append failed for ingest %s", rel_path)
 
     result: dict[str, Any] = {
         "path": rel_path,

@@ -14,7 +14,16 @@ from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.reader import read_note, scan_vault
+from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.writer import write_note
+
+# Paths whose writes should NOT mirror into daily/ (avoid self-reference loops
+# and noise from internal/feedback files which have their own logs).
+_DAILY_LOG_EXCLUDED_PREFIXES = ("daily/", "feedback/", ".cortex/")
+
+
+def _should_log_to_daily(rel_path: str) -> bool:
+    return not rel_path.startswith(_DAILY_LOG_EXCLUDED_PREFIXES)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +124,17 @@ async def handle_vault_write(
             except Exception:
                 logger.warning("QMD index refresh failed after write")
         await log_operation(vault_path, authored_by, "vault:write", f"Wrote {path}")
+
+        if _should_log_to_daily(note.path):
+            try:
+                await append_daily_log_entry(
+                    vault_path,
+                    event="vault:write",
+                    summary=f"Wrote {note.path}",
+                    wiki_path=note.path,
+                )
+            except Exception:
+                logger.exception("daily-log append failed for %s", note.path)
 
         return {
             "path": note.path,
@@ -304,6 +324,15 @@ async def handle_vault_ingest(
 
         rel_path = f"raw/{filename}"
         await log_operation(vault_path, "mcp", "vault:ingest", f"Ingested {rel_path}")
+
+        try:
+            await append_daily_log_entry(
+                vault_path,
+                event="vault:ingest",
+                summary=f"Ingested {rel_path}",
+            )
+        except Exception:
+            logger.exception("daily-log append failed for ingest %s", rel_path)
 
         result: dict[str, Any] = {
             "path": rel_path,

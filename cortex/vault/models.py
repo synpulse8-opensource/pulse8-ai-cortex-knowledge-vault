@@ -13,6 +13,7 @@ class NodeType(str, Enum):
     AGENT_DEF = "agent_def"
     MEMORY = "memory"
     SESSION = "session"
+    DAILY = "daily"
     RAW_SOURCE = "raw_source"
     TAG = "tag"
     FEEDBACK = "feedback"

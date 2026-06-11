@@ -82,6 +82,50 @@ class TestInferNodeType:
         assert infer_node_type("feedback/2026-05-28T16-45-00.md", {}) == NodeType.FEEDBACK
         assert infer_node_type("feedback/x.md", {"type": "feedback"}) == NodeType.FEEDBACK
 
+    def test_agent_def_by_folder_without_suffix(self):
+        """Files under `agents/` are AGENT_DEF even without `.agent.md` suffix."""
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("agents/research-scout.md", {}) == NodeType.AGENT_DEF
+
+    def test_session_by_folder_without_suffix(self):
+        """Files under `sessions/` are SESSION even without `.session.md` suffix."""
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("sessions/2026-06-10.md", {}) == NodeType.SESSION
+
+    def test_daily_by_folder(self):
+        """Files under `daily/` are classified as DAILY (Obsidian daily-notes convention)."""
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("daily/2026-06-10.md", {}) == NodeType.DAILY
+
+    def test_agent_suffix_outside_agents_folder_still_works(self):
+        """Backward-compat: `.agent.md` suffix outside `agents/` still maps to AGENT_DEF."""
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("wiki/legacy-scout.agent.md", {}) == NodeType.AGENT_DEF
+
+    def test_session_suffix_outside_sessions_folder_still_works(self):
+        """Backward-compat: `.session.md` suffix outside `sessions/` still maps to SESSION."""
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("wiki/legacy.session.md", {}) == NodeType.SESSION
+
+    def test_frontmatter_type_overrides_folder(self):
+        """Explicit `type:` in frontmatter wins over any folder-based inference."""
+        from cortex.vault.reader import infer_node_type
+        from cortex.vault.models import NodeType
+
+        assert infer_node_type("agents/foo.md", {"type": "note"}) == NodeType.NOTE
+        assert infer_node_type("daily/foo.md", {"type": "note"}) == NodeType.NOTE
+        assert infer_node_type("sessions/foo.md", {"type": "feedback"}) == NodeType.FEEDBACK
+
 
 class TestReadNote:
     def test_read_wiki_note(self, tmp_vault: Path):
@@ -168,6 +212,28 @@ class TestScanVault:
         paths = [n.path for n in notes]
         for p in paths:
             assert not p.startswith(".cortex/")
+
+    def test_scan_assigns_node_types_by_folder(self, tmp_vault: Path):
+        """Unsuffixed files under agents/, sessions/, daily/ scan with correct NodeType."""
+        from cortex.vault.reader import scan_vault
+        from cortex.vault.models import NodeType
+
+        (tmp_vault / "agents" / "planner.md").write_text(
+            "---\ntitle: Planner Agent\n---\n\n# Planner\n"
+        )
+        (tmp_vault / "sessions" / "2026-06-10.md").write_text(
+            "---\ntitle: Daily standup\n---\n\n# Standup\n"
+        )
+        (tmp_vault / "daily" / "2026-06-10.md").write_text(
+            "---\ntitle: 2026-06-10\n---\n\n# 2026-06-10\n"
+        )
+
+        notes = scan_vault(tmp_vault)
+        by_path = {n.path: n for n in notes}
+
+        assert by_path["agents/planner.md"].node_type == NodeType.AGENT_DEF
+        assert by_path["sessions/2026-06-10.md"].node_type == NodeType.SESSION
+        assert by_path["daily/2026-06-10.md"].node_type == NodeType.DAILY
 
 
 class TestScanVaultAsync:

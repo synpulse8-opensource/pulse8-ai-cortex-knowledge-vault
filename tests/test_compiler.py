@@ -117,6 +117,24 @@ class TestMarkItDownIngest:
         result = await compiler.ingest_source(tmp_vault / "raw" / "My Research Paper.txt")
         assert result[0].name == "my-research-paper.md"
 
+    @pytest.mark.asyncio
+    async def test_ingest_appends_daily_log_entry(self, tmp_vault: Path):
+        """Each compile via ingest_source appends a `compile` entry to daily/<UTC-date>.md."""
+        from datetime import datetime, timezone
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        fixed = datetime(2026, 6, 10, 15, 45, tzinfo=timezone.utc)
+        compiler = KnowledgeCompiler(tmp_vault)
+
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
+
+        daily_path = tmp_vault / "daily" / "2026-06-10.md"
+        assert daily_path.exists()
+        content = daily_path.read_text(encoding="utf-8")
+        assert "compile" in content
+        assert "[[transformer-paper]]" in content
+
 
 class TestLLMEnrichment:
     """Tests for the LLM enrichment step that adds wikilinks and tags after MarkItDown conversion."""

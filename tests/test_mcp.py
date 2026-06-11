@@ -94,6 +94,64 @@ class TestVaultWriteTool:
             )
             mock_update.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_write_appends_daily_log_entry(self, mcp_services):
+        """Every vault_write appends an entry to daily/<UTC-date>.md."""
+        from datetime import datetime, timezone
+        from cortex.mcp.tools import handle_vault_write
+
+        fixed = datetime(2026, 6, 10, 12, 0, tzinfo=timezone.utc)
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            await handle_vault_write(
+                path="wiki/daily-log-test.md",
+                content="# Daily log test",
+                **mcp_services,
+            )
+
+        daily_path = mcp_services["vault_path"] / "daily" / "2026-06-10.md"
+        assert daily_path.exists(), "vault_write should create the daily-log file"
+        content = daily_path.read_text(encoding="utf-8")
+        assert "vault:write" in content
+        assert "[[daily-log-test]]" in content
+
+    @pytest.mark.asyncio
+    async def test_write_to_daily_folder_does_not_self_mirror(self, mcp_services):
+        """Writing to daily/ must NOT trigger a daily-log entry (avoids self-reference)."""
+        from datetime import datetime, timezone
+        from cortex.mcp.tools import handle_vault_write
+
+        fixed = datetime(2026, 6, 10, 9, 0, tzinfo=timezone.utc)
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            await handle_vault_write(
+                path="daily/2026-06-10.md",
+                content="# Manually edited daily note",
+                **mcp_services,
+            )
+
+        daily_path = mcp_services["vault_path"] / "daily" / "2026-06-10.md"
+        assert daily_path.exists()
+        content = daily_path.read_text(encoding="utf-8")
+        # The body the user wrote IS there, but no auto-appended `vault:write` mirror entry
+        assert "Manually edited daily note" in content
+        assert "## [09:00] vault:write" not in content
+
+    @pytest.mark.asyncio
+    async def test_write_to_feedback_does_not_mirror(self, mcp_services):
+        """Writes to feedback/ should not trigger a daily-log mirror."""
+        from datetime import datetime, timezone
+        from cortex.mcp.tools import handle_vault_write
+
+        fixed = datetime(2026, 6, 10, 10, 0, tzinfo=timezone.utc)
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            await handle_vault_write(
+                path="feedback/test-fb.md",
+                content="# Feedback note",
+                **mcp_services,
+            )
+
+        daily_path = mcp_services["vault_path"] / "daily" / "2026-06-10.md"
+        assert not daily_path.exists(), "feedback/ writes must not create a daily-log file"
+
 
 class TestVaultSearchTool:
     @pytest.mark.asyncio
@@ -235,6 +293,28 @@ class TestVaultIngestTool:
                 **mcp_services,
             )
             mock_update.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_ingest_appends_daily_log_entry(self, mcp_services):
+        """vault_ingest should append a daily-log entry for the raw ingest."""
+        from datetime import datetime, timezone
+        from cortex.mcp.tools import handle_vault_ingest
+
+        fixed = datetime(2026, 6, 10, 8, 15, tzinfo=timezone.utc)
+        with patch("cortex.vault.daily_log._utc_now", return_value=fixed):
+            await handle_vault_ingest(
+                content="raw text",
+                filename="daily-ingest-test.txt",
+                source_type="text",
+                auto_compile=False,
+                **mcp_services,
+            )
+
+        daily_path = mcp_services["vault_path"] / "daily" / "2026-06-10.md"
+        assert daily_path.exists()
+        content = daily_path.read_text(encoding="utf-8")
+        assert "vault:ingest" in content
+        assert "raw/daily-ingest-test.txt" in content
 
 
 class TestVaultIngestBinary:

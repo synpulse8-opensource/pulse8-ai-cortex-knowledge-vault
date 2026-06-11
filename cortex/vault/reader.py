@@ -28,6 +28,12 @@ def infer_node_type(path: str, fm: dict[str, Any]) -> NodeType:
 
     if path.startswith("raw/"):
         return NodeType.RAW_SOURCE
+    if path.startswith("agents/"):
+        return NodeType.AGENT_DEF
+    if path.startswith("sessions/"):
+        return NodeType.SESSION
+    if path.startswith("daily/"):
+        return NodeType.DAILY
     if path.endswith(".agent.md"):
         return NodeType.AGENT_DEF
     if path.endswith(".memory.md"):
