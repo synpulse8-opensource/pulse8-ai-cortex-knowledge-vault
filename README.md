@@ -490,6 +490,43 @@ docker compose down -v
 
 
 
+## Releasing
+
+Releases are automated through GitHub Actions. Publishing a GitHub Release triggers three workflows that build and publish everything:
+
+| Workflow | Publishes to |
+| -------- | ------------ |
+| `publish-pypi.yml` | [PyPI](https://pypi.org/project/pulse8-ai-cortex-knowledge-vault/) |
+| `publish-docker.yml` | GitHub Container Registry (`ghcr.io`) |
+| `publish-mcp.yml` | [MCP Registry](https://registry.modelcontextprotocol.io) (GitHub OIDC auth) |
+
+To cut a release:
+
+1. **Bump the version** in `pyproject.toml` and `server.json` (keep them in sync), update `CHANGELOG.md`, and commit to `main`.
+
+   ```bash
+   # optional: validate the registry manifest locally before tagging
+   mcp-publisher validate
+   ```
+
+2. **Create the GitHub Release** — via the UI (Releases → "Draft a new release" → new tag `vX.Y.Z`) or the CLI:
+
+   ```bash
+   git tag vX.Y.Z && git push origin vX.Y.Z
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file docs/releases/vX.Y.Z.md
+   ```
+
+3. **That's it** — the release event fires all three workflows. `publish-mcp.yml` waits for PyPI to serve the new version (so the `mcp-name` ownership marker in this README is verifiable), then publishes the server via GitHub OIDC under `io.github.synpulse8-opensource/*` (no token or local `mcp-publisher` needed).
+
+4. **Verify** the registry entry once the workflow finishes:
+
+   ```bash
+   curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=pulse8-ai-cortex-knowledge-vault"
+   ```
+
+> [!IMPORTANT]
+> PyPI versions are immutable — a version number can never be reused, even after deletion. Always increment to a new version; never re-release an existing one.
+
 ## Contributing
 
 We welcome contributions! Please open an issue to discuss your idea before submitting a pull request.
