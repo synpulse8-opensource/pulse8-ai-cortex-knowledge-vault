@@ -1,0 +1,75 @@
+name: Publish to MCP Registry
+
+# Registers the server on registry.modelcontextprotocol.io after a release.
+# Auth is GitHub OIDC — the workflow runs inside synpulse8-opensource, which
+# authorizes the `io.github.synpulse8-opensource/*` namespace without any
+# personal org-membership visibility or stored secret.
+#
+# This does NOT publish the PyPI package — `publish-pypi.yml` owns that on the
+# same `release: published` event. We poll PyPI first so the registry's
+# package-ownership check (which reads the `mcp-name:` marker from the PyPI
+# README) sees the new version before we publish.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish without leading v (e.g. 1.2.1). Defaults to pyproject version."
+        required: false
+
+jobs:
+  publish-mcp:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            V="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            V="v${{ inputs.version }}"
+          else
+            V="v$(grep -m1 '^version' pyproject.toml | sed -E 's/.*"(.*)".*/\1/')"
+          fi
+          echo "version=${V#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Sync server.json version to the release
+        run: |
+          jq --arg v "${{ steps.ver.outputs.version }}" \
+            '.version = $v | (.packages |= map(.version = $v))' \
+            server.json > server.tmp && mv server.tmp server.json
+          cat server.json
+
+      - name: Wait for PyPI to serve the release
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsSL "https://pypi.org/pypi/pulse8-ai-cortex-knowledge-vault/${{ steps.ver.outputs.version }}/json" >/dev/null 2>&1; then
+              echo "PyPI is serving ${{ steps.ver.outputs.version }}"
+              exit 0
+            fi
+            echo "Waiting for PyPI to publish ${{ steps.ver.outputs.version }}... (attempt $i/30)"
+            sleep 10
+          done
+          echo "::error::PyPI did not serve ${{ steps.ver.outputs.version }} within timeout"
+          exit 1
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Authenticate to MCP Registry (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish
