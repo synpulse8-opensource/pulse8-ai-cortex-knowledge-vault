@@ -1,26 +1,12 @@
-<p align="center">
-  <img src="assets/pulse8-banner.png" alt="PULSE8.ai" width="600" />
-</p>
 
-<h1 align="center">PULSE8.ai Cortex</h1>
 
-<p align="center">
-  <strong>Agent-native knowledge OS built on Markdown</strong>
-</p>
+# PULSE8.ai Cortex
 
-<p align="center">
-  <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/actions/workflows/pylint.yml"><img src="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/actions/workflows/pylint.yml/badge.svg" alt="Build"></a>
-  <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/releases/latest"><img src="https://img.shields.io/github/v/release/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" alt="Release"></a>
-  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"></a>
-</p>
+**Agent-native knowledge OS built on Markdown**
 
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/MCP-Model%20Context%20Protocol-blueviolet" alt="MCP">
-  <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker">
-  <img src="https://img.shields.io/badge/NetworkX-graph%20engine-orange" alt="NetworkX">
-</p>
+
+
+
 
 PULSE8.ai Cortex is an agent-native knowledge OS built on Markdown. It gives AI agents and humans a shared vault backed by a typed knowledge graph, full-text search, and a [MarkItDown](https://github.com/microsoft/markitdown)-powered compiler — all accessible through a unified [MCP](https://modelcontextprotocol.io/) interface.
 
@@ -30,15 +16,14 @@ Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, 
 
 ---
 
-<details>
-<summary><h2>Get started</h2></summary>
+## Get started
 
 > [!NOTE]
 > PULSE8.ai Cortex requires Docker. An [OpenRouter API key](https://openrouter.ai/keys) is optional — needed only for LLM-powered cross-referencing between wiki articles. File conversion works out of the box without any API key.
 
 1. Clone the repository:
   ```bash
-    git clone https://github.com/pulse8-ai/cortex-knowledge-vault.git
+    git clone https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault.git
     cd cortex-knowledge-vault
   ```
 2. Launch PULSE8.ai Cortex:
@@ -75,45 +60,46 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build -d
 
 See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance selection, NVIDIA toolkit installation, and cost estimates.
 
-</details>
 
-<details>
-<summary><h2>Features</h2></summary>
 
-|                      |                                                                                                         |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Knowledge Graph**  | Typed graph engine (NetworkX) — wikilinks, tags, and custom edges, auto-maintained on every file change                  |
-| **Full-Text Search** | QMD search with hybrid (BM25 + vector + re-ranking) by default; keyword and semantic modes selectable. Results cached with a configurable TTL. |
-| **File Compiler**    | Converts raw sources (PDF, DOCX, PPTX, XLSX, HTML, images, etc.) to Markdown via [MarkItDown](https://github.com/microsoft/markitdown). LLM used only for cross-referencing. |
-| **MCP Server**       | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client                                |
-| **Feedback & Notifications** | `vault_feedback` captures quality feedback as notes; optional Microsoft Teams webhook posts an adaptive card per submission |
-| **Daily Activity Log** | Every write/ingest/compile is mirrored into `daily/<date>.md` as a greppable, wikilinked timeline                       |
-| **Bulk Ingest**      | Ingest dozens or hundreds of files at once from a local directory with SHA-256 dedup and bounded concurrency              |
-| **REST API**         | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload and bulk ingest                 |
-| **Vault Watcher**    | Real-time filesystem monitoring — graph stays in sync automatically                                                      |
-| **Zero Database**    | Everything persists as Markdown + JSON on your filesystem                                                                |
+## Features
 
-</details>
 
-<details>
-<summary><h2>MCP tools</h2></summary>
+|                              |                                                                                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Knowledge Graph**          | Typed graph engine (NetworkX) — wikilinks, tags, and custom edges, auto-maintained on every file change                                                                      |
+| **Full-Text Search**         | QMD search with hybrid (BM25 + vector + re-ranking) by default; keyword and semantic modes selectable. Results cached with a configurable TTL.                               |
+| **File Compiler**            | Converts raw sources (PDF, DOCX, PPTX, XLSX, HTML, images, etc.) to Markdown via [MarkItDown](https://github.com/microsoft/markitdown). LLM used only for cross-referencing. |
+| **MCP Server**               | Streamable HTTP + stdio transport — works with Claude Desktop, Cursor, and any MCP client                                                                                    |
+| **Feedback & Notifications** | `vault_feedback` captures quality feedback as notes; optional Microsoft Teams webhook posts an adaptive card per submission                                                  |
+| **Daily Activity Log**       | Every write/ingest/compile is mirrored into `daily/<date>.md` as a greppable, wikilinked timeline                                                                            |
+| **Bulk Ingest**              | Ingest dozens or hundreds of files at once from a local directory with SHA-256 dedup and bounded concurrency                                                                 |
+| **REST API**                 | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload and bulk ingest                                                                     |
+| **Vault Watcher**            | Real-time filesystem monitoring — graph stays in sync automatically                                                                                                          |
+| **Zero Database**            | Everything persists as Markdown + JSON on your filesystem                                                                                                                    |
 
-| Tool            | Description                                                        |
-| --------------- | ------------------------------------------------------------------ |
-| `vault_read`    | Read a note by path                                                |
-| `vault_write`   | Create or update a note                                            |
-| `vault_search`  | Search the vault (keyword / semantic / hybrid)                     |
-| `vault_link`    | Create, query, or delete graph edges                               |
-| `vault_context` | Build a context window: search → graph traversal → ranked subgraph |
-| `vault_ingest`  | Ingest raw content or binary files (supports `content_base64` for binary) |
-| `vault_compile` | Compile unprocessed raw sources into wiki Markdown via MarkItDown         |
-| `vault_feedback` | Submit feedback on vault quality (`status: OPEN`; optional `related_paths` of `.md` notes) |
-| `vault_list_feedbacks` | List feedback note metadata (paths, tags, status; not full body) |
 
-</details>
 
-<details>
-<summary><h2>Architecture</h2></summary>
+
+## MCP tools
+
+
+| Tool                   | Description                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `vault_read`           | Read a note by path                                                                        |
+| `vault_write`          | Create or update a note                                                                    |
+| `vault_search`         | Search the vault (keyword / semantic / hybrid)                                             |
+| `vault_link`           | Create, query, or delete graph edges                                                       |
+| `vault_context`        | Build a context window: search → graph traversal → ranked subgraph                         |
+| `vault_ingest`         | Ingest raw content or binary files (supports `content_base64` for binary)                  |
+| `vault_compile`        | Compile unprocessed raw sources into wiki Markdown via MarkItDown                          |
+| `vault_feedback`       | Submit feedback on vault quality (`status: OPEN`; optional `related_paths` of `.md` notes) |
+| `vault_list_feedbacks` | List feedback note metadata (paths, tags, status; not full body)                           |
+
+
+
+
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -148,28 +134,29 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 └──────────────────────────────────────────────┘
 ```
 
-</details>
 
-<details>
-<summary><h2>Vault layout</h2></summary>
+
+## Vault layout
 
 The vault is a plain directory of Markdown files organised by purpose. Cortex classifies each file into a typed node (`NodeType`) used by the graph engine and exposed in REST and MCP responses.
 
-| Folder        | `NodeType`   | Purpose                                                              |
-| ------------- | ------------ | -------------------------------------------------------------------- |
-| `wiki/`       | `note`       | Compiled, interlinked knowledge articles                             |
-| `raw/`        | `raw_source` | Unprocessed sources (PDF, DOCX, TXT, …) the compiler reads from      |
-| `agents/`     | `agent_def`  | Agent definitions                                                    |
-| `sessions/`   | `session`    | Per-session notes / conversation transcripts                         |
-| `daily/`      | `daily`      | Daily notes (Obsidian Daily Notes convention)                        |
-| `feedback/`   | `feedback`   | Feedback on vault quality (`status`, `related_paths`)                |
-| `.cortex/`    | _(skipped)_  | Cortex internals — `graph.json`, `index.md`, `log.md`, manifests     |
+
+| Folder      | `NodeType`   | Purpose                                                          |
+| ----------- | ------------ | ---------------------------------------------------------------- |
+| `wiki/`     | `note`       | Compiled, interlinked knowledge articles                         |
+| `raw/`      | `raw_source` | Unprocessed sources (PDF, DOCX, TXT, …) the compiler reads from  |
+| `agents/`   | `agent_def`  | Agent definitions                                                |
+| `sessions/` | `session`    | Per-session notes / conversation transcripts                     |
+| `daily/`    | `daily`      | Daily notes (Obsidian Daily Notes convention)                    |
+| `feedback/` | `feedback`   | Feedback on vault quality (`status`, `related_paths`)            |
+| `.cortex/`  | *(skipped)*  | Cortex internals — `graph.json`, `index.md`, `log.md`, manifests |
+
 
 ### How classification works
 
 Order of precedence (first match wins):
 
-1. **Frontmatter `type:`** — explicit override always wins (e.g. `type: note` in `agents/foo.md` resolves to `NodeType.NOTE`)
+1. **Frontmatter `type:*`* — explicit override always wins (e.g. `type: note` in `agents/foo.md` resolves to `NodeType.NOTE`)
 2. **Folder prefix** — files under `raw/ agents/ sessions/ daily/ feedback/` inherit the folder's type with no filename suffix needed (e.g. `daily/2026-06-10.md` → `daily`)
 3. **Filename suffix** (backward-compatible) — `.agent.md`, `.session.md`, `.memory.md` are still honored anywhere (e.g. `wiki/legacy.agent.md` → `agent_def`)
 4. **Default** — `NodeType.NOTE`
@@ -182,10 +169,9 @@ Every `vault_write`, `vault_ingest`, and successful `compile` event (MCP **and**
 
 Writes targeting `daily/`, `feedback/`, or `.cortex/` are deliberately **not** mirrored (would be self-referential noise). The hidden `.cortex/log.md` audit log is unaffected and continues to receive every operation.
 
-</details>
 
-<details>
-<summary><h2>Bulk ingest</h2></summary>
+
+## Bulk ingest
 
 For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the one-click shell script instead of feeding them one at a time through MCP. It reads directly from a local directory — no wire overhead, no running server required — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end.
 
@@ -239,10 +225,9 @@ curl -X POST http://localhost:8420/api/v1/bulk-ingest \
 
 The dedup manifest is stored at `.cortex/ingest-manifest.json`. Files are matched by content hash, not filename — renaming a file won't cause re-ingestion, and the same content under a different name will be skipped.
 
-</details>
 
-<details>
-<summary><h2>Configuration</h2></summary>
+
+## Configuration
 
 Copy the example and fill in your values:
 
@@ -250,42 +235,45 @@ Copy the example and fill in your values:
 cp .env.example .env
 ```
 
-| Variable                       | Required | Default                        | Description                                          |
-| ------------------------------ | -------- | ------------------------------ | ---------------------------------------------------- |
-| `LLM_API_KEY`                  | No       | —                              | OpenRouter (or compatible) API key (for cross-referencing only) |
-| `COMPILER_MODEL`               | No       | `anthropic/claude-sonnet-4`    | Model for cross-reference detection                             |
-| `LLM_BASE_URL`                 | No       | `https://openrouter.ai/api/v1` | LLM API base URL                                                |
-| `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                         |
-| `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker) |
-| `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable) |
+
+| Variable                       | Required | Default                        | Description                                                                                        |
+| ------------------------------ | -------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `LLM_API_KEY`                  | No       | —                              | OpenRouter (or compatible) API key (for cross-referencing only)                                    |
+| `COMPILER_MODEL`               | No       | `anthropic/claude-sonnet-4`    | Model for cross-reference detection                                                                |
+| `LLM_BASE_URL`                 | No       | `https://openrouter.ai/api/v1` | LLM API base URL                                                                                   |
+| `VAULT_DIR`                    | No       | `./example_vault`              | Path to your vault directory                                                                       |
+| `INGEST_DIR`                   | No       | `./ingest`                     | Path to bulk-ingest source directory (mounted as `/ingest` in Docker)                              |
+| `QMD_REFRESH_INTERVAL_SECONDS` | No       | `900`                          | Periodic re-index interval (seconds; `0` to disable)                                               |
 | `QMD_SEARCH_MODE`              | No       | `hybrid`                       | Default search mode when unspecified: `hybrid` (BM25 + vector + re-rank), `semantic`, or `keyword` |
-| `QMD_CACHE_TTL_SECONDS`        | No       | `30`                           | TTL for the search-result cache; raise it on read-heavy vaults to skip repeat QMD calls |
-| `QMD_SEARCH_TIMEOUT_SECONDS`   | No       | `120`                          | Per-request search timeout (increase for hybrid on CPU-only hosts) |
-| `QMD_EMBED_TIMEOUT_MS`         | No       | `600000`                       | Embed timeout in ms (increase for CPU-only deployments) |
-| `QMD_URL`                      | No       | —                              | External QMD URL for cortex-only mode (e.g. `http://host.docker.internal:3100`) |
-| `AUTH_METHOD`                  | No       | `none`                         | Authentication method: `none`, `apikey`, or `oidc` (see [Authentication](#authentication)) |
-| `API_KEY`                      | No       | —                              | Static API key for `x-api-key` header (used when `AUTH_METHOD=apikey`) |
-| `OIDC_TENANT_ID`               | No       | —                              | Microsoft Entra ID tenant ID (used when `AUTH_METHOD=oidc`) |
-| `OIDC_CLIENT_ID`               | No       | —                              | Microsoft Entra ID app (client) ID |
-| `OIDC_CLIENT_SECRET`           | No       | —                              | Microsoft Entra ID client secret |
-| `OIDC_BASE_URL`                | No       | `http://localhost:8420`        | Public base URL of the Cortex server (used for OAuth callbacks) |
-| `TEAMS_WEBHOOK_URL`            | No       | —                              | Incoming webhook / Power Automate URL; posts an adaptive card on each new feedback note |
-| `TEAMS_APP_BASE_URL`           | No       | —                              | Optional public Cortex base URL for a "View in Cortex" link on the Teams card |
+| `QMD_CACHE_TTL_SECONDS`        | No       | `30`                           | TTL for the search-result cache; raise it on read-heavy vaults to skip repeat QMD calls            |
+| `QMD_SEARCH_TIMEOUT_SECONDS`   | No       | `120`                          | Per-request search timeout (increase for hybrid on CPU-only hosts)                                 |
+| `QMD_EMBED_TIMEOUT_MS`         | No       | `600000`                       | Embed timeout in ms (increase for CPU-only deployments)                                            |
+| `QMD_URL`                      | No       | —                              | External QMD URL for cortex-only mode (e.g. `http://host.docker.internal:3100`)                    |
+| `AUTH_METHOD`                  | No       | `none`                         | Authentication method: `none`, `apikey`, or `oidc` (see [Authentication](#authentication))         |
+| `API_KEY`                      | No       | —                              | Static API key for `x-api-key` header (used when `AUTH_METHOD=apikey`)                             |
+| `OIDC_TENANT_ID`               | No       | —                              | Microsoft Entra ID tenant ID (used when `AUTH_METHOD=oidc`)                                        |
+| `OIDC_CLIENT_ID`               | No       | —                              | Microsoft Entra ID app (client) ID                                                                 |
+| `OIDC_CLIENT_SECRET`           | No       | —                              | Microsoft Entra ID client secret                                                                   |
+| `OIDC_BASE_URL`                | No       | `http://localhost:8420`        | Public base URL of the Cortex server (used for OAuth callbacks)                                    |
+| `TEAMS_WEBHOOK_URL`            | No       | —                              | Incoming webhook / Power Automate URL; posts an adaptive card on each new feedback note            |
+| `TEAMS_APP_BASE_URL`           | No       | —                              | Optional public Cortex base URL for a "View in Cortex" link on the Teams card                      |
+
 
 `OPENROUTER_API_KEY` and `CORTEX_LLM_API_KEY` are accepted as aliases for `LLM_API_KEY`. Variables above are set in `.env` (Docker reads them via Compose) and map to the `CORTEX_*` settings used by the app.
 
-</details>
 
-<details>
-<summary><h2>Authentication</h2></summary>
+
+## Authentication
 
 Cortex supports two authentication methods that protect both the REST API (`/api/v1/`) and the MCP endpoint (`/mcp/`). Set `AUTH_METHOD` in `.env` to choose:
 
-| `AUTH_METHOD` | Description |
-| ------------- | ----------- |
+
+| `AUTH_METHOD` | Description                                                   |
+| ------------- | ------------------------------------------------------------- |
 | `none`        | Default. All endpoints are open — no authentication required. |
-| `apikey`      | Static API key. Clients pass `x-api-key` header. |
-| `oidc`        | Microsoft Entra ID (Azure AD) with OAuth 2.0 + MFA support. |
+| `apikey`      | Static API key. Clients pass `x-api-key` header.              |
+| `oidc`        | Microsoft Entra ID (Azure AD) with OAuth 2.0 + MFA support.   |
+
 
 ### API Key (`AUTH_METHOD=apikey`)
 
@@ -325,6 +313,7 @@ OIDC_BASE_URL=http://localhost:8420
 ```
 
 This enables:
+
 - **REST API**: OAuth 2.0 Authorization Code Flow via `GET /api/v1/login`. After login, pass the access token as `Authorization: Bearer <token>`. A valid `x-api-key` header is also accepted as a fallback when `API_KEY` is set.
 - **MCP endpoint**: FastMCP's built-in OIDCProxy handles interactive browser-based login.
 
@@ -338,10 +327,9 @@ To use OIDC, register an app in the [Azure Portal](https://portal.azure.com):
 4. Under **API permissions**, add `openid`, `profile`, and `email` (Microsoft Graph → Delegated)
 5. Copy the Tenant ID, Client ID, and Client Secret into `.env`
 
-</details>
 
-<details>
-<summary><h2>MCP client setup</h2></summary>
+
+## MCP client setup
 
 ### Claude Desktop
 
@@ -407,10 +395,9 @@ Add to your `.cursor/mcp.json`:
 }
 ```
 
-</details>
 
-<details>
-<summary><h2>How it works</h2></summary>
+
+## How it works
 
 **Watcher** and **Compiler** are independent components:
 
@@ -421,15 +408,17 @@ They connect indirectly: the compiler writes to `wiki/`, the watcher picks those
 
 ### Supported file formats
 
-| Format | Extensions |
-| ------ | ---------- |
-| PDF | `.pdf` |
-| Microsoft Word | `.docx` |
-| Microsoft PowerPoint | `.pptx` |
-| Microsoft Excel | `.xlsx`, `.xls` |
-| HTML | `.html`, `.htm` |
-| Text-based | `.csv`, `.json`, `.xml`, `.txt`, `.md` |
-| Images | `.jpg`, `.png`, etc. (EXIF metadata) |
+
+| Format               | Extensions                             |
+| -------------------- | -------------------------------------- |
+| PDF                  | `.pdf`                                 |
+| Microsoft Word       | `.docx`                                |
+| Microsoft PowerPoint | `.pptx`                                |
+| Microsoft Excel      | `.xlsx`, `.xls`                        |
+| HTML                 | `.html`, `.htm`                        |
+| Text-based           | `.csv`, `.json`, `.xml`, `.txt`, `.md` |
+| Images               | `.jpg`, `.png`, etc. (EXIF metadata)   |
+
 
 **Search** uses a two-stage pipeline:
 
@@ -438,10 +427,9 @@ They connect indirectly: the compiler writes to `wiki/`, the watcher picks those
 
 QMD answers *"what's relevant?"* — the graph answers *"how are these results connected?"*
 
-</details>
 
-<details>
-<summary><h2>Development</h2></summary>
+
+## Development
 
 ```bash
 # Install dependencies
@@ -459,19 +447,20 @@ CORTEX_MCP_TRANSPORT=http CORTEX_VAULT_PATH=./example_vault uv run python script
 
 ### Utility scripts
 
-| Script                    | Description                                                    |
-| ------------------------- | -------------------------------------------------------------- |
-| `scripts/serve.py`        | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`)     |
-| `scripts/compile.py`      | Batch-compile all raw sources                                  |
-| `scripts/reindex.py`      | Full reindex + graph rebuild                                   |
-| `scripts/bulk_ingest.sh`  | One-click bulk ingest from a local directory                   |
-| `scripts/bulk_ingest.py`  | Python CLI for bulk ingest (called by `bulk_ingest.sh`)        |
-| `scripts/lint.py`         | Lint vault structure                                           |
 
-</details>
+| Script                   | Description                                                |
+| ------------------------ | ---------------------------------------------------------- |
+| `scripts/serve.py`       | Dev server (HTTP or stdio based on `CORTEX_MCP_TRANSPORT`) |
+| `scripts/compile.py`     | Batch-compile all raw sources                              |
+| `scripts/reindex.py`     | Full reindex + graph rebuild                               |
+| `scripts/bulk_ingest.sh` | One-click bulk ingest from a local directory               |
+| `scripts/bulk_ingest.py` | Python CLI for bulk ingest (called by `bulk_ingest.sh`)    |
+| `scripts/lint.py`        | Lint vault structure                                       |
 
-<details>
-<summary><h2>Data persistence</h2></summary>
+
+
+
+## Data persistence
 
 The vault directory is bind-mounted from your host into the containers. All data lives on your local disk and survives container restarts.
 
@@ -482,10 +471,9 @@ docker compose down -v
 ./scripts/start.sh
 ```
 
-</details>
 
-<details>
-<summary><h2>Contributing</h2></summary>
+
+## Contributing
 
 We welcome contributions! Please open an issue to discuss your idea before submitting a pull request.
 
@@ -506,17 +494,15 @@ uv run pytest tests/ -v
 # Submit a pull request
 ```
 
-</details>
 
-<details>
-<summary><h2>Reporting issues</h2></summary>
+
+## Reporting issues
 
 Use [GitHub Issues](https://github.com/pulse8-ai/cortex-knowledge-vault/issues) to report bugs or request features.
 
-</details>
 
-<details>
-<summary><h2>Acknowledgements</h2></summary>
+
+## Acknowledgements
 
 PULSE8.ai Cortex builds on ideas and tools from the open-source community:
 
@@ -524,7 +510,7 @@ PULSE8.ai Cortex builds on ideas and tools from the open-source community:
 - **[QMD](https://github.com/tobi/qmd)** by [Tobi Lütke](https://github.com/tobi) — the on-device search engine powering all full-text and hybrid search in Cortex. QMD combines BM25, vector search, and LLM re-ranking, all running locally.
 - **[MarkItDown](https://github.com/microsoft/markitdown)** by [Microsoft](https://github.com/microsoft) — the file-to-Markdown converter powering the Cortex compiler. Converts PDF, Office documents, HTML, images, and more into structured Markdown for ingestion into the vault.
 
-</details>
+
 
 ## License
 
