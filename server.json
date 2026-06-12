@@ -14,6 +14,22 @@
       "identifier": "pulse8-ai-cortex-knowledge-vault",
       "version": "1.2.1",
       "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "pulse8-ai-cortex-knowledge-vault",
+          "description": "Install the package, then run its console script below."
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "cortex",
+          "valueHint": "command",
+          "description": "Cortex console entry point; defaults to MCP stdio transport."
+        }
+      ],
       "transport": {
         "type": "stdio"
       },
