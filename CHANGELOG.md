@@ -5,6 +5,12 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] — 2026-06-12
+
+### Added
+
+- **Official MCP Registry listing**: Added `server.json` (schema `2025-12-11`) describing the server under the namespace `io.github.synpulse8-opensource/pulse8-ai-cortex-knowledge-vault`, plus an `mcp-name:` ownership marker in the README so the registry can verify the PyPI package. Enables discovery via `registry.modelcontextprotocol.io`.
+
 ## [1.2.0] — 2026-06-11
 
 ### Added

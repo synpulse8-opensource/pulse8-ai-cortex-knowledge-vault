@@ -1,4 +1,4 @@
-
+<!-- mcp-name: io.github.synpulse8-opensource/pulse8-ai-cortex-knowledge-vault -->
 
 # PULSE8.ai Cortex
 

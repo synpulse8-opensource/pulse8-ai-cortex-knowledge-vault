@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.synpulse8-opensource/pulse8-ai-cortex-knowledge-vault",
+  "description": "Agent-native knowledge OS on Markdown: typed knowledge graph (NetworkX), hybrid search (QMD), and a MarkItDown-powered compiler, exposed over MCP. No database required.",
+  "repository": {
+    "url": "https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault",
+    "source": "github"
+  },
+  "version": "1.2.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "pulse8-ai-cortex-knowledge-vault",
+      "version": "1.2.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CORTEX_VAULT_PATH",
+          "description": "Absolute path to the Markdown vault directory the server reads and writes.",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "CORTEX_LLM_API_KEY",
+          "description": "Optional OpenRouter (or compatible) API key. Only needed for LLM cross-referencing during compile; file conversion and search work without it.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
