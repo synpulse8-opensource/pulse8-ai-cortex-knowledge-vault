@@ -5,6 +5,12 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.2] — 2026-06-12
+
+### Changed
+
+- **Re-release to trigger MCP Registry publishing**: `1.2.1` was tagged and released before the `publish-mcp.yml` workflow reached the default branch, so the registry listing never ran. No functional code changes since `1.2.1`; this release exists to publish the server to `registry.modelcontextprotocol.io`.
+
 ## [1.2.1] — 2026-06-12
 
 ### Added
