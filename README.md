@@ -1,11 +1,28 @@
 <!-- mcp-name: io.github.synpulse8-opensource/pulse8-ai-cortex-knowledge-vault -->
 
-# PULSE8.ai Cortex
+<p align="center">
+  <img src="assets/pulse8-banner.png" alt="PULSE8.ai" width="600" />
+</p>
 
-**Agent-native knowledge OS built on Markdown**
+<h1 align="center">PULSE8.ai Cortex</h1>
 
+<p align="center">
+  <strong>Agent-native knowledge OS built on Markdown</strong>
+</p>
 
+<p align="center">
+  <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/actions/workflows/pylint.yml"><img src="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/actions/workflows/pylint.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/releases/latest"><img src="https://img.shields.io/github/v/release/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" alt="Release"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"></a>
+</p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.12+-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/MCP-Model%20Context%20Protocol-blueviolet" alt="MCP">
+  <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/NetworkX-graph%20engine-orange" alt="NetworkX">
+</p>
 
 
 PULSE8.ai Cortex is an agent-native knowledge OS built on Markdown. It gives AI agents and humans a shared vault backed by a typed knowledge graph, full-text search, and a [MarkItDown](https://github.com/microsoft/markitdown)-powered compiler — all accessible through a unified [MCP](https://modelcontextprotocol.io/) interface.
