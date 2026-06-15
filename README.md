@@ -8,6 +8,8 @@
 
 <p align="center">
   <strong>Agent-native knowledge OS built on Markdown</strong>
+  <br />
+  <em>Knowledge that compounds.</em>
 </p>
 
 <p align="center">
@@ -32,6 +34,89 @@ Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, 
 > Inspired by [Andrej Karpathy](https://github.com/karpathy)'s [LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern — a persistent, compounding knowledge base maintained by LLMs instead of re-derived on every query. Search powered by [Tobi Lütke](https://github.com/tobi)'s [QMD](https://github.com/tobi/qmd).
 
 ---
+
+## Why PULSE8.ai Cortex?
+
+Most AI agents can access tools, but they cannot accumulate knowledge.
+
+Traditional RAG systems retrieve documents. PULSE8.ai Cortex builds a **persistent, evolving knowledge layer** that grows over time and becomes more valuable the more agents and humans interact with it.
+
+With PULSE8.ai Cortex, agents can:
+
+- **Learn from interactions** — every read, write, ingest, and compile event is logged and graph-linked
+- **Build and traverse knowledge graphs** — wikilinks, tags, and typed edges, maintained automatically
+- **Store structured insights** — Markdown notes with typed nodes (`note`, `agent_def`, `session`, `daily`, `feedback`)
+- **Retrieve context across projects** — `vault_context` builds a ranked subgraph from any seed query
+- **Share knowledge through MCP** — one vault, every MCP-compatible client
+- **Maintain long-term memory** — files survive sessions, deployments, and model upgrades
+- **Version knowledge through Git** — the vault is a plain directory of Markdown, diff-friendly out of the box
+
+| Aspect | Traditional RAG | PULSE8.ai Cortex |
+| ------ | --------------- | ---------------- |
+| Focus | Documents | Knowledge |
+| Memory | Session-based | Persistent |
+| Structure | Chunks | Markdown + typed graph |
+| Evolution | Static index | Continuous, file-watched |
+| Versioning | None | Git-native |
+| Agent collaboration | Limited | First-class (MCP) |
+
+
+
+## When to use PULSE8.ai Cortex
+
+### Ideal use cases
+
+- ✅ Persistent memory for AI agents
+- ✅ Shared knowledge across multiple agents
+- ✅ Git-versioned organisational knowledge
+- ✅ MCP-compatible knowledge retrieval
+- ✅ Knowledge graphs without a dedicated graph database
+- ✅ Long-term accumulation of institutional knowledge
+- ✅ Human + AI collaborative knowledge management
+
+### Not ideal for
+
+- ❌ Simple full-text document search (use a search engine)
+- ❌ Pure vector-only retrieval with no graph (use a vector DB)
+- ❌ Short-lived, stateless conversations
+- ❌ Workflows that don't need persistent knowledge evolution
+
+
+
+## PULSE8.ai Cortex vs alternatives
+
+
+| Capability                     | PULSE8.ai Cortex | Traditional RAG | GraphRAG |
+| ------------------------------ | :--------------: | :-------------: | :------: |
+| Persistent knowledge           |        ✅        |       ❌        |    ⚠️    |
+| Markdown-native storage        |        ✅        |       ❌        |    ❌    |
+| MCP-compatible out of the box  |        ✅        |       ❌        |    ❌    |
+| Knowledge graph                |        ✅        |       ❌        |    ✅    |
+| Git versioning                 |        ✅        |       ❌        |    ❌    |
+| Agent memory layer             |        ✅        |       ❌        |    ⚠️    |
+| Human + AI collaboration       |        ✅        |       ❌        |    ⚠️    |
+| Continuous knowledge evolution |        ✅        |       ❌        |    ⚠️    |
+| Zero database required         |        ✅        |       ❌        |    ❌    |
+
+
+
+## Works with
+
+PULSE8.ai Cortex speaks [MCP](https://modelcontextprotocol.io/) — so it plugs into any AI client that does. The same vault is reachable over streamable HTTP or stdio, and mirrored 1:1 by a REST API at `/api/v1/`.
+
+
+| Category              | Compatible with                                                                |
+| --------------------- | ------------------------------------------------------------------------------ |
+| **AI agents**         | Claude Desktop, Claude Code, OpenAI Agents, Gemini, custom agent frameworks    |
+| **Development tools** | Cursor, VS Code, JetBrains IDEs                                                |
+| **Agent frameworks**  | LangGraph, LangChain, CrewAI, AutoGen                                          |
+| **MCP ecosystem**     | MCP clients, MCP servers, MCP tool registries                                  |
+| **Human tools**       | Obsidian, any Markdown editor, any Git client                                  |
+
+
+Because the vault is just files, humans and agents collaborate on the same knowledge — no proprietary format, no lock-in.
+
+
 
 ## Get started
 
@@ -446,6 +531,65 @@ QMD answers *"what's relevant?"* — the graph answers *"how are these results c
 
 
 
+## Real-world use cases
+
+### Software engineering knowledge base
+
+- Architecture Decision Records (ADRs)
+- Coding standards and conventions
+- Engineering handbooks and runbooks
+- Platform and service documentation
+- Domain-driven design models
+
+### Banking & financial services
+
+- Product documentation
+- Regulatory and compliance knowledge
+- Business domain models
+- Wealth management expertise
+- Institutional process know-how
+
+### Enterprise knowledge management
+
+- Internal wikis
+- Project documentation and post-mortems
+- Lessons learned and retrospectives
+- Organisational memory
+- Best practices and playbooks
+
+### AI agent memory layer
+
+- Shared memory across agents
+- Long-term reasoning context
+- Knowledge accumulation across sessions
+- Multi-agent collaboration on a single vault
+
+
+
+## Roadmap
+
+### Near-term
+
+- Enhanced knowledge-graph visualisation
+- Agent activity timeline
+- Knowledge quality scoring
+- Additional MCP integrations
+
+### Mid-term
+
+- Multi-vault federation
+- Enterprise governance and access policies
+- Knowledge lineage tracking
+- Cross-agent learning signals
+
+### Long-term
+
+- Self-improving organisational memory
+- Autonomous knowledge curation
+- Knowledge-driven agent ecosystems
+
+
+
 ## Development
 
 ```bash
@@ -526,6 +670,21 @@ To cut a release:
 
 > [!IMPORTANT]
 > PyPI versions are immutable — a version number can never be reused, even after deletion. Always increment to a new version; never re-release an existing one.
+
+
+
+## Community
+
+We believe AI agents need a dedicated knowledge layer — not another document store. If you share that vision:
+
+- Star the [repository](https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault)
+- Open a [discussion](https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/discussions) or [issue](https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/issues)
+- Submit a pull request (see [Contributing](#contributing))
+- Share your use cases — banking, engineering, research, or anything else
+
+Together we can build the knowledge layer for agentic AI.
+
+
 
 ## Contributing
 
