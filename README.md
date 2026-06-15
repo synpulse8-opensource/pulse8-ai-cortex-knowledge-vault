@@ -7,7 +7,7 @@
 <h1 align="center">PULSE8.ai Cortex</h1>
 
 <p align="center">
-  <strong>Agent-native knowledge OS built on Markdown</strong>
+  <strong>The open-source knowledge layer for AI agents</strong>
   <br />
   <em>Knowledge that compounds.</em>
 </p>
@@ -27,9 +27,9 @@
 </p>
 
 
-PULSE8.ai Cortex is an agent-native knowledge OS built on Markdown. It gives AI agents and humans a shared vault backed by a typed knowledge graph, full-text search, and a [MarkItDown](https://github.com/microsoft/markitdown)-powered compiler — all accessible through a unified [MCP](https://modelcontextprotocol.io/) interface.
+PULSE8.ai Cortex is the **open-source knowledge layer for AI agents**: Git-native memory, a typed knowledge graph, and [MCP](https://modelcontextprotocol.io/)-powered retrieval on top of plain Markdown — so agents can build, evolve, and reuse persistent knowledge instead of re-deriving it on every query.
 
-Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, write, search, link, and compile knowledge — no database required.
+Under the hood it's a unified vault for AI agents and humans, backed by a typed knowledge graph, full-text + hybrid search, and a [MarkItDown](https://github.com/microsoft/markitdown)-powered file compiler. Drop files in (PDF, DOCX, PPTX, XLSX, HTML, images, and more), let agents read, write, search, link, and compile knowledge — no database required.
 
 > Inspired by [Andrej Karpathy](https://github.com/karpathy)'s [LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) pattern — a persistent, compounding knowledge base maintained by LLMs instead of re-derived on every query. Search powered by [Tobi Lütke](https://github.com/tobi)'s [QMD](https://github.com/tobi/qmd).
 
