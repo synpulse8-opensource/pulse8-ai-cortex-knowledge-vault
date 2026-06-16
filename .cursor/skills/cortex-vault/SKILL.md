@@ -13,14 +13,16 @@ Code: `cortex/vault/` (`reader.py`, `writer.py`, `watcher.py`, `index.py`, `feed
 
 | Path | Purpose |
 |------|---------|
-| `wiki/` | Published Markdown articles (compiled from `raw/`) |
-| `raw/` | Source files before/during compilation |
+| `{VAULT_WIKI_DIR}/` | Published Markdown articles (default `wiki/`; e.g. `wiki1/`) |
+| `{VAULT_RAW_DIR}/` | Source files before/during compilation (default `raw/`; e.g. `raw1/`) |
 | `agents/` | Agent definition notes |
 | `sessions/` | Per-session notes |
 | `daily/` | Daily notes |
 | `feedback/` | Feedback submissions (`type: feedback`) |
 
-Paths in APIs are **relative to vault root** (e.g. `wiki/transformers.md`).
+Paths in APIs are **relative to vault root** (e.g. `wiki1/transformers.md` when `CORTEX_VAULT_WIKI_DIR=wiki1`).
+
+Configure via `CORTEX_VAULT_RAW_DIR` / `CORTEX_VAULT_WIKI_DIR` (or `VAULT_RAW_DIR` / `VAULT_WIKI_DIR` in `.env` for Compose).
 
 ## `.cortex/` metadata
 

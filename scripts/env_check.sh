@@ -24,6 +24,8 @@ check_required_env() {
 
 apply_defaults() {
     export VAULT_DIR="${VAULT_DIR:-./example_vault}"
+    export VAULT_RAW_DIR="${VAULT_RAW_DIR:-raw}"
+    export VAULT_WIKI_DIR="${VAULT_WIKI_DIR:-wiki}"
     export COMPILER_MODEL="${COMPILER_MODEL:-anthropic/claude-sonnet-4}"
     export LLM_BASE_URL="${LLM_BASE_URL:-https://openrouter.ai/api/v1}"
     export QMD_REFRESH_INTERVAL_SECONDS="${QMD_REFRESH_INTERVAL_SECONDS:-900}"
@@ -48,6 +50,8 @@ LLM_API_KEY=${LLM_API_KEY}
 COMPILER_MODEL=${COMPILER_MODEL}
 LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
 VAULT_DIR=${VAULT_DIR}
+VAULT_RAW_DIR=${VAULT_RAW_DIR}
+VAULT_WIKI_DIR=${VAULT_WIKI_DIR}
 QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
 QMD_CACHE_TTL_SECONDS=${QMD_CACHE_TTL_SECONDS:-30}
 QMD_SEARCH_MODE=${QMD_SEARCH_MODE:-hybrid}
@@ -88,6 +92,8 @@ prompt_missing_env() {
     echo "  Model:        $COMPILER_MODEL"
     echo "  LLM Base URL: $LLM_BASE_URL"
     echo "  Vault:        $VAULT_DIR"
+    echo "  Raw folder:   $VAULT_RAW_DIR"
+    echo "  Wiki folder:  $VAULT_WIKI_DIR"
     echo "  QMD Refresh:  ${QMD_REFRESH_INTERVAL_SECONDS}s"
     echo "  Auth Method:  ${AUTH_METHOD}"
     case "$AUTH_METHOD" in

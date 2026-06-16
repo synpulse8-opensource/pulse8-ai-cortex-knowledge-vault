@@ -20,8 +20,8 @@ Two naming layers:
 
 | Layer | Example | Used by |
 |-------|---------|---------|
-| `.env` / Compose | `VAULT_DIR`, `LLM_API_KEY`, `AUTH_METHOD` | `scripts/start.sh`, `docker-compose.yml` |
-| Python `CORTEX_*` | `CORTEX_VAULT_PATH`, `CORTEX_LLM_API_KEY` | `cortex/config.py` (`CortexSettings`) |
+| `.env` / Compose | `VAULT_DIR`, `VAULT_RAW_DIR`, `VAULT_WIKI_DIR`, `LLM_API_KEY`, `AUTH_METHOD` | `scripts/start.sh`, `docker-compose.yml` |
+| Python `CORTEX_*` | `CORTEX_VAULT_PATH`, `CORTEX_VAULT_RAW_DIR`, `CORTEX_VAULT_WIKI_DIR`, `CORTEX_LLM_API_KEY` | `cortex/config.py` (`CortexSettings`) |
 
 `scripts/env_check.sh` applies defaults, resolves `CORTEX_*` aliases, and writes `.env` for Docker.
 

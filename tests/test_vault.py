@@ -127,6 +127,39 @@ class TestInferNodeType:
         assert infer_node_type("sessions/foo.md", {"type": "feedback"}) == NodeType.FEEDBACK
 
 
+class TestNormalizeTags:
+    def test_flat_list(self):
+        from cortex.vault.reader import normalize_tags
+
+        assert normalize_tags(["ml", "architecture"]) == ["ml", "architecture"]
+
+    def test_comma_separated_string(self):
+        from cortex.vault.reader import normalize_tags
+
+        assert normalize_tags("ml, architecture, nlp") == ["ml", "architecture", "nlp"]
+
+    def test_nested_list(self):
+        from cortex.vault.reader import normalize_tags
+
+        assert normalize_tags([["avaloq", "configuration"], "import"]) == [
+            "avaloq",
+            "configuration",
+            "import",
+        ]
+
+    def test_empty_and_none(self):
+        from cortex.vault.reader import normalize_tags
+
+        assert normalize_tags([]) == []
+        assert normalize_tags(None) == []
+
+    def test_joinable(self):
+        from cortex.vault.reader import normalize_tags
+
+        tags = normalize_tags([["avaloq", "configuration"]])
+        assert ", ".join(tags) == "avaloq, configuration"
+
+
 class TestReadNote:
     def test_read_wiki_note(self, tmp_vault: Path):
         from cortex.vault.reader import read_note
@@ -192,6 +225,24 @@ class TestReadNote:
 
         with pytest.raises(ValueError, match="not a markdown note"):
             read_note(pdf, tmp_vault)
+
+    def test_read_note_normalizes_nested_tags(self, tmp_vault: Path):
+        path = tmp_vault / "wiki" / "nested-tags.md"
+        path.write_text(
+            "---\n"
+            "title: Nested Tags\n"
+            "tags:\n"
+            "  - - avaloq\n"
+            "    - configuration\n"
+            "  - import\n"
+            "---\n\n"
+            "# Nested Tags\n"
+        )
+        from cortex.vault.reader import read_note
+
+        note = read_note(path, tmp_vault)
+        assert note.tags == ["avaloq", "configuration", "import"]
+        assert ", ".join(note.tags) == "avaloq, configuration, import"
 
 
 class TestScanVault:

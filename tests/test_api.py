@@ -334,7 +334,30 @@ class TestBulkIngestEndpoint:
             concurrency=8,
             force=True,
             dry_run=False,
+            prune=True,
         )
+        instance.run.assert_awaited_once_with(lock_mode="fail", lock_scope="source")
+
+    def test_bulk_ingest_returns_409_when_busy(self, app_client):
+        from cortex.compiler.bulk_coordination import BulkIngestBusyError
+
+        vault_path = app_client.app.state.vault_path
+        inbox = vault_path.parent / "inbox-busy"
+        inbox.mkdir()
+
+        with patch("cortex.compiler.bulk.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
+            instance.run = AsyncMock(
+                side_effect=BulkIngestBusyError(vault_path, inbox),
+            )
+
+            response = app_client.post(
+                "/api/v1/bulk-ingest",
+                json={"source_dir": str(inbox)},
+            )
+
+        assert response.status_code == 409
+        assert "already running" in response.json()["detail"]
 
 
 class TestFeedbackEndpoints:

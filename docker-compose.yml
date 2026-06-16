@@ -8,6 +8,7 @@ services:
       - qmd-cache:/home/qmd/.cache/qmd
     environment:
       - VAULT_PATH=/vault
+      - VAULT_WIKI_DIR=${VAULT_WIKI_DIR:-wiki}
       - QMD_PORT=3100
       - QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
       - QMD_EMBED_TIMEOUT_MS=${QMD_EMBED_TIMEOUT_MS:-600000}
@@ -27,6 +28,8 @@ services:
       - ${INGEST_DIR:-./ingest}:/ingest:ro
     environment:
       - CORTEX_VAULT_PATH=/vault
+      - CORTEX_VAULT_RAW_DIR=${VAULT_RAW_DIR:-raw}
+      - CORTEX_VAULT_WIKI_DIR=${VAULT_WIKI_DIR:-wiki}
       - CORTEX_LLM_API_KEY=${LLM_API_KEY:-}
       - CORTEX_LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
       - CORTEX_COMPILER_MODEL=${COMPILER_MODEL:-anthropic/claude-sonnet-4}

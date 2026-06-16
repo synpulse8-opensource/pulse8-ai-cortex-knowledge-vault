@@ -6,6 +6,7 @@ import { readdirSync } from "node:fs";
 const exec = promisify(execFile);
 const PORT = parseInt(process.env.QMD_PORT || "3100", 10);
 const VAULT_PATH = process.env.VAULT_PATH || "/vault";
+const WIKI_DIR = process.env.VAULT_WIKI_DIR || "wiki";
 const QMD_BIN = process.env.QMD_BIN || "qmd";
 const REFRESH_INTERVAL_S = parseInt(
   process.env.QMD_REFRESH_INTERVAL_SECONDS || "900",
@@ -80,7 +81,10 @@ async function runSetupInner() {
   } catch { /* not registered — ignore */ }
 
   try {
-    await qmd(["context", "add", "qmd://wiki", "Knowledge articles compiled from raw sources"]);
+    await qmd([
+      "context", "add", `qmd://${WIKI_DIR}`,
+      "Knowledge articles compiled from raw sources",
+    ]);
   } catch { /* already exists */ }
   try {
     await qmd(["context", "add", "qmd://agents", "Agent definition files"]);

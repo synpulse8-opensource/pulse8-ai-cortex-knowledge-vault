@@ -275,7 +275,7 @@ Writes targeting `daily/`, `feedback/`, or `.cortex/` are deliberately **not** m
 
 ## Bulk ingest
 
-For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the one-click shell script instead of feeding them one at a time through MCP. It reads directly from a local directory — no wire overhead, no running server required — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end.
+For ingesting many files at once (dozens or hundreds of PDFs, papers, docs), use the one-click shell script instead of feeding them one at a time through MCP. It reads directly from a local directory (recursively, including subfolders) — no wire overhead, no running server required — deduplicates via SHA-256 hashing, compiles with bounded concurrency, and rebuilds the index once at the end. Subpaths are preserved under the vault raw folder (e.g. `source/abcde/doc.html` → `raw/abcde/doc.html`).
 
 ### One-click script (recommended)
 

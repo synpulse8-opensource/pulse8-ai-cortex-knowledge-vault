@@ -13,6 +13,7 @@ from cortex.search.qmd import QMDSearch
 from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
+from cortex.vault.layout import raw_dir, raw_rel, wiki_dir
 from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.writer import write_note
@@ -315,14 +316,14 @@ async def handle_vault_ingest(
     if content is None and file_bytes is None:
         return {"error": "Either content or file_bytes must be provided"}
     try:
-        raw_path = vault_path / "raw" / filename
+        raw_path = raw_dir(vault_path) / filename
         raw_path.parent.mkdir(parents=True, exist_ok=True)
         if file_bytes is not None:
             raw_path.write_bytes(file_bytes)
         else:
             raw_path.write_text(content)  # type: ignore[arg-type]
 
-        rel_path = f"raw/{filename}"
+        rel_path = raw_rel(filename)
         await log_operation(vault_path, "mcp", "vault:ingest", f"Ingested {rel_path}")
 
         try:
@@ -380,8 +381,8 @@ async def handle_vault_compile(
     try:
         completed_sources: set[str] = set()
         incomplete_sources: set[str] = set()
-        wiki_dir = vault_path / "wiki"
-        if wiki_dir.exists():
+        wiki_root = wiki_dir(vault_path)
+        if wiki_root.exists():
             for note in scan_vault(vault_path):
                 sp = note.frontmatter.get("source_path")
                 if not sp:
@@ -392,8 +393,8 @@ async def handle_vault_compile(
                 else:
                     completed_sources.add(sp)
 
-        raw_dir = vault_path / "raw"
-        if not raw_dir.exists():
+        raw_root = raw_dir(vault_path)
+        if not raw_root.exists():
             return {"status": "no raw directory", "compiled": 0}
 
         compiled_count = 0
@@ -404,7 +405,7 @@ async def handle_vault_compile(
             raw_files = [vault_path / path]
         else:
             raw_files = sorted(
-                f for f in raw_dir.iterdir() if not f.is_dir()
+                f for f in raw_root.iterdir() if not f.is_dir()
             )
 
         for raw_file in raw_files:

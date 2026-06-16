@@ -7,6 +7,7 @@ from typing import Any
 
 import frontmatter
 
+from cortex.vault.layout import is_raw_path, wikilink_search_dirs
 from cortex.vault.models import NodeType, Note, Provenance
 
 _WIKILINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
@@ -18,6 +19,44 @@ def extract_wikilinks(content: str) -> list[str]:
     return _WIKILINK_RE.findall(content)
 
 
+def normalize_tags(raw: Any) -> list[str]:
+    """Coerce frontmatter tags to a flat list of non-empty strings.
+
+    Compiler LLM enrichment and YAML indentation mistakes can produce nested
+    tag lists (e.g. [["avaloq", "config"]]). Callers assume list[str] and use
+    ", ".join(note.tags), which raises TypeError on nested values.
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [t.strip() for t in raw.split(",") if t.strip()]
+
+    tags: list[str] = []
+
+    def _append(value: Any) -> None:
+        if value is None:
+            return
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped:
+                tags.append(stripped)
+            return
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                _append(item)
+            return
+        if isinstance(value, (int, float, bool)):
+            tags.append(str(value))
+
+    if isinstance(raw, (list, tuple)):
+        for item in raw:
+            _append(item)
+    else:
+        _append(raw)
+
+    return tags
+
+
 def infer_node_type(path: str, fm: dict[str, Any]) -> NodeType:
     """Determine the NodeType from path conventions and frontmatter."""
     if "type" in fm:
@@ -26,7 +65,7 @@ def infer_node_type(path: str, fm: dict[str, Any]) -> NodeType:
         except ValueError:
             pass
 
-    if path.startswith("raw/"):
+    if is_raw_path(path):
         return NodeType.RAW_SOURCE
     if path.startswith("agents/"):
         return NodeType.AGENT_DEF
@@ -69,9 +108,7 @@ def read_note(path: Path, vault_root: Path) -> Note:
             title = path.stem
 
     wikilinks = extract_wikilinks(content)
-    tags = fm.get("tags", [])
-    if isinstance(tags, str):
-        tags = [t.strip() for t in tags.split(",")]
+    tags = normalize_tags(fm.get("tags", []))
 
     node_type = infer_node_type(rel_path, fm)
 
@@ -138,7 +175,7 @@ def build_wikilink_index(vault_root: Path) -> dict[str, str]:
     Priority: wiki/ > agents/ > sessions/ > daily/ > other dirs.
     First match wins for duplicate stems.
     """
-    search_dirs = ["wiki", "agents", "sessions", "daily", "feedback"]
+    search_dirs = wikilink_search_dirs()
     index: dict[str, str] = {}
 
     for subdir in search_dirs:
@@ -165,7 +202,7 @@ def resolve_wikilink(link: str, vault_root: Path, _index: dict[str, str] | None 
     if _index is not None:
         return _index.get(link)
 
-    search_dirs = ["wiki", "agents", "sessions", "daily", "feedback"]
+    search_dirs = wikilink_search_dirs()
 
     for subdir in search_dirs:
         candidate = vault_root / subdir / f"{link}.md"

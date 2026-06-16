@@ -45,6 +45,7 @@ class TestBuildParser:
         assert args.concurrency == 4
         assert args.force is False
         assert args.dry_run is False
+        assert args.prune is True
 
     def test_all_flags(self, source_dir: Path) -> None:
         parser = build_parser()
@@ -87,6 +88,7 @@ class TestRunCli:
                 concurrency=2,
                 force=False,
                 dry_run=False,
+                prune=True,
             )
             instance.run.assert_awaited_once()
 
@@ -109,6 +111,47 @@ class TestRunCli:
                 concurrency=4,
                 force=True,
                 dry_run=True,
+                prune=True,
+            )
+
+    async def test_run_cli_prune_disabled(
+        self, tmp_vault: Path, source_dir: Path
+    ) -> None:
+        with patch("scripts.bulk_ingest.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
+            instance.run = AsyncMock(
+                return_value={"copied": [], "skipped": [], "compiled": [], "removed": [], "dry_run": False}
+            )
+
+            await run_cli(["--source", str(source_dir), "--no-prune"], vault_path=tmp_vault)
+
+            mock_cls.assert_called_once_with(
+                vault_path=tmp_vault,
+                source_dir=source_dir,
+                concurrency=4,
+                force=False,
+                dry_run=False,
+                prune=False,
+            )
+
+    async def test_run_cli_prune_explicit(
+        self, tmp_vault: Path, source_dir: Path
+    ) -> None:
+        with patch("scripts.bulk_ingest.BulkIngestor") as mock_cls:
+            instance = mock_cls.return_value
+            instance.run = AsyncMock(
+                return_value={"copied": [], "skipped": [], "compiled": [], "removed": [], "dry_run": False}
+            )
+
+            await run_cli(["--source", str(source_dir), "--prune"], vault_path=tmp_vault)
+
+            mock_cls.assert_called_once_with(
+                vault_path=tmp_vault,
+                source_dir=source_dir,
+                concurrency=4,
+                force=False,
+                dry_run=False,
+                prune=True,
             )
 
     async def test_run_cli_validates_source_dir(self, tmp_vault: Path) -> None:

@@ -18,7 +18,7 @@ raw/  →  Compiler (LLM)  →  wiki/*.md  →  graph + QMD index
 | Module | Role |
 |--------|------|
 | `cortex/compiler/compiler.py` | Single-file compile |
-| `cortex/compiler/bulk.py` | Directory scan, concurrency, manifests |
+| `cortex/compiler/bulk.py` | Recursive directory scan, concurrency, manifests |
 | `cortex/compiler/prompts.py` | LLM prompts |
 | `cortex/mcp/tools.py` | `vault_ingest`, `vault_compile` |
 
@@ -49,6 +49,8 @@ raw/  →  Compiler (LLM)  →  wiki/*.md  →  graph + QMD index
 ```
 
 Logs (`cortex.compiler.bulk`): `Scanning source directory`, per-file progress. Also logged from `cortex.api.routes` on request receipt.
+
+**Recursive scan:** `source_dir` is walked recursively; subfolder structure is preserved under the vault raw dir (e.g. `source_dir/abcde/a.html` → `{VAULT_RAW_DIR}/abcde/a.html`).
 
 **Common failure:** `source_dir` not mounted in container → 400 before bulk runs.
 

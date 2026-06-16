@@ -8,6 +8,7 @@ from pathlib import Path
 from watchfiles import Change, awatch
 
 from cortex.graph.engine import GraphEngine
+from cortex.vault.layout import raw_dir, watcher_skip_top_dirs
 from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.reader import read_note, resolve_wikilink
@@ -28,7 +29,8 @@ class VaultWatcher:
         self.graph = graph
         self._task: asyncio.Task | None = None
         self._cortex_dir = str(self.vault_root / ".cortex")
-        self._raw_dir = str(self.vault_root / "raw")
+        self._raw_dir = str(raw_dir(self.vault_root))
+        self._skip_top_dirs = watcher_skip_top_dirs()
 
     def _watch_filter(self, _change: Change, path: str) -> bool:
         """Filter for watchfiles: only accept .md files outside .cortex/ and raw/."""
@@ -74,7 +76,7 @@ class VaultWatcher:
     async def _handle_change(self, path: Path) -> None:
         """Handle a new or modified .md file."""
         rel = path.relative_to(self.vault_root)
-        if rel.parts[0] in (".cortex", "raw"):
+        if rel.parts[0] in self._skip_top_dirs:
             return
 
         try:

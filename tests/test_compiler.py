@@ -32,9 +32,13 @@ class TestPrompts:
 
 
 class TestBuildIndexContext:
-    def test_build_index_context_with_articles(self, tmp_vault: Path):
+    @pytest.mark.asyncio
+    async def test_build_index_context_with_articles(self, tmp_vault: Path):
         from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.vault.index import rebuild_index
 
+        # Context now reads the materialized .cortex/index.md, so build it first.
+        await rebuild_index(tmp_vault)
         compiler = KnowledgeCompiler(tmp_vault)
         context = compiler._build_index_context()
         assert "Transformer Architecture" in context
@@ -134,6 +138,19 @@ class TestMarkItDownIngest:
         content = daily_path.read_text(encoding="utf-8")
         assert "compile" in content
         assert "[[transformer-paper]]" in content
+
+    @pytest.mark.asyncio
+    async def test_ingest_nested_raw_preserves_subdirs(self, tmp_vault: Path):
+        """Nested raw paths map to mirrored wiki paths with kebab-case stems."""
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        nested = tmp_vault / "raw" / "abcde" / "docs"
+        nested.mkdir(parents=True)
+        (nested / "Cap Order.html").write_text("<html><body><h1>Cap</h1></body></html>")
+        compiler = KnowledgeCompiler(tmp_vault)
+        result = await compiler.ingest_source(nested / "Cap Order.html")
+        assert result[0] == tmp_vault / "wiki" / "abcde" / "docs" / "cap-order.md"
+        assert result[0].exists()
 
 
 class TestLLMEnrichment:
@@ -400,19 +417,19 @@ class TestIngestSkipManifest:
 
 
 class TestTitleAndSlugHelpers:
-    """Unit tests for _slug_from_stem and _title_from_markdown helpers."""
+    """Unit tests for slug_from_stem and _title_from_markdown helpers."""
 
     def test_slug_from_stem_simple(self):
-        from cortex.compiler.compiler import _slug_from_stem
-        assert _slug_from_stem("transformer-paper") == "transformer-paper"
+        from cortex.vault.layout import slug_from_stem
+        assert slug_from_stem("transformer-paper") == "transformer-paper"
 
     def test_slug_from_stem_spaces(self):
-        from cortex.compiler.compiler import _slug_from_stem
-        assert _slug_from_stem("My Research Paper") == "my-research-paper"
+        from cortex.vault.layout import slug_from_stem
+        assert slug_from_stem("My Research Paper") == "my-research-paper"
 
     def test_slug_from_stem_special_chars(self):
-        from cortex.compiler.compiler import _slug_from_stem
-        assert _slug_from_stem("file (1) [copy]") == "file-1-copy"
+        from cortex.vault.layout import slug_from_stem
+        assert slug_from_stem("file (1) [copy]") == "file-1-copy"
 
     def test_title_from_markdown_h1(self):
         from cortex.compiler.compiler import _title_from_markdown

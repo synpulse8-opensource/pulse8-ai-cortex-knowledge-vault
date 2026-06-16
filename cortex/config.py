@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
 class CortexSettings(BaseSettings):
     """Cortex configuration loaded from environment variables with CORTEX_ prefix."""
     vault_path: Path = Path("./vault")
+    vault_raw_dir: str = "raw"
+    vault_wiki_dir: str = "wiki"
 
     qmd_bin: str = "qmd"
     qmd_url: str = ""
@@ -47,6 +50,14 @@ class CortexSettings(BaseSettings):
 
     teams_webhook_url: str = ""
     teams_app_base_url: str = ""
+
+    @field_validator("vault_raw_dir", "vault_wiki_dir")
+    @classmethod
+    def _validate_vault_dir_name(cls, value: str) -> str:
+        name = value.strip().strip("/")
+        if not name or "/" in name or "\\" in name or name in (".", ".."):
+            raise ValueError("vault folder names must be a single path segment")
+        return name
 
     @property
     def auth_enabled(self) -> bool:

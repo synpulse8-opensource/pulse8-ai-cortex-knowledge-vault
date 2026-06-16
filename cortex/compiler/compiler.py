@@ -5,6 +5,7 @@ import asyncio
 import json
 import re
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.compiler.ingest_manifest import record_skipped_file
 from cortex.config import settings
 from cortex.vault.daily_log import append_daily_log_entry
+from cortex.vault.layout import index_path, raw_dir, wiki_dest_for_raw
 from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.writer import write_note
 from cortex.vault.index import rebuild_index
@@ -23,11 +25,6 @@ from cortex.log.audit import log_operation
 logger = logging.getLogger(__name__)
 
 _compile_status: dict[str, Any] = {"running": False, "last_result": None}
-
-def _slug_from_stem(stem: str) -> str:
-    """Convert a filename stem to a kebab-case slug."""
-    slug = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")
-    return slug or "untitled"
 
 
 def _title_from_markdown(md_text: str, fallback: str) -> str:
@@ -49,6 +46,8 @@ class KnowledgeCompiler:
             base_url=settings.llm_base_url,
         )
         self.model = settings.compiler_model
+        self._index_cache: str | None = None
+        self._index_mtime: float | None = None
 
     async def _chat(self, system: str, user_content: str) -> str:
         """Send a chat completion request and return the assistant's text."""
@@ -64,14 +63,33 @@ class KnowledgeCompiler:
 
     async def enrich_article(self, md_content: str, title: str) -> dict:
         """Call LLM to add [[wikilinks]] and tags to a converted Markdown article."""
+        index_start = time.perf_counter()
         index_context = self._build_index_context()
+        logger.info(
+            "_build_index_context for %s took %.3fs",
+            title,
+            time.perf_counter() - index_start,
+        )
         try:
+            chat_start = time.perf_counter()
             text = await self._chat(
                 ENRICH_SYSTEM_PROMPT,
                 f"## Article: {title}\n\n{md_content}\n\n"
                 f"## Existing Wiki Index\n\n{index_context}",
             )
-            return self._parse_enrichment(text, md_content)
+            logger.info(
+                "_chat (enrich) for %s took %.3fs",
+                title,
+                time.perf_counter() - chat_start,
+            )
+            parse_start = time.perf_counter()
+            enriched = self._parse_enrichment(text, md_content)
+            logger.info(
+                "_parse_enrichment for %s took %.3fs",
+                title,
+                time.perf_counter() - parse_start,
+            )
+            return enriched
         except Exception:  # pylint: disable=broad-exception-caught
             return {"content": md_content, "tags": []}
 
@@ -112,8 +130,7 @@ class KnowledgeCompiler:
             record_skipped_file(self.vault_path, source_path, reason)
             return []
 
-        slug = _slug_from_stem(source_path.stem)
-        wiki_path = self.vault_path / "wiki" / f"{slug}.md"
+        wiki_path = wiki_dest_for_raw(self.vault_path, source_path)
         if wiki_path.exists() and not force:
             if source_path.stat().st_mtime <= wiki_path.stat().st_mtime:
                 logger.info("Skipping %s: wiki already up-to-date", relative_source)
@@ -121,6 +138,8 @@ class KnowledgeCompiler:
                 return [wiki_path]
 
         logger.info("Ingesting %s (%.1f MB)", relative_source, file_size_mb)
+        ingest_start = time.perf_counter()
+        convert_start = ingest_start
         try:
             result = await asyncio.wait_for(
                 asyncio.to_thread(self._md.convert_local, str(source_path)),
@@ -136,7 +155,12 @@ class KnowledgeCompiler:
             logger.warning("Skipping %s: %s", relative_source, reason)
             record_skipped_file(self.vault_path, source_path, reason)
             return []
-        logger.info("Converted %s", relative_source)
+        logger.info(
+            "Converted %s in %.3fs (%.1f MB)",
+            relative_source,
+            time.perf_counter() - convert_start,
+            file_size_mb,
+        )
         md_content = (result.text_content or "").strip()
         if not md_content:
             reason = "empty conversion result"
@@ -147,9 +171,14 @@ class KnowledgeCompiler:
         title = _title_from_markdown(md_content, source_path.stem)
 
         enriched = {"content": md_content, "tags": []}
+        enrich_start = time.perf_counter()
         if settings.llm_api_key:
             enriched = await self.enrich_article(md_content, title)
-        logger.info("Enriched %s", relative_source)
+        logger.info(
+            "Enriched %s in %.3fs",
+            relative_source,
+            time.perf_counter() - enrich_start,
+        )
         has_tags = bool(enriched["tags"])
         has_links = "[[" in enriched["content"]
         enrichment_ok = settings.llm_api_key and (has_tags or has_links)
@@ -164,6 +193,7 @@ class KnowledgeCompiler:
         if enriched["tags"]:
             frontmatter["tags"] = enriched["tags"]
 
+        write_start = time.perf_counter()
         write_note(
             path=note_path,
             vault_root=self.vault_path,
@@ -173,7 +203,12 @@ class KnowledgeCompiler:
             authored_by="markitdown",
             model=self.model if settings.llm_api_key else None,
         )
-        logger.info("Wrote note %s to %s", title, note_path)
+        logger.info(
+            "Wrote note %s to %s in %.3fs",
+            title,
+            note_path,
+            time.perf_counter() - write_start,
+        )
 
         wiki_rel = str(note_path.relative_to(self.vault_path))
         try:
@@ -186,6 +221,11 @@ class KnowledgeCompiler:
         except Exception:
             logger.exception("daily-log append failed for compile %s", wiki_rel)
 
+        logger.info(
+            "ingest_source total %s took %.3fs",
+            relative_source,
+            time.perf_counter() - ingest_start,
+        )
         return [note_path]
 
     async def compile_cross_references(self, new_paths: list[Path]) -> None:
@@ -214,16 +254,23 @@ class KnowledgeCompiler:
         await self._apply_updates(updates)
 
     def _build_index_context(self) -> str:
-        """Build a summary of existing wiki articles for LLM context."""
-        wiki_dir = self.vault_path / "wiki"
-        if not wiki_dir.exists():
+        """Return existing-article context for LLM enrichment.
+
+        Reads the pre-materialized .cortex/index.md (written by rebuild_index)
+        instead of re-parsing every wiki file. That index lives on the shared
+        vault storage, so it doubles as a cross-replica cache. An in-process
+        mtime check avoids re-reading when the file is unchanged.
+        """
+        idx = index_path(self.vault_path)
+        try:
+            mtime = idx.stat().st_mtime
+        except FileNotFoundError:
             return "No existing articles."
-        lines = []
-        for md_file in sorted(wiki_dir.rglob("*.md")):
-            note = read_note(md_file, self.vault_path)
-            tags = ", ".join(note.tags) if note.tags else "none"
-            lines.append(f"- [{note.title}]({note.path}) — tags: {tags}")
-        return "\n".join(lines) if lines else "No existing articles."
+        if self._index_cache is not None and mtime == self._index_mtime:
+            return self._index_cache
+        self._index_cache = idx.read_text() or "No existing articles."
+        self._index_mtime = mtime
+        return self._index_cache
 
     def _parse_updates(self, text: str) -> list[dict]:
         """Parse cross-reference updates from LLM response."""
@@ -264,8 +311,8 @@ async def _run_compile(vault_path: Path, qmd_debounce) -> None:
             if sp:
                 existing_sources.add(sp)
 
-        raw_dir = vault_path / "raw"
-        if not raw_dir.exists():
+        raw_root = raw_dir(vault_path)
+        if not raw_root.exists():
             _compile_status["last_result"] = {"status": "no raw directory", "compiled": 0}
             return
 
@@ -274,8 +321,8 @@ async def _run_compile(vault_path: Path, qmd_debounce) -> None:
         failed_count = 0
         all_created: list[str] = []
 
-        for raw_file in sorted(raw_dir.iterdir()):
-            if raw_file.is_dir():
+        for raw_file in sorted(raw_root.rglob("*")):
+            if not raw_file.is_file():
                 continue
             rel = str(raw_file.relative_to(vault_path))
             if rel not in existing_sources:
@@ -318,8 +365,8 @@ def start_compile(vault_path: Path, qmd_debounce) -> dict[str, Any]:
     if _compile_status["running"]:
         raise ValueError("A compile task is already running")
 
-    raw_dir = vault_path / "raw"
-    if not raw_dir.exists():
+    raw_root = raw_dir(vault_path)
+    if not raw_root.exists():
         return {"status": "no raw directory", "compiled": 0}
 
     _compile_status["running"] = True

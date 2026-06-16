@@ -10,6 +10,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from cortex.config import settings
+from cortex.vault.layout import raw_dir, raw_rel
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
@@ -64,6 +65,7 @@ class BulkIngestBody(BaseModel):
     concurrency: int = 4
     force: bool = False
     dry_run: bool = False
+    prune: bool = True
 
 
 class FeedbackBody(BaseModel):
@@ -436,11 +438,11 @@ async def ingest_endpoint(body: IngestBody, request: Request):
     vault_path = get_vault_path(request)
     qmd_debounce = get_qmd_debounce(request)
 
-    raw_path = vault_path / "raw" / body.filename
+    raw_path = raw_dir(vault_path) / body.filename
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_text(body.content)
 
-    rel_path = f"raw/{body.filename}"
+    rel_path = raw_rel(body.filename)
     await log_operation(vault_path, "api", "vault:ingest", f"Ingested {rel_path}")
 
     try:
@@ -484,11 +486,11 @@ async def ingest_upload_endpoint(
     file_bytes = await file.read()
     filename = file.filename or "upload"
 
-    raw_path = vault_path / "raw" / filename
+    raw_path = raw_dir(vault_path) / filename
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_bytes(file_bytes)
 
-    rel_path = f"raw/{filename}"
+    rel_path = raw_rel(filename)
     await log_operation(vault_path, "api", "vault:ingest", f"Ingested {rel_path}")
 
     try:
@@ -554,7 +556,7 @@ async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
     logger.info("Bulk ingest request received: %s", body)
 
     vault_path = get_vault_path(request)
-    source_dir = Path(body.source_dir)
+    source_dir = Path(body.source_dir).resolve()
 
     if not source_dir.is_dir():
         raise HTTPException(
@@ -568,10 +570,23 @@ async def bulk_ingest_endpoint(body: BulkIngestBody, request: Request):
         concurrency=body.concurrency,
         force=body.force,
         dry_run=body.dry_run,
+        prune=body.prune,
     )
 
+    from cortex.compiler.bulk_coordination import BulkIngestBusyError
+
     logger.info("Starting bulk ingest with ingestor: %s", ingestor)
-    result = await ingestor.run()
+    try:
+        result = await ingestor.run(lock_mode="fail", lock_scope="source")
+    except BulkIngestBusyError as exc:
+        target = exc.source_dir or exc.vault_path
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Bulk ingest already running for {target}. "
+                "Retry after the current job finishes, or use a different source_dir."
+            ),
+        ) from exc
 
     logger.info("Bulk ingest result: %s", result)
 

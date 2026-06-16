@@ -40,6 +40,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show what would be ingested without actually copying or compiling.",
     )
+    parser.add_argument(
+        "--prune",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Remove raw/wiki files whose sources were deleted from the source directory.",
+    )
     return parser
 
 
@@ -64,6 +70,7 @@ async def run_cli(argv: list[str] | None = None, vault_path: Path | None = None)
         concurrency=args.concurrency,
         force=args.force,
         dry_run=args.dry_run,
+        prune=args.prune,
     )
 
     result = await ingestor.run()

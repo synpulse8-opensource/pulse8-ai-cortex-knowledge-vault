@@ -24,6 +24,8 @@ def test_default_settings():
     assert s.default_author == "human"
     assert s.qmd_search_mode == "hybrid"
     assert s.qmd_refresh_interval_seconds == 900
+    assert s.vault_raw_dir == "raw"
+    assert s.vault_wiki_dir == "wiki"
 
 
 def test_settings_from_env(monkeypatch):

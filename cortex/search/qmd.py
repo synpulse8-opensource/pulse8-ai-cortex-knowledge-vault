@@ -27,10 +27,15 @@ class QMDSearch:
 
     async def initialize(self) -> None:
         """Set up QMD collections for the vault directories."""
-        for name in ("wiki", "agents", "sessions", "daily", "feedback"):
+        from cortex.vault.layout import qmd_named_collections, wiki_dir_name
+
+        for name in qmd_named_collections():
             await self._run_safe(["collection", "add", str(self.vault_path / name), "--name", name])
 
-        await self._run_safe(["context", "add", "qmd://wiki", "Knowledge articles compiled from raw sources"])
+        await self._run_safe([
+            "context", "add", f"qmd://{wiki_dir_name()}",
+            "Knowledge articles compiled from raw sources",
+        ])
         await self._run_safe(["context", "add", "qmd://agents", "Agent definition files"])
         await self._run_safe([
             "context", "add", "qmd://feedback",
