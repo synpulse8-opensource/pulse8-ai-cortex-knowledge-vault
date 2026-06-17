@@ -71,15 +71,29 @@ class QMDSearch:
         except json.JSONDecodeError:
             return []
 
-    async def _run(self, args: list[str]) -> str:
-        """Run a QMD CLI command and return stdout."""
-        proc = await asyncio.create_subprocess_exec(
-            self.qmd_bin,
-            *args,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            raise RuntimeError(f"QMD error: {stderr.decode()}")
-        return stdout.decode()
+    async def _run(self, args: list[str], retries: int = 3, delay: float = 2.0) -> str:
+        """Run a QMD CLI command and return stdout.
+
+        Retries on non-zero exit with exponential backoff to absorb transient
+        failures (index/db lock contention, brief resource pressure) seen when
+        commands run from the service rather than an interactive shell.
+        """
+        last_stderr = ""
+        for attempt in range(1, retries + 1):
+            proc = await asyncio.create_subprocess_exec(
+                self.qmd_bin,
+                *args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode == 0:
+                return stdout.decode()
+            last_stderr = stderr.decode()
+            logger.warning(
+                "QMD command %s failed (attempt %d/%d): %s",
+                args[:2], attempt, retries, last_stderr.strip(),
+            )
+            if attempt < retries:
+                await asyncio.sleep(delay * attempt)
+        raise RuntimeError(f"QMD error after {retries} attempts: {last_stderr}")
