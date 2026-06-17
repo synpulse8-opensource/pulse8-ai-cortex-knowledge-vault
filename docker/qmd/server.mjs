@@ -29,6 +29,29 @@ async function qmd(args, timeout = 120_000) {
   return { stdout: stdout.trim(), stderr: stderr.trim() };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// "already exists" is permanent — retrying won't help. Everything else
+// (lock contention, transient resource pressure) is worth retrying.
+function isPermanentError(e) {
+  return e.message && (e.message.includes("already exists") || e.message.includes("SQLITE_CONSTRAINT"));
+}
+
+async function qmdWithRetry(args, { timeout = 120_000, retries = 3, delayMs = 2000 } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await qmd(args, timeout);
+    } catch (e) {
+      if (isPermanentError(e)) throw e;
+      lastErr = e;
+      console.warn(`qmd ${args.slice(0, 2).join(" ")} failed (attempt ${attempt}/${retries}): ${e.message}`);
+      if (attempt < retries) await sleep(delayMs * attempt);
+    }
+  }
+  throw lastErr;
+}
+
 async function runSetup() {
   if (setupRunning) {
     console.log("Setup already in progress — skipping");
@@ -65,13 +88,13 @@ async function runSetupInner() {
 
   for (const name of subdirs) {
     try {
-      await qmd(["collection", "add", `${VAULT_PATH}/${name}`, "--name", name]);
+      await qmdWithRetry(["collection", "add", `${VAULT_PATH}/${name}`, "--name", name]);
       console.log(`  collection '${name}' added`);
     } catch (e) {
-      if (e.message && (e.message.includes("already exists") || e.message.includes("SQLITE_CONSTRAINT"))) {
+      if (isPermanentError(e)) {
         console.log(`  collection '${name}' already exists`);
       } else {
-        console.warn(`  collection '${name}' failed:`, e.message);
+        console.warn(`  collection '${name}' failed after retries:`, e.message);
       }
     }
   }
