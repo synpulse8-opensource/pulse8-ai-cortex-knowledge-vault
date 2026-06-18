@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { readdirSync } from "node:fs";
 
@@ -27,6 +27,50 @@ async function qmd(args, timeout = 120_000) {
     maxBuffer: 10 * 1024 * 1024,
   });
   return { stdout: stdout.trim(), stderr: stderr.trim() };
+}
+
+// Streaming variant: pipes child stdout/stderr to the server log line-by-line
+// so long-running commands (embed) show progress instead of going silent.
+function qmdStream(args, timeout = 120_000) {
+  return new Promise((resolve, reject) => {
+    const label = `qmd ${args[0]}`;
+    const child = spawn(QMD_BIN, args);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, timeout);
+
+    const pipe = (stream) => {
+      let buf = "";
+      stream.on("data", (chunk) => {
+        buf += chunk.toString();
+        let idx;
+        while ((idx = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 1);
+          if (line) console.log(`[${label}] ${line}`);
+        }
+      });
+      stream.on("end", () => {
+        const line = buf.trim();
+        if (line) console.log(`[${label}] ${line}`);
+      });
+    };
+    pipe(child.stdout);
+    pipe(child.stderr);
+
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error(`${label} timed out after ${timeout}ms`));
+      if (code !== 0) return reject(new Error(`${label} exited with code ${code}`));
+      resolve();
+    });
+  });
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -124,7 +168,8 @@ async function runSetupInner() {
   }
 
   try {
-    await qmd(["embed"], EMBED_TIMEOUT_MS);
+    console.log("QMD embed starting...");
+    await qmdStream(["embed"], EMBED_TIMEOUT_MS);
     console.log("QMD embed complete");
   } catch (e) {
     console.warn("QMD embed warning:", e.message);
@@ -163,7 +208,7 @@ const server = createServer(async (req, res) => {
     if (req.url === "/update") {
       await qmd(["update"]);
       try {
-        await qmd(["embed"], EMBED_TIMEOUT_MS);
+        await qmdStream(["embed"], EMBED_TIMEOUT_MS);
       } catch (e) {
         console.warn("embed warning:", e.message);
       }
@@ -174,9 +219,13 @@ const server = createServer(async (req, res) => {
       const body = await readBody(req);
       const { query, mode = "hybrid", collection, top_k = 10 } = body;
 
-      if (!query) return json(res, 400, { error: "query required" });
+      if (!query) {
+        console.warn("query required");
+        return json(res, 400, { error: "query required" });
+      }
 
       if (!setupReady) {
+        console.warn("QMD setup not ready");
         return json(res, 503, { error: "QMD setup not ready" });
       }
 
@@ -221,7 +270,7 @@ async function periodicRefresh() {
   console.log("Periodic refresh: running update + embed");
   try {
     await qmd(["update"]);
-    await qmd(["embed"], EMBED_TIMEOUT_MS);
+    await qmdStream(["embed"], EMBED_TIMEOUT_MS);
     console.log("Periodic refresh complete");
   } catch (e) {
     console.warn("Periodic refresh failed:", e.message);
