@@ -177,7 +177,7 @@ const server = createServer(async (req, res) => {
       if (!query) return json(res, 400, { error: "query required" });
 
       if (!setupReady) {
-        return json(res, 200, []);
+        return json(res, 503, { error: "QMD setup not ready" });
       }
 
       const cmdMap = { keyword: "search", semantic: "vsearch", hybrid: "query" };
@@ -214,7 +214,10 @@ const server = createServer(async (req, res) => {
 });
 
 async function periodicRefresh() {
-  if (!setupReady) return;
+  if (!setupReady) {
+    console.log("Periodic refresh: setup not ready");
+    return;
+  }
   console.log("Periodic refresh: running update + embed");
   try {
     await qmd(["update"]);
