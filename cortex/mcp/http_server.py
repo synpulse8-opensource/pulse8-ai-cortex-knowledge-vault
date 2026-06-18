@@ -15,15 +15,17 @@ from starlette.routing import Route
 from cortex.compiler.compiler import KnowledgeCompiler
 from cortex.config import settings
 from cortex.graph.builder import build_graph
-from cortex.graph.context import build_context_window
 from cortex.graph.engine import GraphEngine
+from cortex.mcp.resources import ResourceStore
 from cortex.mcp.tools import (
     handle_vault_compile,
+    handle_vault_context,
     handle_vault_feedback,
     handle_vault_list_feedbacks,
     handle_vault_ingest,
     handle_vault_link,
     handle_vault_read,
+    handle_vault_resource_read,
     handle_vault_search,
     handle_vault_write,
 )
@@ -119,6 +121,7 @@ async def create_fastmcp_server(
 
         compiler = KnowledgeCompiler(vault_path)
         qmd_debounce = DebouncedQMDUpdate(qmd)
+        resource_store = ResourceStore.from_settings(settings)
 
         services = {
             "vault_path": vault_path,
@@ -126,6 +129,7 @@ async def create_fastmcp_server(
             "qmd": qmd,
             "qmd_debounce": qmd_debounce,
             "compiler": compiler,
+            "resource_store": resource_store,
         }
 
     @mcp.tool()
@@ -163,11 +167,25 @@ async def create_fastmcp_server(
         mode: str | None = None,
         collection: Optional[str] = None,
         top_k: int = 10,
+        as_resource: bool = False,
     ) -> str:
-        """Search the vault via QMD (keyword, semantic, or hybrid). Enriched with graph edges."""
-        logger.info("MCP tool=vault_search query=%r mode=%s top_k=%d", query, mode, top_k)
+        """Search the vault via QMD (keyword, semantic, or hybrid). Enriched with graph edges.
+
+        Set ``as_resource=True`` for token-heavy result sets — the full
+        payload is kept server-side as an MCP resource and a lightweight
+        handle is returned (see ``cortex://resource/{id}``).
+        """
+        logger.info(
+            "MCP tool=vault_search query=%r mode=%s top_k=%d as_resource=%s",
+            query, mode, top_k, as_resource,
+        )
         result = await handle_vault_search(
-            query=query, mode=mode, collection=collection, top_k=top_k, **services
+            query=query,
+            mode=mode,
+            collection=collection,
+            top_k=top_k,
+            as_resource=as_resource,
+            **services,
         )
         logger.info("MCP tool=vault_search result=%s", result)
         return json.dumps(result, indent=2, default=str)
@@ -224,33 +242,29 @@ async def create_fastmcp_server(
 
     @mcp.tool()
     async def vault_context(
-        query: str, max_notes: int = 8, max_depth: int = 2
+        query: str,
+        max_notes: int = 8,
+        max_depth: int = 2,
+        as_resource: bool = False,
     ) -> str:
-        """Build a context window: search, graph BFS expansion, ranked subgraph with contradictions."""
-        logger.info("MCP tool=vault_context query=%r max_notes=%d max_depth=%d", query, max_notes, max_depth)
-        result = await build_context_window(
+        """Build a context window: search, graph BFS expansion, ranked subgraph with contradictions.
+
+        Set ``as_resource=True`` for large context windows — the full
+        payload is stashed as a server-side MCP resource and the caller
+        receives only a handle plus summary.
+        """
+        logger.info(
+            "MCP tool=vault_context query=%r max_notes=%d max_depth=%d as_resource=%s",
+            query, max_notes, max_depth, as_resource,
+        )
+        result = await handle_vault_context(
             query=query,
-            searcher=services["qmd"],
-            graph=services["graph"],
-            vault_root=services["vault_path"],
             max_notes=max_notes,
             max_depth=max_depth,
-            mode=settings.qmd_search_mode,
+            as_resource=as_resource,
+            **services,
         )
-        response = {
-            "notes": [
-                {"path": n.path, "title": n.title, "content": n.content[:500]}
-                for n in result.notes
-            ],
-            "edges": [
-                {"source": e.source, "target": e.target, "edge_type": e.edge_type.value}
-                for e in result.edges
-            ],
-            "contradictions": result.contradictions,
-            "total_nodes_explored": result.total_nodes_explored,
-            "total_edges_explored": result.total_edges_explored,
-        }
-        return json.dumps(response, indent=2)
+        return json.dumps(result, indent=2, default=str)
 
     @mcp.tool()
     async def vault_ingest(
@@ -294,6 +308,40 @@ async def create_fastmcp_server(
         logger.info("MCP tool=vault_compile force=%s path=%s", force, path)
         result = await handle_vault_compile(force=force, path=path, **services)
         return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool()
+    async def vault_resource_read(resource_id: str) -> str:
+        """Read a server-stored resource by ID (fallback for MCP clients
+        that do not expose the resources protocol natively). Accepts
+        either the bare hex ID or the full ``cortex://resource/{id}`` URI.
+        """
+        logger.info("MCP tool=vault_resource_read resource_id=%s", resource_id)
+        result = await handle_vault_resource_read(
+            resource_id=resource_id, **services
+        )
+        return json.dumps(result, indent=2, default=str)
+
+    # MCP resource template: lets clients fetch large tool outputs that
+    # were stored server-side via ``as_resource=True`` (see the
+    # resources-as-tool-inputs pattern). The URI scheme is
+    # ``cortex://resource/{resource_id}``.
+    @mcp.resource(
+        "cortex://resource/{resource_id}",
+        name="cortex-resource",
+        description=(
+            "Read a server-stored resource produced by a Cortex tool "
+            "(e.g. vault_search or vault_context invoked with "
+            "as_resource=True). Keeps token-heavy payloads out of the "
+            "LLM context window until they are actually needed."
+        ),
+        mime_type="application/json",
+    )
+    async def _read_cortex_resource(resource_id: str) -> str:
+        store: ResourceStore = services["resource_store"]
+        stored = await store.get(resource_id)
+        if stored is None:
+            return json.dumps({"error": f"Resource not found: {resource_id}"})
+        return stored.content
 
     return mcp
 

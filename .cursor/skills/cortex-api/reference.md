@@ -12,7 +12,8 @@ Base: `/api/v1` on Cortex (default `http://localhost:8420`).
 | POST | `/login` | auth | Token exchange |
 | GET | `/notes/{path}` | notes | Path is vault-relative, URL-encoded |
 | PUT | `/notes/{path}` | notes | Create/update note |
-| GET | `/search` | search | Query params: `q`, `mode`, `top_k` |
+| GET | `/search` | search | Query params: `q`, `mode`, `top_k`, `as_resource` |
+| GET | `/resources/{resource_id}` | resources | Read a server-stored MCP resource (accepts bare ID or full URI) |
 | POST | `/links` | graph | Create edge |
 | GET | `/links` | graph | Query edges |
 | DELETE | `/links/{source}` | graph | Delete edges from source |
@@ -41,4 +42,12 @@ curl -X POST http://localhost:8420/api/v1/feedbacks \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
   -d '{"content":"…","tags":["admin-review"],"related_paths":["wiki/foo.md"]}'
+
+# Search returning a resource handle (token-light)
+curl -H "x-api-key: $API_KEY" \
+  "http://localhost:8420/api/v1/search?q=attention&as_resource=true"
+
+# Read a stored resource back
+curl -H "x-api-key: $API_KEY" \
+  http://localhost:8420/api/v1/resources/7f8a3c...
 ```

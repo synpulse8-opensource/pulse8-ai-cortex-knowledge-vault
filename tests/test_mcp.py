@@ -621,6 +621,8 @@ class TestStdioServerCaching:
             mock_settings.vault_path = tmp_vault
             mock_settings.qmd_url = ""
             mock_settings.qmd_bin = "qmd"
+            mock_settings.resource_ttl_seconds = 3600
+            mock_settings.resource_max_items = 1000
 
             mock_bg.return_value = AsyncMock()
             mock_qmd_cls.return_value.initialize = AsyncMock()

@@ -12,6 +12,7 @@ from cortex.config import settings
 from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
 from cortex.mcp.http_server import create_fastmcp_server, mount_mcp_on_app
+from cortex.mcp.resources import ResourceStore
 from cortex.search.qmd import QMDSearch
 from cortex.search.qmd_cache import CachedQMDSearch
 from cortex.search.qmd_http import QMDHttpSearch
@@ -60,12 +61,16 @@ async def lifespan(app: FastAPI):
 
     from cortex.compiler.compiler import KnowledgeCompiler
 
+    resource_store = ResourceStore.from_settings(settings)
+    app.state.resource_store = resource_store
+
     shared_services = {
         "vault_path": vault_path,
         "graph": app.state.graph,
         "qmd": qmd,
         "qmd_debounce": app.state.qmd_debounce,
         "compiler": KnowledgeCompiler(vault_path),
+        "resource_store": resource_store,
     }
     _mcp_server = await create_fastmcp_server(vault_path, services=shared_services)
     mcp_app = mount_mcp_on_app(app, _mcp_server)
@@ -107,6 +112,14 @@ OPENAPI_TAGS = [
     {"name": "search", "description": "Semantic search across the vault"},
     {"name": "graph", "description": "Knowledge graph edge operations"},
     {"name": "ingest", "description": "Ingest and compile raw sources into notes"},
+    {
+        "name": "resources",
+        "description": (
+            "Server-stored MCP resources (cortex://resource/{id}). Produced "
+            "by tools called with as_resource=true to keep token-heavy "
+            "payloads out of the LLM context window."
+        ),
+    },
 ]
 
 app = FastAPI(

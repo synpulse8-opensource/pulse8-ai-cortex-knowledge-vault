@@ -51,6 +51,12 @@ class CortexSettings(BaseSettings):
     teams_webhook_url: str = ""
     teams_app_base_url: str = ""
 
+    # MCP resource store (resources-as-tool-inputs pattern). TTL is the
+    # max age of a stored payload; max_items caps the in-memory dict
+    # before LRU eviction kicks in.
+    resource_ttl_seconds: int = 3600
+    resource_max_items: int = 1000
+
     @field_validator("vault_raw_dir", "vault_wiki_dir")
     @classmethod
     def _validate_vault_dir_name(cls, value: str) -> str:

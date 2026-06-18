@@ -86,7 +86,7 @@ class TestMCPHttpServer:
         assert response.status_code == 200
 
     def test_mcp_lists_tools(self, mcp_http_client: TestClient):
-        """After initialize, list_tools should return our 9 vault tools."""
+        """After initialize, list_tools should return all vault tools."""
         headers = _init_mcp_session(mcp_http_client)
 
         list_resp = mcp_http_client.post(
@@ -98,16 +98,20 @@ class TestMCPHttpServer:
 
         data = list_resp.json()
         tool_names = [t["name"] for t in data.get("result", {}).get("tools", [])]
-        assert "vault_read" in tool_names
-        assert "vault_write" in tool_names
-        assert "vault_search" in tool_names
-        assert "vault_link" in tool_names
-        assert "vault_context" in tool_names
-        assert "vault_ingest" in tool_names
-        assert "vault_compile" in tool_names
-        assert "vault_feedback" in tool_names
-        assert "vault_list_feedbacks" in tool_names
-        assert len(tool_names) == 9
+        expected = {
+            "vault_read",
+            "vault_write",
+            "vault_search",
+            "vault_link",
+            "vault_context",
+            "vault_ingest",
+            "vault_compile",
+            "vault_feedback",
+            "vault_list_feedbacks",
+            "vault_resource_read",
+        }
+        assert expected.issubset(set(tool_names))
+        assert len(tool_names) == len(expected)
 
 
 class TestMCPHttpToolCalls:

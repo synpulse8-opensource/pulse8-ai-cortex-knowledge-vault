@@ -54,7 +54,17 @@ Use MCP tools for agent workflows; prefer `vault_context` for RAG-style retrieva
 
 ## Tool list
 
-See [reference.md](reference.md) for all 9 tools, parameters, and return shapes.
+See [reference.md](reference.md) for all 10 tools (including
+`vault_resource_read`), parameters, and return shapes.
+
+## MCP resources (`cortex://resource/{id}`)
+
+Token-heavy tool outputs can be opted into the server-side resource
+store via `as_resource: true` on `vault_search` / `vault_context`
+(and `GET /api/v1/search?as_resource=true` on REST). The store is
+in-memory, TTL-bounded, and LRU-capped; tune with
+`CORTEX_RESOURCE_TTL_SECONDS` and `CORTEX_RESOURCE_MAX_ITEMS`. See
+[reference.md](reference.md) for details.
 
 ## Adding a tool
 

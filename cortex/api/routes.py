@@ -330,8 +330,14 @@ async def search_endpoint(
     mode: str | None = None,
     collection: Optional[str] = None,
     top_k: int = 10,
+    as_resource: bool = False,
 ):
-    """Search the vault via QMD and return graph-enriched results."""
+    """Search the vault via QMD and return graph-enriched results.
+
+    Set ``as_resource=true`` to stash the full payload as a server-side
+    MCP resource and receive only ``{resource_id, resource_uri, summary}``
+    — see the MCP resources-as-tool-inputs pattern.
+    """
     vault_path = get_vault_path(request)
     graph = get_graph(request)
     qmd = get_qmd(request)
@@ -356,7 +362,62 @@ async def search_endpoint(
         enriched.append({**r, "path": path, "edges": edge_dicts})
 
     await log_operation(vault_path, "api", "vault:search", f"Search: {q}")
-    return {"query": q, "mode": mode, "results": enriched}
+    payload = {"query": q, "mode": mode, "results": enriched}
+
+    if as_resource:
+        store = getattr(request.app.state, "resource_store", None)
+        if store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Resource store not configured on this server",
+            )
+        import json as _json
+
+        resource_id = await store.put(
+            _json.dumps(payload, default=str),
+            mime_type="application/json",
+        )
+        return {
+            "resource_id": resource_id,
+            "resource_uri": f"cortex://resource/{resource_id}",
+            "summary": {
+                "query": q,
+                "mode": mode,
+                "count": len(enriched),
+                "paths": [r["path"] for r in enriched],
+            },
+        }
+    return payload
+
+
+@router.get("/resources/{resource_id}", tags=["resources"])
+async def read_resource_endpoint(resource_id: str, request: Request):
+    """Read a server-stored MCP resource produced by an ``as_resource=true``
+    tool call. Returns 404 if the ID is unknown or has expired.
+    """
+    store = getattr(request.app.state, "resource_store", None)
+    if store is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Resource store not configured on this server",
+        )
+
+    # Accept either the bare ID or the full URI in the path
+    rid = resource_id
+    if rid.startswith("cortex://resource/"):
+        rid = rid[len("cortex://resource/"):]
+
+    stored = await store.get(rid)
+    if stored is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Resource not found: {rid}",
+        )
+    return {
+        "resource_id": rid,
+        "mime_type": stored.mime_type,
+        "content": stored.content,
+    }
 
 
 @router.post("/links", tags=["graph"])

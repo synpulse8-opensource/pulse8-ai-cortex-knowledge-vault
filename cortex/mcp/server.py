@@ -7,19 +7,22 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import ResourceTemplate, TextContent, Tool
 
 from cortex.compiler.compiler import KnowledgeCompiler
 from cortex.config import settings
 from cortex.graph.builder import build_graph
 from cortex.graph.engine import GraphEngine
+from cortex.mcp.resources import ResourceStore
 from cortex.mcp.tools import (
     handle_vault_compile,
+    handle_vault_context,
     handle_vault_feedback,
     handle_vault_list_feedbacks,
     handle_vault_ingest,
     handle_vault_link,
     handle_vault_read,
+    handle_vault_resource_read,
     handle_vault_search,
     handle_vault_write,
 )
@@ -81,6 +84,15 @@ def _tool_definitions() -> list[Tool]:
                         "description": "Limit to collection (wiki, agents, sessions, daily)",
                     },
                     "top_k": {"type": "integer", "default": 10},
+                    "as_resource": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": (
+                            "Return a server-side resource handle "
+                            "(cortex://resource/{id}) instead of inlining "
+                            "the full results — use for token-heavy queries."
+                        ),
+                    },
                 },
                 "required": ["query"],
             },
@@ -153,6 +165,15 @@ def _tool_definitions() -> list[Tool]:
                     "query": {"type": "string", "description": "Search query for seeding context"},
                     "max_notes": {"type": "integer", "default": 8},
                     "max_depth": {"type": "integer", "default": 2},
+                    "as_resource": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": (
+                            "Return a server-side resource handle "
+                            "(cortex://resource/{id}) instead of inlining "
+                            "the full context window — use for large graphs."
+                        ),
+                    },
                 },
                 "required": ["query"],
             },
@@ -169,6 +190,25 @@ def _tool_definitions() -> list[Tool]:
                     "auto_compile": {"type": "boolean", "default": True},
                 },
                 "required": ["content", "filename"],
+            },
+        ),
+        Tool(
+            name="vault_resource_read",
+            description=(
+                "Read a server-stored resource by ID. Fallback for MCP "
+                "clients that do not expose the resources protocol "
+                "natively. Accepts either the bare hex ID or the full "
+                "cortex://resource/{id} URI."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "resource_id": {
+                        "type": "string",
+                        "description": "Resource ID or cortex://resource/{id} URI",
+                    },
+                },
+                "required": ["resource_id"],
             },
         ),
         Tool(
@@ -206,45 +246,60 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         "vault_write": handle_vault_write,
         "vault_search": handle_vault_search,
         "vault_link": handle_vault_link,
+        "vault_context": handle_vault_context,
         "vault_ingest": handle_vault_ingest,
         "vault_compile": handle_vault_compile,
         "vault_feedback": handle_vault_feedback,
         "vault_list_feedbacks": handle_vault_list_feedbacks,
+        "vault_resource_read": handle_vault_resource_read,
     }
 
     handler = handlers.get(name)
     if not handler:
-        if name == "vault_context":
-            from cortex.graph.context import build_context_window
-
-            result = await build_context_window(
-                query=arguments.get("query", ""),
-                searcher=_services["qmd"],
-                graph=_services["graph"],
-                vault_root=_services["vault_path"],
-                max_notes=arguments.get("max_notes", 8),
-                max_depth=arguments.get("max_depth", 2),
-                mode=settings.qmd_search_mode,
-            )
-            response = {
-                "notes": [
-                    {"path": n.path, "title": n.title, "content": n.content[:500]}
-                    for n in result.notes
-                ],
-                "edges": [
-                    {"source": e.source, "target": e.target, "edge_type": e.edge_type.value}
-                    for e in result.edges
-                ],
-                "contradictions": result.contradictions,
-                "total_nodes_explored": result.total_nodes_explored,
-                "total_edges_explored": result.total_edges_explored,
-            }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
-
         return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
     result = await handler(**arguments, **_services)
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+
+@app.list_resource_templates()
+async def list_resource_templates() -> list[ResourceTemplate]:
+    """Advertise the cortex://resource/{id} template to MCP clients."""
+    return [
+        ResourceTemplate(
+            uriTemplate="cortex://resource/{resource_id}",
+            name="cortex-resource",
+            description=(
+                "Read a server-stored resource produced by a Cortex tool "
+                "(e.g. vault_search or vault_context invoked with "
+                "as_resource=True). Keeps token-heavy payloads out of the "
+                "LLM context window until they are actually needed."
+            ),
+            mimeType="application/json",
+        ),
+    ]
+
+
+_CORTEX_RESOURCE_PREFIX = "cortex://resource/"
+
+
+@app.read_resource()
+async def read_resource(uri: str) -> str:
+    """Resolve a cortex://resource/{id} URI from the in-memory store."""
+    if not isinstance(uri, str):
+        uri = str(uri)
+    if not uri.startswith(_CORTEX_RESOURCE_PREFIX):
+        return json.dumps({"error": f"Unsupported resource URI: {uri}"})
+
+    resource_id = uri[len(_CORTEX_RESOURCE_PREFIX):]
+    store: ResourceStore | None = _services.get("resource_store")
+    if store is None:
+        return json.dumps({"error": "Resource store not configured"})
+
+    stored = await store.get(resource_id)
+    if stored is None:
+        return json.dumps({"error": f"Resource not found: {resource_id}"})
+    return stored.content
 
 
 async def run_stdio() -> None:
@@ -268,12 +323,14 @@ async def run_stdio() -> None:
     qmd = CachedQMDSearch(raw_qmd)
 
     compiler = KnowledgeCompiler(vault_path)
+    resource_store = ResourceStore.from_settings(settings)
 
     _services.update({
         "vault_path": vault_path,
         "graph": graph,
         "qmd": qmd,
         "compiler": compiler,
+        "resource_store": resource_store,
     })
 
     async with stdio_server() as (read, write):

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from cortex.compiler.compiler import KnowledgeCompiler
+from cortex.graph.context import build_context_window
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
 from cortex.search.qmd import QMDSearch
@@ -205,9 +206,17 @@ async def handle_vault_search(
     mode: str | None = None,
     collection: Optional[str] = None,
     top_k: int = 10,
+    as_resource: bool = False,
+    resource_store: Optional[Any] = None,
     **_kwargs: Any,
 ) -> dict[str, Any]:
-    """Search via QMD and enrich results with graph edges."""
+    """Search via QMD and enrich results with graph edges.
+
+    When *as_resource* is true and a *resource_store* is wired in, the
+    full result payload is stashed server-side and the caller receives
+    only a lightweight handle — see the MCP resources-as-inputs pattern
+    (https://microsoft.github.io/mcscatblog/posts/mcp-resources-as-tool-inputs/).
+    """
     from cortex.config import settings
 
     effective_mode = mode or settings.qmd_search_mode
@@ -235,9 +244,132 @@ async def handle_vault_search(
             )
 
         await log_operation(vault_path, "mcp", "vault:search", f"Search: {query}")
-        return {"query": query, "mode": mode, "results": enriched}
+        payload = {"query": query, "mode": mode, "results": enriched}
+        if as_resource and resource_store is not None:
+            import json as _json
+
+            resource_id = await resource_store.put(
+                _json.dumps(payload, default=str),
+                mime_type="application/json",
+            )
+            return {
+                "resource_id": resource_id,
+                "resource_uri": f"cortex://resource/{resource_id}",
+                "summary": {
+                    "query": query,
+                    "mode": mode,
+                    "count": len(enriched),
+                    "paths": [r["path"] for r in enriched],
+                },
+            }
+        return payload
     except Exception as e:
         logger.exception("vault:search error")
+        return {"error": str(e)}
+
+
+_CORTEX_RESOURCE_PREFIX = "cortex://resource/"
+
+
+async def handle_vault_resource_read(
+    resource_id: str,
+    vault_path: Path,  # pylint: disable=unused-argument
+    resource_store: Optional[Any] = None,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Read a server-stored resource by ID.
+
+    Fallback for MCP clients that don't surface the resources protocol
+    as a first-class concept (some Copilot Studio configurations only
+    expose tools to the planning layer). Accepts either the bare hex
+    ID or the full ``cortex://resource/{id}`` URI.
+    """
+    if resource_store is None:
+        return {"error": "Resource store not configured"}
+
+    rid = resource_id
+    if rid.startswith(_CORTEX_RESOURCE_PREFIX):
+        rid = rid[len(_CORTEX_RESOURCE_PREFIX):]
+
+    stored = await resource_store.get(rid)
+    if stored is None:
+        return {"error": f"Resource not found: {rid}"}
+    return {
+        "resource_id": rid,
+        "mime_type": stored.mime_type,
+        "content": stored.content,
+    }
+
+
+async def handle_vault_context(
+    query: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    qmd: QMDSearch,
+    max_notes: int = 8,
+    max_depth: int = 2,
+    as_resource: bool = False,
+    resource_store: Optional[Any] = None,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Build a context window (search → BFS expand → rank).
+
+    When *as_resource* is true and a *resource_store* is provided, the
+    full context window (notes with up to 500-char snippets, edges,
+    contradictions) is stored server-side and only a small handle plus
+    summary is returned to the caller.
+    """
+    from cortex.config import settings
+
+    try:
+        result = await build_context_window(
+            query=query,
+            searcher=qmd,
+            graph=graph,
+            vault_root=vault_path,
+            max_notes=max_notes,
+            max_depth=max_depth,
+            mode=settings.qmd_search_mode,
+        )
+        payload = {
+            "notes": [
+                {"path": n.path, "title": n.title, "content": n.content[:500]}
+                for n in result.notes
+            ],
+            "edges": [
+                {
+                    "source": e.source,
+                    "target": e.target,
+                    "edge_type": e.edge_type.value,
+                }
+                for e in result.edges
+            ],
+            "contradictions": result.contradictions,
+            "total_nodes_explored": result.total_nodes_explored,
+            "total_edges_explored": result.total_edges_explored,
+        }
+        if as_resource and resource_store is not None:
+            import json as _json
+
+            resource_id = await resource_store.put(
+                _json.dumps(payload, default=str),
+                mime_type="application/json",
+            )
+            return {
+                "resource_id": resource_id,
+                "resource_uri": f"cortex://resource/{resource_id}",
+                "summary": {
+                    "query": query,
+                    "note_count": len(payload["notes"]),
+                    "edge_count": len(payload["edges"]),
+                    "total_nodes_explored": result.total_nodes_explored,
+                    "total_edges_explored": result.total_edges_explored,
+                    "paths": [n["path"] for n in payload["notes"]],
+                },
+            }
+        return payload
+    except Exception as e:
+        logger.exception("vault:context error")
         return {"error": str(e)}
 
 

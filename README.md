@@ -180,6 +180,36 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 | **Vault Watcher**            | Real-time filesystem monitoring — graph stays in sync automatically                                                                                                          |
 | **Zero Database**            | Everything persists as Markdown + JSON on your filesystem                                                                                                                    |
 
+## MCP resources (token-light large payloads)
+
+PULSE8.ai Cortex implements the [resources-as-tool-inputs pattern](https://microsoft.github.io/mcscatblog/posts/mcp-resources-as-tool-inputs/) recommended by the Microsoft Copilot Studio CAT team: token-heavy tool outputs (large search result sets, full context windows) can be kept server-side and passed between tools as lightweight handles, so the LLM context window stays small.
+
+**How it works.** Pass `as_resource: true` to `vault_search` or `vault_context` (or `?as_resource=true` on `GET /api/v1/search`). Instead of inlining the full payload, you get a handle:
+
+```json
+{
+  "resource_id": "7f8a3c...",
+  "resource_uri": "cortex://resource/7f8a3c...",
+  "summary": { "query": "...", "count": 8, "paths": ["..."] }
+}
+```
+
+Read it back through any of the three transports:
+
+- **MCP resources protocol** — `resources/read` with the `cortex://resource/{id}` URI (Claude Desktop, Cursor, Copilot Studio MCP).
+- **Fallback tool** — `vault_resource_read` for clients that only expose tools to the planning layer (some Copilot Studio configurations).
+- **REST** — `GET /api/v1/resources/{resource_id}` (accepts the bare ID or the full URI).
+
+The store is in-memory, asyncio-safe, TTL-evicted, and LRU-bounded:
+
+| Env var | Default | Purpose |
+|---------|---------|---------|
+| `CORTEX_RESOURCE_TTL_SECONDS` | `3600` | Max age before a stored resource is evicted lazily on read |
+| `CORTEX_RESOURCE_MAX_ITEMS` | `1000` | LRU cap before oldest entry is dropped |
+
+The same `ResourceStore` is shared between MCP and REST — produce a handle via MCP, read it back via REST (or vice versa).
+
+Microsoft Copilot Studio setup — agent instructions, tool selection, and the Custom Connector fallback — is documented in [docs/copilot-studio.md](docs/copilot-studio.md). No Cortex code change required.
 
 
 
@@ -190,13 +220,14 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 | ---------------------- | ------------------------------------------------------------------------------------------ |
 | `vault_read`           | Read a note by path                                                                        |
 | `vault_write`          | Create or update a note                                                                    |
-| `vault_search`         | Search the vault (keyword / semantic / hybrid)                                             |
+| `vault_search`         | Search the vault (keyword / semantic / hybrid). Supports `as_resource=true`                |
 | `vault_link`           | Create, query, or delete graph edges                                                       |
-| `vault_context`        | Build a context window: search → graph traversal → ranked subgraph                         |
+| `vault_context`        | Build a context window: search → graph traversal → ranked subgraph. Supports `as_resource=true` |
 | `vault_ingest`         | Ingest raw content or binary files (supports `content_base64` for binary)                  |
 | `vault_compile`        | Compile unprocessed raw sources into wiki Markdown via MarkItDown                          |
 | `vault_feedback`       | Submit feedback on vault quality (`status: OPEN`; optional `related_paths` of `.md` notes) |
 | `vault_list_feedbacks` | List feedback note metadata (paths, tags, status; not full body)                           |
+| `vault_resource_read`  | Read a server-stored MCP resource by ID (fallback for clients without `resources/read`)    |
 
 
 
