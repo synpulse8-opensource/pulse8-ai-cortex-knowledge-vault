@@ -29,6 +29,98 @@ def _should_log_to_daily(rel_path: str) -> bool:
 
 logger = logging.getLogger(__name__)
 
+# Copilot Studio (and some other MCP clients) reject tool responses above a
+# hard payload size. Keep returns comfortably under it.
+#
+# Max bytes for a single tool's JSON-encoded response. Copilot Studio's
+# connector payload limit is 5 MB on public-cloud plans (450 KB on GCC gov);
+# see https://learn.microsoft.com/en-us/microsoft-copilot-studio/requirements-quotas
+# We cap at 4 MB to leave headroom for transport/encoding overhead under the
+# 5 MB ceiling. If deploying to a GCC tenant, drop this to ~400_000.
+_MAX_PAYLOAD_BYTES = 4_000_000
+
+
+def _truncate_strings(obj: Any, cap: int) -> Any:
+    """Recursively cap every string value in a JSON-like structure to *cap* chars.
+
+    Walks dicts and lists; any string longer than *cap* is cut and suffixed
+    with "…[truncated]". Non-string scalars (int/float/bool/None) pass through
+    unchanged. Dict/list structure is preserved — only string *values* shrink.
+
+    Example
+    -------
+    >>> _truncate_strings(
+    ...     {"title": "RFP", "content": "abcdefghij", "score": 0.9,
+    ...      "tags": ["alpha-very-long", "ok"]},
+    ...     cap=5,
+    ... )
+    {'title': 'RFP',                       # ≤ cap, untouched
+     'content': 'abcde…[truncated]',       # 10 chars → cut to 5 + suffix
+     'score': 0.9,                         # non-string, untouched
+     'tags': ['alpha…[truncated]', 'ok']}  # list walked element-wise
+    """
+    if isinstance(obj, str):
+        return obj if len(obj) <= cap else obj[:cap] + "…[truncated]"
+    if isinstance(obj, dict):
+        return {k: _truncate_strings(v, cap) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_truncate_strings(v, cap) for v in obj]
+    return obj
+
+
+def _enforce_payload_size(payload: dict[str, Any], limit: int = _MAX_PAYLOAD_BYTES) -> dict[str, Any]:
+    """Guarantee the JSON-encoded payload stays under *limit* bytes.
+
+    Some MCP clients (Copilot Studio) reject tool responses above a hard size.
+    Strategy:
+      1. If the payload already serializes under *limit*, return it as-is.
+      2. Otherwise retry with progressively tighter per-string caps
+         (100000 → 50000 → 20000 → 5000 → 2000 → 500). First one that fits
+         wins, and the result is flagged ``_truncated: True``. The high first
+         steps mean a payload only slightly over the limit loses very little.
+      3. If even a 500-char cap is too big (e.g. thousands of results), give
+         up on the data and return an error+hint so the client gets a small,
+         valid response instead of one it would reject outright.
+
+    Example — payload over the limit (limit shown small for illustration)
+    --------------------------------------------------------------------
+    Input  (≈ 5KB, limit=120 bytes):
+        {"query": "rfp",
+         "results": [{"path": "a.md", "content": "<4000-char blob>"},
+                     {"path": "b.md", "content": "<4000-char blob>"}]}
+
+    Output (fits after the first cap that gets under the limit):
+        {"query": "rfp",
+         "results": [{"path": "a.md", "content": "<capped chars>…[truncated]"},
+                     {"path": "b.md", "content": "<capped chars>…[truncated]"}],
+         "_truncated": True}
+
+    Example — fits immediately, returned unchanged
+    ----------------------------------------------
+    Input:  {"query": "rfp", "results": []}
+    Output: {"query": "rfp", "results": []}          # no _truncated flag
+
+    Example — still too big even at 500 chars (e.g. 10k results)
+    -----------------------------------------------------------
+    Output: {"error": "payload too large",
+             "hint": "retry with as_resource=True, a smaller top_k/max_notes, or fewer results"}
+    """
+    import json as _json
+
+    if len(_json.dumps(payload, default=str)) <= limit:
+        return payload
+    # Step down gently from a generous cap so a payload only slightly over the
+    # 4 MB limit loses as little as possible; tighten further only if needed.
+    for cap in (100_000, 50_000, 20_000, 5_000, 2_000, 500):
+        trimmed = _truncate_strings(payload, cap)
+        if len(_json.dumps(trimmed, default=str)) <= limit:
+            trimmed["_truncated"] = True
+            return trimmed
+    return {
+        "error": "payload too large",
+        "hint": "retry with as_resource=True, a smaller top_k/max_notes, or fewer results",
+    }
+
 
 async def handle_vault_read(
     path: str,
@@ -36,7 +128,12 @@ async def handle_vault_read(
     graph: GraphEngine,
     **_kwargs: Any,
 ) -> dict[str, Any]:
-    """Read a note by path. Returns frontmatter, content, and edges."""
+    """Read a note by path. Returns frontmatter, content, and edges.
+
+    The response is passed through ``_enforce_payload_size`` so it stays under
+    the MCP client payload limit. ``**_kwargs`` absorbs any extra client args
+    (e.g. a ``max_chars`` sent by older clients) without erroring.
+    """
     try:
         path = resolve_note_path(path, vault_path, graph=graph)
         # Offloaded: file I/O + YAML parse would otherwise block the event
@@ -52,7 +149,7 @@ async def handle_vault_read(
             for e in edges
         ]
         await log_operation(vault_path, "mcp", "vault:read", f"Read {path}")
-        return {
+        return _enforce_payload_size({
             "path": note.path,
             "title": note.title,
             "content": note.content,
@@ -61,7 +158,7 @@ async def handle_vault_read(
             "wikilinks": note.wikilinks,
             "tags": note.tags,
             "edges": edge_dicts,
-        }
+        })
     except FileNotFoundError:
         return {"error": f"Note not found: {path}"}
     except IsADirectoryError:
@@ -262,7 +359,7 @@ async def handle_vault_search(
                     "paths": [r["path"] for r in enriched],
                 },
             }
-        return payload
+        return _enforce_payload_size(payload)
     except Exception as e:
         logger.exception("vault:search error")
         return {"error": str(e)}
@@ -367,7 +464,7 @@ async def handle_vault_context(
                     "paths": [n["path"] for n in payload["notes"]],
                 },
             }
-        return payload
+        return _enforce_payload_size(payload)
     except Exception as e:
         logger.exception("vault:context error")
         return {"error": str(e)}
