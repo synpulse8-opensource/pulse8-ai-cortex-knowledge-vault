@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>document.documentElement.classList.add('js');</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PULSE8.ai Cortex — The open-source knowledge layer for AI agents</title>
+<meta name="description" content="Git-native memory, a typed knowledge graph, and MCP-powered retrieval on plain Markdown — so agents build, evolve, and reuse knowledge instead of re-deriving it on every query. Knowledge that compounds." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #121A21;
+    --bg-elev: #18222B;
+    --bg-elev-2: #1E2A35;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.14);
+    --coral: #FD8D75;
+    --pink: #ED4CB7;
+    --grad: linear-gradient(118deg, #FD8D75 0%, #ED4CB7 100%);
+    --grad-soft: linear-gradient(118deg, rgba(253,141,117,0.16) 0%, rgba(237,76,183,0.16) 100%);
+    --text: #EAF0F5;
+    --text-muted: #93A2B2;
+    --text-dim: #617282;
+    --muted: #93A2B2;
+    --dim: #647585;
+    --display: 'Outfit', system-ui, sans-serif;
+    --body: 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --maxw: 1180px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* Ambient brand glow */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(620px 420px at 80% -8%, rgba(237,76,183,0.13), transparent 60%),
+      radial-gradient(560px 380px at 8% 4%, rgba(253,141,117,0.10), transparent 60%);
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+  .mono { font-family: var(--mono); }
+
+  .grad-text {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--coral);
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 22px; height: 1px;
+    background: var(--grad);
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--display);
+    font-weight: 600; font-size: 15px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .25s ease, background .25s ease, border-color .25s ease;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--grad);
+    color: #1a1016;
+    box-shadow: 0 8px 30px -10px rgba(237,76,183,0.55);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 40px -10px rgba(237,76,183,0.7); }
+  .btn-ghost {
+    background: rgba(255,255,255,0.03);
+    border-color: var(--line-strong);
+    color: var(--text);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.07); border-color: var(--coral); transform: translateY(-2px); }
+  .btn svg { width: 17px; height: 17px; }
+
+  /* ---------- Announcement ---------- */
+  .announce {
+    position: relative; z-index: 3;
+    background: linear-gradient(90deg, rgba(253,141,117,0.10), rgba(237,76,183,0.10));
+    border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+    text-align: center;
+    padding: 10px 16px;
+  }
+  .announce a { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .announce .tag {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.12em;
+    background: var(--grad); color:#1a1016;
+    padding: 2px 8px; border-radius: 5px;
+  }
+  .announce .arr { color: var(--pink); transition: transform .2s ease; }
+  .announce a:hover .arr { transform: translateX(4px); }
+  .announce .muted { color: var(--muted); }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px);
+    background: rgba(18,26,33,0.72);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+  .brand { display: flex; align-items: center; gap: 11px; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+  .brand .mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--grad);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 18px -6px rgba(237,76,183,0.6);
+  }
+  .brand .mark svg { width: 18px; height: 18px; }
+  .brand .sub { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .nav-links { display: flex; align-items: center; gap: 30px; }
+  .nav-links a { font-size: 14.5px; color: var(--muted); font-weight: 500; transition: color .2s ease; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta { display: flex; align-items: center; gap: 12px; }
+  .nav-cta .btn { padding: 9px 16px; font-size: 14px; }
+  .star-btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-family: var(--mono); font-size: 13px; color: var(--text);
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    padding: 9px; width: 38px; height: 38px; background: rgba(255,255,255,0.02);
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .star-btn:hover { border-color: var(--coral); background: rgba(255,255,255,0.05); }
+  .star-btn svg { width: 18px; height: 18px; }
+  .menu-btn { display: none; background: none; border: none; color: var(--text); cursor: pointer; }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: 78px 0 64px; position: relative; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 54px; align-items: center; }
+  h1.hero-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(38px, 5.4vw, 64px);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    margin: 22px 0 0;
+  }
+  .hero-sub {
+    margin-top: 22px;
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 560px;
+  }
+  .hero-sub strong { color: var(--text); font-weight: 600; }
+  .tagline {
+    margin-top: 20px;
+    font-family: var(--display);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 19px;
+  }
+  .hero-cta { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
+
+  /* verb cycle */
+  .verbs {
+    margin-top: 34px;
+    display: flex; align-items: center; gap: 0;
+    font-family: var(--mono); font-size: 13px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .verbs .v { color: var(--text); font-weight: 500; padding: 4px 2px; }
+  .verbs .sep { color: var(--pink); margin: 0 13px; opacity: .8; }
+  .verbs .loop { color: var(--dim); margin-left: 13px; font-size: 12px; }
+
+  /* graph visual */
+  .graph-card {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background:
+      radial-gradient(120% 120% at 50% 0%, rgba(237,76,183,0.07), transparent 55%),
+      var(--bg-elev);
+    overflow: hidden;
+    box-shadow: 0 40px 90px -50px rgba(0,0,0,0.9);
+  }
+  .graph-card .gtop {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 16px; border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11.5px; color: var(--dim);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
+  .dots i:first-child { background: var(--coral); }
+  .dots i:nth-child(2) { background: var(--pink); }
+  svg.graph { display: block; width: 100%; height: auto; }
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 13px 16px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+  /* ---------- Section scaffolding ---------- */
+  section { position: relative; z-index: 1; }
+  .sec { padding: 84px 0; }
+  .sec-head { max-width: 680px; }
+  .sec-head.center { margin: 0 auto; text-align: center; }
+  h2.sec-title {
+    font-family: var(--display); font-weight: 700;
+    font-size: clamp(28px, 3.6vw, 42px);
+    line-height: 1.1; letter-spacing: -0.02em;
+    margin-top: 16px;
+  }
+  .sec-lead { margin-top: 16px; color: var(--muted); font-size: 17px; }
+
+  .divider { height: 1px; background: var(--line); max-width: var(--maxw); margin: 0 auto; }
+
+  /* problem / SCR */
+  .scr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 46px; }
+  .scr .step { border: 1px solid var(--line); border-radius: 14px; padding: 26px; background: var(--bg-elev); }
+  .scr .k { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--coral); }
+  .scr h3 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 12px 0 9px; }
+  .scr p { color: var(--muted); font-size: 15px; }
+  .scr .step:last-child { border-color: rgba(237,76,183,0.4); background: var(--grad-soft); }
+  .scr .step:last-child .k { color: var(--pink); }
+
+  /* capabilities grid */
+  .caps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 46px; }
+  .cap {
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 26px; background: var(--bg-elev);
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .cap:hover { transform: translateY(-4px); border-color: var(--line-strong); background: var(--bg-elev-2); }
+  .cap .ico {
+    width: 42px; height: 42px; border-radius: 11px;
+    display: grid; place-items: center; margin-bottom: 16px;
+    background: var(--grad-soft); border: 1px solid rgba(237,76,183,0.3);
+  }
+  .cap .ico svg { width: 21px; height: 21px; stroke: var(--coral); }
+  .cap h3 { font-family: var(--display); font-weight: 600; font-size: 18px; margin-bottom: 8px; }
+  .cap p { color: var(--muted); font-size: 14.5px; }
+
+  /* architecture */
+  .arch { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; margin-top: 46px; }
+  .arch-points { display: flex; flex-direction: column; gap: 22px; }
+  .arch-point { display: flex; gap: 16px; }
+  .arch-point .num {
+    flex: none; width: 34px; height: 34px; border-radius: 9px;
+    font-family: var(--mono); font-weight: 600; font-size: 14px;
+    display: grid; place-items: center; color: var(--text);
+    border: 1px solid var(--line-strong); background: rgba(255,255,255,0.02);
+  }
+  .arch-point h4 { font-family: var(--display); font-weight: 600; font-size: 17px; margin-bottom: 4px; }
+  .arch-point p { color: var(--muted); font-size: 14.5px; }
+  .arch-point p code { font-family: var(--mono); font-size: 12.5px; color: var(--coral); background: rgba(253,141,117,0.1); padding: 1px 6px; border-radius: 5px; }
+
+  .stack {
+    border: 1px solid var(--line); border-radius: 16px;
+    background: var(--bg-elev); overflow: hidden;
+    box-shadow: 0 36px 80px -50px rgba(0,0,0,0.9);
+  }
+  .stack-row {
+    padding: 18px 20px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-row .lbl { font-family: var(--display); font-weight: 600; font-size: 15px; }
+  .stack-row .meta { font-family: var(--mono); font-size: 11.5px; color: var(--dim); margin-left: auto; }
+  .stack-row .pin {
+    width: 36px; height: 36px; border-radius: 9px; flex: none;
+    display: grid; place-items: center; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  }
+  .stack-row.l1 .pin { background: var(--grad-soft); color: var(--coral); border: 1px solid rgba(253,141,117,0.3); }
+  .stack-row.l2 .pin { background: rgba(237,76,183,0.12); color: var(--pink); border: 1px solid rgba(237,76,183,0.3); }
+  .stack-row.l3 .pin { background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--line-strong); }
+  .stack-row .desc { color: var(--muted); font-size: 13px; }
+  .stack-arrow { text-align: center; color: var(--dim); font-family: var(--mono); font-size: 13px; padding: 7px 0; }
+
+  /* tools */
+  .tools { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 46px; }
+  .tool {
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; background: var(--bg-elev);
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .tool:hover { border-color: var(--coral); background: var(--bg-elev-2); }
+  .tool .name { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text); }
+  .tool .name b { color: var(--coral); font-weight: 600; }
+  .tool p { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
+
+  /* compare table */
+  .cmp-wrap { margin-top: 46px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--bg-elev); }
+  table.cmp { width: 100%; border-collapse: collapse; }
+  table.cmp th, table.cmp td { padding: 15px 18px; text-align: left; font-size: 14.5px; border-bottom: 1px solid var(--line); }
+  table.cmp thead th { font-family: var(--display); font-weight: 600; font-size: 14px; color: var(--text); background: rgba(255,255,255,0.02); }
+  table.cmp thead th.us {
+    background: var(--grad-soft); color: var(--text);
+  }
+  table.cmp td:first-child { color: var(--muted); }
+  table.cmp td.c { text-align: center; font-family: var(--mono); }
+  table.cmp tr:last-child td { border-bottom: none; }
+  .yes { color: #6BE3A8; font-weight: 600; }
+  .no { color: #5A6B79; }
+  .warn { color: var(--coral); }
+  table.cmp td.us-col { background: rgba(237,76,183,0.05); }
+
+  /* works with */
+  .chips { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 40px; justify-content: center; }
+  .chip {
+    font-family: var(--mono); font-size: 13.5px; color: var(--text);
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    padding: 9px 16px; background: rgba(255,255,255,0.02);
+    transition: border-color .2s ease, transform .2s ease, color .2s ease;
+  }
+  .chip:hover { border-color: var(--coral); transform: translateY(-2px); }
+  .chip.muted { color: var(--muted); }
+
+  /* quickstart */
+  .qs { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 48px; align-items: center; margin-top: 46px; }
+  .qs-steps { display: flex; flex-direction: column; gap: 26px; }
+  .qs-step { display: flex; gap: 16px; }
+  .qs-step .num {
+    flex: none; width: 30px; height: 30px; border-radius: 8px;
+    background: var(--grad); color: #1a1016; font-family: var(--mono); font-weight: 600; font-size: 14px;
+    display: grid; place-items: center;
+  }
+  .qs-step h4 { font-family: var(--display); font-weight: 600; font-size: 16px; margin-bottom: 3px; }
+  .qs-step p { color: var(--muted); font-size: 14px; }
+  .qs-step p code { font-family: var(--mono); font-size: 12.5px; color: var(--coral); }
+
+  .terminal {
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: #0E151B; box-shadow: 0 36px 80px -50px rgba(0,0,0,0.95);
+  }
+  .terminal .tbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 15px; border-bottom: 1px solid var(--line);
+  }
+  .terminal .tbar .ttl { font-family: var(--mono); font-size: 11.5px; color: var(--dim); margin-left: 8px; }
+  .terminal pre {
+    margin: 0; padding: 20px; overflow-x: auto;
+    font-family: var(--mono); font-size: 13px; line-height: 1.85; color: #C7D3DE;
+  }
+  .terminal .c { color: var(--dim); }
+  .terminal .p { color: var(--pink); }
+  .terminal .g { color: #6BE3A8; }
+  .terminal .o { color: var(--coral); }
+
+  /* lineage */
+  .lineage { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-top: 44px; }
+  .ln { border: 1px solid var(--line); border-radius: 14px; padding: 24px; background: var(--bg-elev); }
+  .ln .by { font-family: var(--mono); font-size: 11.5px; color: var(--pink); letter-spacing: .04em; }
+  .ln h4 { font-family: var(--display); font-weight: 600; font-size: 18px; margin: 8px 0 8px; }
+  .ln p { color: var(--muted); font-size: 14px; }
+
+  /* CTA band */
+  .cta-band {
+    margin: 0 auto; max-width: var(--maxw);
+    border: 1px solid rgba(237,76,183,0.3); border-radius: 22px;
+    padding: 60px 40px; text-align: center;
+    background:
+      radial-gradient(120% 160% at 50% 0%, rgba(237,76,183,0.14), transparent 60%),
+      var(--bg-elev);
+  }
+  .cta-band h2 { font-family: var(--display); font-weight: 700; font-size: clamp(28px,3.6vw,40px); letter-spacing: -0.02em; }
+  .cta-band p { color: var(--muted); margin-top: 14px; font-size: 17px; }
+  .cta-band .row { display: flex; gap: 14px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+
+  /* editions */
+  .editions { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 46px; }
+  .ed {
+    border: 1px solid var(--line); border-radius: 18px;
+    padding: 34px 32px; background: var(--bg-elev);
+    display: flex; flex-direction: column;
+  }
+  .ed.enterprise {
+    border-color: rgba(237,76,183,0.4);
+    background: radial-gradient(140% 120% at 50% 0%, rgba(237,76,183,0.10), transparent 60%), var(--bg-elev);
+  }
+  .ed-label { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--coral); }
+  .ed.enterprise .ed-label { color: var(--pink); }
+  .ed h3 { font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; margin: 13px 0 6px; }
+  .ed-tag { color: var(--muted); font-size: 15px; }
+  .ed-price { font-family: var(--display); font-weight: 600; font-size: 19px; margin: 22px 0 0; }
+  .ed-price span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .ed-feat { list-style: none; margin: 22px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .ed-feat li { display: flex; gap: 11px; align-items: flex-start; font-size: 14.5px; color: var(--text); }
+  .ed-feat li svg { width: 17px; height: 17px; flex: none; margin-top: 2px; stroke: var(--coral); }
+  .ed.enterprise .ed-feat li svg { stroke: var(--pink); }
+  .ed-plus { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--muted); margin: 24px 0 0; }
+  .ed-roadmap { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--dim); }
+  .ed-roadmap b { color: var(--muted); font-weight: 500; font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; display: block; margin-bottom: 5px; }
+  .ed-cta { margin-top: auto; padding-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .ed-cta .btn { flex: 1; justify-content: center; min-width: 140px; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); margin-top: 90px; padding: 50px 0 40px; position: relative; z-index: 1; }
+  .foot-grid { display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+  .foot-brand { max-width: 320px; }
+  .foot-brand p { color: var(--muted); font-size: 14px; margin-top: 14px; }
+  .foot-cols { display: flex; gap: 60px; flex-wrap: wrap; }
+  .foot-col h5 { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
+  .foot-col a { display: block; color: var(--muted); font-size: 14px; margin-bottom: 10px; transition: color .2s ease; }
+  .foot-col a:hover { color: var(--text); }
+  .foot-bottom { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--dim); font-size: 13px; font-family: var(--mono); }
+
+  /* reveal — progressive enhancement: visible by default, hidden only when JS is active */
+  .reveal { transition: opacity .7s ease, transform .7s ease; }
+  .js .reveal { opacity: 0; transform: translateY(22px); }
+  .js .reveal.in { opacity: 1; transform: none; }
+
+  /* graph animation */
+  @keyframes floaty { 0%,100% { transform: translate(0,0); } 50% { transform: translate(0,-6px); } }
+  @keyframes dash { to { stroke-dashoffset: -28; } }
+  @keyframes pulse { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+  .node-g { animation: floaty 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .edge { stroke-dasharray: 4 6; animation: dash 1.8s linear infinite; }
+  .node-core { animation: pulse 4s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node-g, .edge, .node-core { animation: none !important; }
+    html { scroll-behavior: auto; }
+    .reveal, .js .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  }
+
+  /* responsive */
+  @media (max-width: 980px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .arch { grid-template-columns: 1fr; gap: 36px; }
+    .qs { grid-template-columns: 1fr; gap: 32px; }
+    .scr, .caps, .tools, .lineage { grid-template-columns: 1fr 1fr; }
+    .editions { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .nav-links { display: none; }
+    .star-btn { display: none; }
+    .scr, .caps, .tools, .lineage { grid-template-columns: 1fr; }
+    .sec { padding: 64px 0; }
+    .hero { padding: 54px 0 40px; }
+    .cmp-wrap { overflow-x: auto; }
+    table.cmp { min-width: 620px; }
+    .cta-band { padding: 44px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ANNOUNCEMENT -->
+<div class="announce">
+  <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" target="_blank" rel="noopener">
+    <span class="tag">OPEN SOURCE</span>
+    <span>PULSE8.ai Cortex is on the MCP Registry — one vault, every MCP-compatible client</span>
+    <span class="arr">→</span>
+  </a>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="2.4" fill="#1a1016"/><circle cx="5.5" cy="16" r="2.4" fill="#1a1016"/><circle cx="18.5" cy="16" r="2.4" fill="#1a1016"/><path d="M12 8.2 6.4 14M12 8.2 17.6 14M7.6 16h8.8" stroke="#1a1016" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </span>
+      <span>PULSE8.ai <span class="sub">Cortex</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#why">Why Cortex</a>
+      <a href="#capabilities">Capabilities</a>
+      <a href="#architecture">How it works</a>
+      <a href="#compare">Compare</a>
+      <a href="#enterprise">Enterprise</a>
+      <a href="#start">Get started</a>
+    </div>
+    <div class="nav-cta">
+      <a class="star-btn" href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" target="_blank" rel="noopener" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10Z"/></svg>
+      </a>
+      <a class="btn btn-primary" href="#start">Get started</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Open-source · Apache 2.0 · MCP-native</span>
+      <h1 class="hero-title">The knowledge layer<br/>for <span class="grad-text">AI agents</span>.</h1>
+      <p class="hero-sub">Git-native memory, a typed knowledge graph, and MCP-powered retrieval on top of plain Markdown — so agents <strong>build, evolve, and reuse</strong> persistent knowledge instead of re-deriving it on every query.</p>
+      <p class="tagline grad-text">Knowledge that compounds.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#start">Get started
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10Z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="verbs">
+        <span class="v">Ingest</span><span class="sep">·</span>
+        <span class="v">Compile</span><span class="sep">·</span>
+        <span class="v">Link</span><span class="sep">·</span>
+        <span class="v">Retrieve</span>
+        <span class="loop">↺ and it compounds</span>
+      </div>
+    </div>
+
+    <!-- SIGNATURE: live typed knowledge graph -->
+    <div class="graph-card">
+      <div class="gtop">
+        <span>vault · typed knowledge graph</span>
+        <div class="dots"><i></i><i></i><i></i></div>
+      </div>
+      <svg class="graph" viewBox="0 0 520 400" role="img" aria-label="A typed knowledge graph: notes, agents, sessions, daily logs and feedback nodes linked by edges.">
+        <defs>
+          <linearGradient id="eg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#FD8D75"/><stop offset="1" stop-color="#ED4CB7"/>
+          </linearGradient>
+          <radialGradient id="coreg" cx="50%" cy="50%" r="50%">
+            <stop offset="0" stop-color="#ED4CB7"/><stop offset="1" stop-color="#FD8D75"/>
+          </radialGradient>
+        </defs>
+        <!-- edges -->
+        <g stroke="url(#eg)" stroke-width="1.6" opacity="0.7" fill="none">
+          <line class="edge" x1="260" y1="200" x2="135" y2="105"/>
+          <line class="edge" x1="260" y1="200" x2="395" y2="120"/>
+          <line class="edge" x1="260" y1="200" x2="120" y2="285"/>
+          <line class="edge" x1="260" y1="200" x2="390" y2="290"/>
+          <line class="edge" x1="260" y1="200" x2="265" y2="330"/>
+          <line class="edge" x1="135" y1="105" x2="395" y2="120"/>
+          <line class="edge" x1="120" y1="285" x2="265" y2="330"/>
+          <line class="edge" x1="390" y1="290" x2="265" y2="330"/>
+          <line class="edge" x1="135" y1="105" x2="120" y2="285"/>
+        </g>
+        <!-- nodes -->
+        <!-- core note hub -->
+        <g class="node-g" style="animation-delay:0s">
+          <circle class="node-core" cx="260" cy="200" r="26" fill="url(#coreg)"/>
+          <circle cx="260" cy="200" r="26" fill="none" stroke="#fff" stroke-opacity="0.25" stroke-width="1"/>
+          <text x="260" y="204" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1a1016" font-weight="600">note</text>
+        </g>
+        <!-- note -->
+        <g class="node-g" style="animation-delay:1.1s">
+          <circle cx="135" cy="105" r="19" fill="#18222B" stroke="#FD8D75" stroke-width="1.6"/>
+          <text x="135" y="109" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#FD8D75">note</text>
+        </g>
+        <!-- agent_def -->
+        <g class="node-g" style="animation-delay:0.5s">
+          <circle cx="395" cy="120" r="20" fill="#18222B" stroke="#ED4CB7" stroke-width="1.6"/>
+          <text x="395" y="124" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#ED4CB7">agent</text>
+        </g>
+        <!-- session -->
+        <g class="node-g" style="animation-delay:1.6s">
+          <circle cx="120" cy="285" r="19" fill="#18222B" stroke="#93A2B2" stroke-width="1.4"/>
+          <text x="120" y="289" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#93A2B2">session</text>
+        </g>
+        <!-- daily -->
+        <g class="node-g" style="animation-delay:0.8s">
+          <circle cx="390" cy="290" r="19" fill="#18222B" stroke="#93A2B2" stroke-width="1.4"/>
+          <text x="390" y="294" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#93A2B2">daily</text>
+        </g>
+        <!-- feedback -->
+        <g class="node-g" style="animation-delay:2.1s">
+          <circle cx="265" cy="330" r="18" fill="#18222B" stroke="#647585" stroke-width="1.4"/>
+          <text x="265" y="334" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#93A2B2">feedback</text>
+        </g>
+      </svg>
+      <div class="legend">
+        <span><i style="background:#FD8D75"></i> note</span>
+        <span><i style="background:#ED4CB7"></i> agent_def</span>
+        <span><i style="background:#93A2B2"></i> session · daily</span>
+        <span><i style="background:#647585"></i> feedback</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="divider"></div>
+
+<!-- WHY / SCR -->
+<section class="sec" id="why">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">The problem</span>
+      <h2 class="sec-title">Most agents can access tools.<br/>They can't <span class="grad-text">accumulate knowledge</span>.</h2>
+      <p class="sec-lead">Traditional RAG retrieves documents and forgets. Cortex builds a persistent, evolving knowledge layer that grows over time — and becomes more valuable the more agents and humans interact with it.</p>
+    </div>
+    <div class="scr">
+      <div class="step reveal">
+        <div class="k">Situation</div>
+        <h3>Knowledge lives in documents</h3>
+        <p>RAG chunks and re-indexes the same sources on every query. Nothing is learned, nothing is kept, nothing connects.</p>
+      </div>
+      <div class="step reveal">
+        <div class="k">Complication</div>
+        <h3>Every session starts from zero</h3>
+        <p>Insights vanish when the context window closes. Agents re-derive what they already worked out yesterday — and can't build on each other.</p>
+      </div>
+      <div class="step reveal">
+        <div class="k">Resolution</div>
+        <h3>A knowledge layer that compounds</h3>
+        <p>Every read, write, ingest and compile is logged and graph-linked. Files survive sessions, deployments and model upgrades — diff-friendly Markdown, no database.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CAPABILITIES -->
+<section class="sec" id="capabilities">
+  <div class="wrap">
+    <div class="sec-head center">
+      <span class="eyebrow">What agents can do</span>
+      <h2 class="sec-title">A unified vault for agents and humans</h2>
+      <p class="sec-lead">Backed by a typed knowledge graph, hybrid search, and a MarkItDown-powered file compiler. Drop files in. Let agents read, write, search, link and compile knowledge.</p>
+    </div>
+    <div class="caps">
+      <div class="cap reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M5 12H2M22 12h-3M12 5V2M12 22v-3M7 7 5 5M17 7l2-2M7 17l-2 2M17 17l2 2"/></svg></div>
+        <h3>Learn from interactions</h3>
+        <p>Every read, write, ingest and compile event is logged and graph-linked — the vault learns as it's used.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="10" cy="18" r="2.5"/><path d="M8 7l8 1M16.5 10l-5.5 6M8 8l1.5 8"/></svg></div>
+        <h3>Build &amp; traverse graphs</h3>
+        <p>Wikilinks, tags and typed edges, maintained automatically. <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">vault_context</code> builds a ranked subgraph from any seed query.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+        <h3>Store structured insights</h3>
+        <p>Markdown notes with typed nodes — <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">note</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">agent_def</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">session</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">daily</code>, <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">feedback</code>.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 21l-4.3-4.3M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/></svg></div>
+        <h3>Retrieve across projects</h3>
+        <p>Hybrid search — BM25 + vector + re-ranking — with keyword and semantic modes, cached with a configurable TTL.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6l-8-4Z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Share through MCP</h3>
+        <p>One vault, every MCP-compatible client — streamable HTTP or stdio, mirrored 1:1 by a REST API at <code style="font-family:var(--mono);font-size:12px;color:var(--coral)">/api/v1/</code>.</p>
+      </div>
+      <div class="cap reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7M8.3 7.2 15.7 11M8.3 16.8 15.7 13"/></svg></div>
+        <h3>Version through Git</h3>
+        <p>The vault is a plain directory of Markdown — diff-friendly out of the box. Zero database; everything persists as Markdown + JSON on your filesystem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="sec" id="architecture">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it works</span>
+      <h2 class="sec-title">No database. <span class="grad-text">Just files.</span></h2>
+      <p class="sec-lead">The same vault is reachable over MCP and REST, kept in sync by a real-time filesystem watcher. Everything below the surface is plain Markdown plus a typed graph.</p>
+    </div>
+    <div class="arch">
+      <div class="arch-points">
+        <div class="arch-point reveal">
+          <div class="num">01</div>
+          <div>
+            <h4>Drop files in</h4>
+            <p>PDF, DOCX, PPTX, XLSX, HTML, images and more are converted to Markdown via MarkItDown. Bulk-ingest hundreds at once with SHA-256 dedup.</p>
+          </div>
+        </div>
+        <div class="arch-point reveal">
+          <div class="num">02</div>
+          <div>
+            <h4>Compile &amp; cross-reference</h4>
+            <p>Raw sources compile into interlinked wiki articles. An LLM is used only to detect cross-references between articles — file conversion needs no API key.</p>
+          </div>
+        </div>
+        <div class="arch-point reveal">
+          <div class="num">03</div>
+          <div>
+            <h4>Graph stays live</h4>
+            <p>A NetworkX engine maintains wikilinks, tags and typed edges on every file change. The vault watcher keeps the graph in sync automatically.</p>
+          </div>
+        </div>
+        <div class="arch-point reveal">
+          <div class="num">04</div>
+          <div>
+            <h4>Retrieve &amp; compound</h4>
+            <p>Agents query over MCP; <code>vault_context</code> returns a ranked subgraph. Every operation mirrors into a greppable daily activity log.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack reveal">
+        <div class="stack-row l3">
+          <div class="pin">MCP</div>
+          <div>
+            <div class="lbl">MCP client</div>
+            <div class="desc">Claude Desktop, Cursor, any MCP client</div>
+          </div>
+        </div>
+        <div class="stack-arrow">↓ &nbsp;MCP (HTTP or stdio) · REST</div>
+        <div class="stack-row l1">
+          <div class="pin">:8420</div>
+          <div>
+            <div class="lbl">PULSE8.ai Cortex</div>
+            <div class="desc">Auth · MCP /mcp/ · REST /api/v1/ · Vault Watcher · Graph + Compiler</div>
+          </div>
+          <div class="meta">FastAPI</div>
+        </div>
+        <div class="stack-arrow">↓</div>
+        <div class="stack-row l2">
+          <div class="pin">:3100</div>
+          <div>
+            <div class="lbl">QMD search</div>
+            <div class="desc">BM25 + vector + re-ranking, runs on-device</div>
+          </div>
+          <div class="meta">hybrid</div>
+        </div>
+        <div class="stack-arrow">↓</div>
+        <div class="stack-row l3">
+          <div class="pin">/vault</div>
+          <div>
+            <div class="lbl">The vault</div>
+            <div class="desc">wiki/ · raw/ · agents/ · sessions/ · daily/ · feedback/</div>
+          </div>
+          <div class="meta">Markdown</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MCP TOOLS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head center">
+      <span class="eyebrow">The interface</span>
+      <h2 class="sec-title">Nine MCP tools. One vault.</h2>
+      <p class="sec-lead">Every tool is exposed over MCP and mirrored 1:1 in the REST API. Plug into any AI client that speaks the Model Context Protocol.</p>
+    </div>
+    <div class="tools">
+      <div class="tool reveal"><div class="name">vault_<b>read</b></div><p>Read a note by path.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>write</b></div><p>Create or update a note.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>search</b></div><p>Search the vault — keyword, semantic or hybrid.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>link</b></div><p>Create, query or delete graph edges.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>context</b></div><p>Search → graph traversal → ranked subgraph.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>ingest</b></div><p>Ingest raw content or binary files.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>compile</b></div><p>Compile raw sources into wiki Markdown.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>feedback</b></div><p>Submit feedback on vault quality.</p></div>
+      <div class="tool reveal"><div class="name">vault_<b>list_feedbacks</b></div><p>List feedback note metadata.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="sec" id="compare">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it compares</span>
+      <h2 class="sec-title">Built for knowledge, not just documents</h2>
+      <p class="sec-lead">RAG retrieves chunks. GraphRAG adds structure but no memory. Cortex is a persistent, Git-versioned, MCP-native knowledge layer.</p>
+    </div>
+    <div class="cmp-wrap reveal">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th class="us">PULSE8.ai Cortex</th>
+            <th>Traditional RAG</th>
+            <th>GraphRAG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Persistent knowledge</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="warn">~</span></td></tr>
+          <tr><td>Markdown-native storage</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="no">✕</span></td></tr>
+          <tr><td>MCP-compatible out of the box</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="no">✕</span></td></tr>
+          <tr><td>Knowledge graph</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="yes">✓</span></td></tr>
+          <tr><td>Git versioning</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="no">✕</span></td></tr>
+          <tr><td>Agent memory layer</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="warn">~</span></td></tr>
+          <tr><td>Human + AI collaboration</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="warn">~</span></td></tr>
+          <tr><td>Continuous knowledge evolution</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="warn">~</span></td></tr>
+          <tr><td>Zero database required</td><td class="c us-col"><span class="yes">✓</span></td><td class="c"><span class="no">✕</span></td><td class="c"><span class="no">✕</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- EDITIONS -->
+<section class="sec" id="enterprise">
+  <div class="wrap">
+    <div class="sec-head center">
+      <span class="eyebrow">Editions</span>
+      <h2 class="sec-title">Open source to run yourself.<br/>Enterprise when you need <span class="grad-text">scale and governance</span>.</h2>
+      <p class="sec-lead">Start free and self-hosted. Bring in managed deployment, single sign-on, compliance guardrails and support when Cortex moves into production.</p>
+    </div>
+    <div class="editions">
+
+      <!-- OPEN SOURCE -->
+      <div class="ed reveal">
+        <span class="ed-label">Open Source</span>
+        <h3>Self-host, forever free</h3>
+        <p class="ed-tag">The full knowledge layer, on your own infrastructure. No database, no lock-in.</p>
+        <p class="ed-price">Free <span>· Apache 2.0</span></p>
+        <ul class="ed-feat">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Typed knowledge graph (NetworkX) — auto-maintained on every change</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Hybrid search — BM25 + vector + re-ranking, on-device</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> MCP server + REST API, mirrored 1:1</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> File compiler — PDF, DOCX, PPTX, XLSX, HTML, images</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Git-native Markdown vault, zero database</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Bulk ingest with SHA-256 dedup &amp; API-key auth</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Docker deployment &amp; community support</li>
+        </ul>
+        <div class="ed-cta">
+          <a class="btn btn-primary" href="#start">Get started</a>
+          <a class="btn btn-ghost" href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+      </div>
+
+      <!-- ENTERPRISE -->
+      <div class="ed enterprise reveal">
+        <span class="ed-label">Enterprise</span>
+        <h3>Governed, supported, at scale</h3>
+        <p class="ed-tag">For regulated teams running Cortex in production — part of the PULSE8.AI platform.</p>
+        <p class="ed-price">Custom <span>· let's talk</span></p>
+        <p class="ed-plus">Everything in Open Source, plus:</p>
+        <ul class="ed-feat">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Single sign-on with Microsoft Entra ID (OIDC) + MFA</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Managed or private-cloud deployment</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> GPU-accelerated search at production scale</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Microsoft Teams notifications &amp; workflows</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Compliance guardrails &amp; core-system connectors</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Priority support, SLAs &amp; security review</li>
+        </ul>
+        <div class="ed-roadmap">
+          <b>On the enterprise roadmap</b>
+          Governance &amp; access policies · multi-vault federation · knowledge lineage tracking
+        </div>
+        <div class="ed-cta">
+          <a class="btn btn-primary" href="https://www.synpulse8.com/en/contact-us" target="_blank" rel="noopener">Contact us</a>
+          <a class="btn btn-ghost" href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/discussions" target="_blank" rel="noopener">Open a discussion</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- WORKS WITH -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head center">
+      <span class="eyebrow">Works with</span>
+      <h2 class="sec-title">Speaks MCP — plugs into your stack</h2>
+      <p class="sec-lead">The vault is just files, so humans and agents collaborate on the same knowledge. No proprietary format, no lock-in.</p>
+    </div>
+    <div class="chips">
+      <span class="chip">Claude Desktop</span>
+      <span class="chip">Claude Code</span>
+      <span class="chip">Cursor</span>
+      <span class="chip">VS Code</span>
+      <span class="chip">JetBrains IDEs</span>
+      <span class="chip">LangGraph</span>
+      <span class="chip">LangChain</span>
+      <span class="chip">CrewAI</span>
+      <span class="chip">AutoGen</span>
+      <span class="chip">OpenAI Agents</span>
+      <span class="chip">Gemini</span>
+      <span class="chip">Obsidian</span>
+      <span class="chip muted">any MCP client</span>
+      <span class="chip muted">any Markdown editor</span>
+      <span class="chip muted">any Git client</span>
+    </div>
+  </div>
+</section>
+
+<!-- GET STARTED -->
+<section class="sec" id="start">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Get started</span>
+      <h2 class="sec-title">Running in three commands</h2>
+      <p class="sec-lead">Cortex requires Docker. An OpenRouter key is optional — needed only for LLM cross-referencing between articles. File conversion works with no key at all.</p>
+    </div>
+    <div class="qs">
+      <div class="qs-steps">
+        <div class="qs-step reveal">
+          <div class="num">1</div>
+          <div><h4>Clone the repository</h4><p>Grab the source from GitHub and step in.</p></div>
+        </div>
+        <div class="qs-step reveal">
+          <div class="num">2</div>
+          <div><h4>Launch Cortex</h4><p><code>start.sh</code> builds Cortex (API + MCP on <code>:8420</code>) and QMD (search on <code>:3100</code>), waits for health checks, and you're ready.</p></div>
+        </div>
+        <div class="qs-step reveal">
+          <div class="num">3</div>
+          <div><h4>Connect your MCP client</h4><p>Point Claude Desktop — or any MCP client — at <code>http://localhost:8420/mcp/</code>.</p></div>
+        </div>
+      </div>
+      <div class="terminal reveal">
+        <div class="tbar">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <span class="ttl">bash — pulse8-ai-cortex</span>
+        </div>
+<pre><span class="c"># 1 · clone</span>
+<span class="p">$</span> git clone https://github.com/synpulse8-opensource/\
+      pulse8-ai-cortex-knowledge-vault.git
+<span class="p">$</span> cd cortex-knowledge-vault
+
+<span class="c"># 2 · launch (Cortex :8420 + QMD :3100)</span>
+<span class="p">$</span> ./scripts/start.sh
+<span class="g">✓</span> cortex   healthy  <span class="c">→ http://localhost:8420</span>
+<span class="g">✓</span> qmd      healthy  <span class="c">→ http://localhost:3100</span>
+
+<span class="c"># 3 · connect your MCP client</span>
+<span class="o">→</span> http://localhost:8420/mcp/
+</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LINEAGE -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head center">
+      <span class="eyebrow">Built on great ideas</span>
+      <h2 class="sec-title">Standing on open-source shoulders</h2>
+    </div>
+    <div class="lineage">
+      <div class="ln reveal">
+        <div class="by">Andrej Karpathy</div>
+        <h4>The LLM Wiki pattern</h4>
+        <p>A persistent, compounding knowledge base maintained by LLMs — compiled and interlinked incrementally rather than re-derived from raw documents on every query. The direct inspiration for Cortex's architecture.</p>
+      </div>
+      <div class="ln reveal">
+        <div class="by">Tobi Lütke</div>
+        <h4>QMD search</h4>
+        <p>The on-device engine powering all full-text and hybrid search in Cortex — combining BM25, vector search and LLM re-ranking, all running locally.</p>
+      </div>
+      <div class="ln reveal">
+        <div class="by">Microsoft</div>
+        <h4>MarkItDown</h4>
+        <p>The file-to-Markdown converter behind the Cortex compiler — turning PDF, Office docs, HTML and images into structured Markdown for ingestion.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section class="sec">
+  <div class="cta-band reveal">
+    <h2>Agents need a knowledge layer —<br/>not another document store.</h2>
+    <p>Star the repo, open a discussion, and help build the knowledge layer for agentic AI.</p>
+    <div class="row">
+      <a class="btn btn-primary" href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10Z"/></svg>
+        Star on GitHub
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/discussions" target="_blank" rel="noopener">Open a discussion</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#top">
+          <span class="mark"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="2.4" fill="#1a1016"/><circle cx="5.5" cy="16" r="2.4" fill="#1a1016"/><circle cx="18.5" cy="16" r="2.4" fill="#1a1016"/><path d="M12 8.2 6.4 14M12 8.2 17.6 14M7.6 16h8.8" stroke="#1a1016" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          <span>PULSE8.ai <span class="sub">Cortex</span></span>
+        </a>
+        <p>The open-source knowledge layer for AI agents. Knowledge that compounds.</p>
+      </div>
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h5>Project</h5>
+          <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/discussions" target="_blank" rel="noopener">Discussions</a>
+          <a href="https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault/issues" target="_blank" rel="noopener">Issues</a>
+          <a href="https://registry.modelcontextprotocol.io" target="_blank" rel="noopener">MCP Registry</a>
+        </div>
+        <div class="foot-col">
+          <h5>Learn</h5>
+          <a href="#why">Why Cortex</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#compare">vs RAG / GraphRAG</a>
+          <a href="#start">Get started</a>
+        </div>
+        <div class="foot-col">
+          <h5>Built on</h5>
+          <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">LLM Wiki</a>
+          <a href="https://github.com/tobi/qmd" target="_blank" rel="noopener">QMD</a>
+          <a href="https://github.com/microsoft/markitdown" target="_blank" rel="noopener">MarkItDown</a>
+          <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">MCP</a>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Synpulse8 · PULSE8.ai Cortex</span>
+      <span>Apache 2.0 with additional terms · Python 3.12+ · FastAPI · NetworkX</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // scroll reveal (progressive enhancement)
+  const reveals = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  reveals.forEach((el, i) => {
+    el.style.transitionDelay = (i % 4) * 70 + 'ms';
+    io.observe(el);
+  });
+  // failsafe: never leave content hidden — reveal anything still hidden after load
+  function revealAll() { reveals.forEach((el) => el.classList.add('in')); }
+  window.addEventListener('load', () => setTimeout(() => {
+    reveals.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight && r.bottom > 0) el.classList.add('in');
+    });
+  }, 200));
+  // absolute backstop in case IntersectionObserver is unavailable
+  if (!('IntersectionObserver' in window)) revealAll();
+  setTimeout(revealAll, 4000);
+</script>
+</body>
+</html>
