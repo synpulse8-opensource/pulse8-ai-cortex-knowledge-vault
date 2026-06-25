@@ -5,6 +5,22 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] — 2026-06-25
+
+### Added
+
+- **MCP resources (token-light large payloads)**: `vault_search` and `vault_context` accept `as_resource: true` to return a short `cortex://resource/{id}` handle instead of inlining the full payload, keeping the LLM context window small. Handles are read back via the MCP `resources/read` protocol, the `vault_resource_read` fallback tool, or `GET /api/v1/resources/{id}`. The in-memory store is asyncio-safe, TTL-evicted (`CORTEX_RESOURCE_TTL_SECONDS`, default 3600), and LRU-bounded (`CORTEX_RESOURCE_MAX_ITEMS`, default 1000). Shared across MCP and REST.
+- **Copilot Studio guide**: [docs/copilot-studio.md](docs/copilot-studio.md) documents wiring a Copilot Studio agent to Cortex via MCP with the resources-as-tool-inputs pattern — no Cortex code change required.
+- **Bulk ingest coordination**: vault- and source-scoped locking (`cortex/compiler/bulk_coordination.py`) prevents concurrent bulk ingests from corrupting the vault; manifest handling hardened with fuller tests.
+- **Vault layout helpers**: `cortex/vault/layout.py` centralizes vault-path/structure utilities with dedicated tests.
+
+### Changed
+
+- **4 MB tool-response cap**: MCP tool responses are truncated to stay under Copilot Studio's 5 MB connector ceiling (`_enforce_payload_size` recursively caps string values with a `…[truncated]` suffix).
+- **QMD retry with backoff**: `QMDSearch._run` and the QMD HTTP server's `qmdWithRetry` now retry transient failures (lock contention, resource pressure) with exponential backoff; permanent errors (`already exists`, `SQLITE_CONSTRAINT`) fail fast.
+- **QMD setup-readiness guard**: `/search` returns `503` instead of an empty `200` when setup is not yet ready.
+- **Streaming QMD logs**: long-running `embed` commands stream child stdout/stderr to the server log line-by-line instead of going silent.
+
 ## [1.2.2] — 2026-06-12
 
 ### Changed
