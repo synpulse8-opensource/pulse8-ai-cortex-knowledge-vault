@@ -152,6 +152,27 @@ class TestMarkItDownIngest:
         assert result[0] == tmp_vault / "wiki" / "abcde" / "docs" / "cap-order.md"
         assert result[0].exists()
 
+    @pytest.mark.asyncio
+    async def test_ingest_png_writes_wiki_when_vision_caption_succeeds(self, tmp_vault: Path):
+        """PNG ingest should succeed when MarkItDown returns vision caption text."""
+        from cortex.compiler.compiler import KnowledgeCompiler
+
+        png = tmp_vault / "raw" / "diagram.png"
+        png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 64)
+
+        mock_result = MagicMock()
+        mock_result.text_content = "# Description:\nA dashboard with login metrics.\n"
+        mock_md = MagicMock()
+        mock_md.convert_local.return_value = mock_result
+
+        with patch("cortex.compiler.compiler.make_markitdown", return_value=mock_md):
+            compiler = KnowledgeCompiler(tmp_vault)
+            result = await compiler.ingest_source(png)
+
+        assert len(result) == 1
+        assert "login metrics" in result[0].read_text().lower()
+        mock_md.convert_local.assert_called_once_with(str(png))
+
 
 class TestLLMEnrichment:
     """Tests for the LLM enrichment step that adds wikilinks and tags after MarkItDown conversion."""
@@ -484,6 +505,36 @@ class TestExtractor:
         from cortex.compiler.extractor import detect_source_type
 
         assert detect_source_type(Path("data.bin")) == "text"
+
+    def test_detect_source_type_png(self):
+        from cortex.compiler.extractor import detect_source_type
+
+        assert detect_source_type(Path("screenshot.png")) == "image"
+
+    def test_make_markitdown_omits_llm_without_api_key(self, monkeypatch):
+        from cortex.compiler.extractor import make_markitdown
+        from cortex.config import settings
+
+        monkeypatch.setattr(settings, "llm_api_key", "")
+        md = make_markitdown()
+        assert md._llm_client is None
+
+    def test_make_markitdown_configures_vision_llm_when_api_key_set(self, monkeypatch):
+        from cortex.compiler.extractor import make_markitdown
+        from cortex.config import settings
+
+        monkeypatch.setattr(settings, "llm_api_key", "test-key")
+        monkeypatch.setattr(settings, "llm_base_url", "https://example.com/v1")
+        monkeypatch.setattr(settings, "compiler_model", "text/model")
+        monkeypatch.setattr(settings, "compiler_vision_model", "vision/model")
+
+        with patch("cortex.compiler.extractor.OpenAI") as mock_openai:
+            md = make_markitdown()
+            mock_openai.assert_called_once_with(
+                api_key="test-key",
+                base_url="https://example.com/v1",
+            )
+            assert md._llm_model == "vision/model"
 
     def test_extract_text_from_txt(self, tmp_path: Path):
         from cortex.compiler.extractor import extract_text

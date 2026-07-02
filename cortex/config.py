@@ -20,6 +20,8 @@ class CortexSettings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
     compiler_model: str = "qwen/qwen3.5-flash-02-23" # "google/gemini-2.5-flash"
+    # Vision-capable model for image captioning during ingest; empty uses compiler_model.
+    compiler_vision_model: str = ""
     compiler_max_tokens: int = 4096
     compiler_max_file_size_mb: int = 50
 

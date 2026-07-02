@@ -17,6 +17,10 @@ Output format: return a JSON object with:
 
 Do NOT wrap the JSON in code fences."""
 
+IMAGE_CAPTION_PROMPT = """Describe this image in detail for a searchable knowledge wiki.
+Include all visible text, headings, tables, UI labels, and document content verbatim where legible.
+Use Markdown structure (headings, lists, tables) when it helps clarity."""
+
 COMPILE_SYSTEM_PROMPT = """You are maintaining a knowledge wiki called Cortex.
 
 You will receive:

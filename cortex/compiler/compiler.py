@@ -9,9 +9,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-from markitdown import MarkItDown
 from openai import AsyncOpenAI
 
+from cortex.compiler.extractor import make_markitdown
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.compiler.ingest_manifest import record_skipped_file
 from cortex.config import settings
@@ -36,11 +36,11 @@ def _title_from_markdown(md_text: str, fallback: str) -> str:
 
 
 class KnowledgeCompiler:
-    """Converts raw sources to wiki Markdown via MarkItDown; uses LLM only for cross-referencing."""
+    """Converts raw sources to wiki Markdown via MarkItDown; LLM for images and enrichment."""
 
     def __init__(self, vault_path: Path) -> None:
         self.vault_path = vault_path
-        self._md = MarkItDown(enable_plugins=False)
+        self._md = make_markitdown()
         self.client = AsyncOpenAI(
             api_key=settings.llm_api_key or "unused",
             base_url=settings.llm_base_url,
