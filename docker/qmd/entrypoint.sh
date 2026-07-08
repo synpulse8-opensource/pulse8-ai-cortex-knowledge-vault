@@ -3,9 +3,15 @@ set -e
 
 mkdir -p /home/qmd/.cache/qmd/models
 
-# Initialize index.yml if missing so qmd collection commands work
-if [ ! -f /home/qmd/.cache/qmd/index.yml ]; then
-  echo "collections: []" > /home/qmd/.cache/qmd/index.yml
+# Initialize / repair index.yml so qmd collection commands work.
+# Must be `collections: {}` (object) — `collections: []` (array) causes QMD to
+# drop collection metadata on save, so `collection list` stays empty.
+INDEX_YML=/home/qmd/.cache/qmd/index.yml
+if [ ! -f "$INDEX_YML" ]; then
+  printf '%s\n' 'collections: {}' > "$INDEX_YML"
+elif grep -q '^collections: \[\]$' "$INDEX_YML" 2>/dev/null; then
+  echo "Repairing QMD index.yml: collections: [] -> collections: {}"
+  sed -i 's/^collections: \[\]$/collections: {}/' "$INDEX_YML"
 fi
 
 # Download models in background if not present

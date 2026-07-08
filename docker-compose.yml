@@ -9,6 +9,8 @@ services:
     environment:
       - VAULT_PATH=/vault
       - VAULT_WIKI_DIR=${VAULT_WIKI_DIR:-wiki}
+      - XDG_CONFIG_HOME=/home/qmd/.cache
+      - XDG_CACHE_HOME=/home/qmd/.cache
       - QMD_PORT=3100
       - QMD_REFRESH_INTERVAL_SECONDS=${QMD_REFRESH_INTERVAL_SECONDS:-900}
       - QMD_EMBED_TIMEOUT_MS=${QMD_EMBED_TIMEOUT_MS:-600000}
