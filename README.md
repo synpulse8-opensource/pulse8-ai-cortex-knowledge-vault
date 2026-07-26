@@ -137,17 +137,26 @@ Because the vault is just files, humans and agents collaborate on the same knowl
 
 To stop: `./scripts/stop.sh`
 
-### Cortex-only mode (macOS / native QMD)
+### Native QMD mode (macOS / Metal GPU)
 
-If you want QMD to run natively (e.g. on macOS with Metal GPU acceleration), start only the Cortex container:
+Docker Desktop on macOS cannot expose the Metal GPU to containers, so containerized QMD embeds on CPU only — over an order of magnitude slower on non-trivial vaults. Run QMD natively instead; the `qmd` binary uses Metal automatically:
 
 ```bash
-# Terminal 1: Run QMD natively
-npm install -g @tobilu/qmd
-VAULT_PATH=./example_vault node docker/qmd/server.mjs
+# One-time: install the qmd binary
+brew install tobi/tap/qmd   # or: npm install -g @tobilu/qmd
 
-# Terminal 2: Start only Cortex in Docker
-./scripts/start.sh --cortex-only
+# Start native QMD (background daemon) + Cortex in Docker
+./scripts/start.sh --native-qmd
+```
+
+The QMD daemon's pid and log are kept in `.qmd-native.pid` / `.qmd-native.log`. To stop both: `./scripts/stop.sh --native-qmd` (a plain `./scripts/stop.sh` also cleans up a native QMD if one is running).
+
+### Cortex-only mode (external QMD)
+
+If you manage QMD yourself (already running elsewhere), start only the Cortex container:
+
+```bash
+./scripts/start.sh --cortex-only   # set QMD_URL in .env if not http://host.docker.internal:3100
 ```
 
 To stop: `./scripts/stop.sh --cortex-only`
