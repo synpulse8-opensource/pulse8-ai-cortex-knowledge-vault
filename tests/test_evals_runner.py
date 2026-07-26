@@ -27,7 +27,7 @@ class TestDatasetVerification:
 
 
 class TestLongMemEvalLoader:
-    def test_loads_questions_and_sessions(self, tmp_path: Path):
+    def test_loads_questions_sessions_ids_and_evidence(self, tmp_path: Path):
         from evals.run_longmemeval import load_longmemeval
 
         dataset = [
@@ -36,7 +36,12 @@ class TestLongMemEvalLoader:
                 "question_type": "single-session-user",
                 "question": "Where did I move in March?",
                 "answer": "Zurich",
+                "haystack_session_ids": ["sharegpt_abc_0", "answer_xyz"],
+                "answer_session_ids": ["answer_xyz"],
                 "haystack_sessions": [
+                    [
+                        {"role": "user", "content": "Some unrelated chat."},
+                    ],
                     [
                         {"role": "user", "content": "I moved to Zurich in March."},
                         {"role": "assistant", "content": "Congratulations!"},
@@ -53,8 +58,32 @@ class TestLongMemEvalLoader:
         assert q.question_id == "lme-001"
         assert q.category == "single-session-user"
         assert q.gold_answer == "Zurich"
-        assert len(q.sessions) == 1
-        assert "I moved to Zurich in March." in q.sessions[0]
+        # Sessions carry their dataset IDs so retrieval hits can be matched
+        # against the labeled evidence sessions (recall@k).
+        assert q.session_ids == ["sharegpt_abc_0", "answer_xyz"]
+        assert q.evidence_session_ids == ["answer_xyz"]
+        assert len(q.sessions) == 2
+        assert "I moved to Zurich in March." in q.sessions[1]
+
+    def test_loader_tolerates_missing_ids(self, tmp_path: Path):
+        """Older/other dumps without ID fields still load (no recall labels)."""
+        from evals.run_longmemeval import load_longmemeval
+
+        dataset = [
+            {
+                "question_id": "lme-002",
+                "question_type": "multi-session",
+                "question": "q",
+                "answer": "a",
+                "haystack_sessions": [[{"role": "user", "content": "hi"}]],
+            }
+        ]
+        f = tmp_path / "d.json"
+        f.write_text(json.dumps(dataset))
+
+        (q,) = load_longmemeval(f)
+        assert q.session_ids == ["lme-002-session-000"]
+        assert q.evidence_session_ids == []
 
 
 class TestLimit:

@@ -35,13 +35,19 @@ ANSWER_SYSTEM_PROMPT = (
 
 @dataclass(frozen=True)
 class Question:
-    """One benchmark question with the sessions that must be ingested."""
+    """One benchmark question with the sessions that must be ingested.
+
+    ``session_ids`` parallels ``sessions``; ``evidence_session_ids`` marks
+    which sessions contain the answer (dataset labels), enabling recall@k.
+    """
 
     question_id: str
     category: str
     question: str
     gold_answer: str
     sessions: list[str] = field(default_factory=list)
+    session_ids: list[str] = field(default_factory=list)
+    evidence_session_ids: list[str] = field(default_factory=list)
 
 
 def _render_session(turns: list[dict[str, Any]]) -> str:
@@ -62,15 +68,24 @@ def load_longmemeval(path: Path | str, limit: int | None = None) -> list[Questio
         data = data[:limit]
     questions = []
     for item in data:
+        question_id = str(item["question_id"])
+        sessions = [
+            _render_session(session)
+            for session in item.get("haystack_sessions", [])
+        ]
+        session_ids = [
+            str(sid) for sid in item.get("haystack_session_ids", [])
+        ] or [f"{question_id}-session-{i:03d}" for i in range(len(sessions))]
         questions.append(
             Question(
-                question_id=str(item["question_id"]),
+                question_id=question_id,
                 category=item.get("question_type", "unknown"),
                 question=item["question"],
                 gold_answer=str(item.get("answer", "")),
-                sessions=[
-                    _render_session(session)
-                    for session in item.get("haystack_sessions", [])
+                sessions=sessions,
+                session_ids=session_ids,
+                evidence_session_ids=[
+                    str(sid) for sid in item.get("answer_session_ids", [])
                 ],
             )
         )
