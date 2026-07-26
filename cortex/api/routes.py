@@ -545,6 +545,20 @@ async def graph_impact_endpoint(path: str, request: Request, max_depth: int = 5)
     return result
 
 
+@router.get("/curation/report", tags=["curation"])
+async def curation_report_endpoint(request: Request, stale_days: int = 90):
+    """Knowledge quality report: most/never read, stale, contradicted notes."""
+    from cortex.vault.curation import build_curation_report
+
+    report = await build_curation_report(
+        get_vault_path(request), get_graph(request), stale_days=stale_days
+    )
+    await log_operation(
+        get_vault_path(request), "api", "vault:curation", "Curation report"
+    )
+    return report
+
+
 @router.get("/explain/{path:path}", tags=["graph"])
 async def explain_endpoint(path: str, request: Request):
     """Explain a note: summary, provenance, sources, and connections."""
