@@ -180,6 +180,30 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 | **Vault Watcher**            | Real-time filesystem monitoring — graph stays in sync automatically                                                                                                          |
 | **Zero Database**            | Everything persists as Markdown + JSON on your filesystem                                                                                                                    |
 
+## Runs without an LLM
+
+Cortex is deterministic-first: ingestion (MarkItDown conversion), the knowledge graph (wikilinks, tags, `derived_from` edges), and QMD search all work with **zero LLM calls**. The LLM is an optional enrichment pass — cross-referencing, tagging, image captioning — not a dependency.
+
+Pick a backend with `LLM_BACKEND` (env) / `CORTEX_LLM_BACKEND` (Python):
+
+| Backend | What it covers |
+|---------|----------------|
+| `openai-compatible` (default) | OpenRouter, Azure OpenAI, Ollama, vLLM, LM Studio — anything speaking the OpenAI protocol. Point `LLM_BASE_URL` at your endpoint. |
+| `bedrock` | AWS Bedrock via the standard AWS credential chain (no API key). Requires `boto3`. |
+| `none` | Explicit zero-LLM mode. Guaranteed to construct no LLM client and make no model calls — suitable for air-gapped deployments. |
+
+Air-gapped example with a local Ollama:
+
+```bash
+LLM_BACKEND=openai-compatible \
+LLM_BASE_URL=http://localhost:11434/v1 \
+LLM_API_KEY=ollama \
+COMPILER_MODEL=llama3.1 \
+./scripts/start.sh
+```
+
+Or fully deterministic: `LLM_BACKEND=none ./scripts/start.sh` (no API key needed).
+
 ## MCP resources (token-light large payloads)
 
 PULSE8.ai Cortex implements the [resources-as-tool-inputs pattern](https://microsoft.github.io/mcscatblog/posts/mcp-resources-as-tool-inputs/) recommended by the Microsoft Copilot Studio CAT team: token-heavy tool outputs (large search result sets, full context windows) can be kept server-side and passed between tools as lightweight handles, so the LLM context window stays small.

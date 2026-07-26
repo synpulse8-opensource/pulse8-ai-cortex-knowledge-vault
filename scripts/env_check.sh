@@ -12,10 +12,19 @@ check_required_env() {
         fi
     fi
 
+    # Deterministic-first: "none" needs no LLM at all, "bedrock" uses the
+    # AWS credential chain instead of an API key.
+    case "${LLM_BACKEND:-openai-compatible}" in
+        none|bedrock)
+            return 0
+            ;;
+    esac
+
     if [ -z "${LLM_API_KEY:-}" ]; then
         echo "ERROR: No LLM API key found."
         echo "  Set one of: LLM_API_KEY, OPENROUTER_API_KEY, or CORTEX_LLM_API_KEY"
         echo "  Get a key at https://openrouter.ai/keys"
+        echo "  Or run without an LLM: LLM_BACKEND=none"
         return 1
     fi
 
@@ -27,6 +36,7 @@ apply_defaults() {
     export VAULT_RAW_DIR="${VAULT_RAW_DIR:-raw}"
     export VAULT_WIKI_DIR="${VAULT_WIKI_DIR:-wiki}"
     export COMPILER_MODEL="${COMPILER_MODEL:-anthropic/claude-sonnet-4}"
+    export LLM_BACKEND="${LLM_BACKEND:-openai-compatible}"
     export LLM_BASE_URL="${LLM_BASE_URL:-https://openrouter.ai/api/v1}"
     export QMD_REFRESH_INTERVAL_SECONDS="${QMD_REFRESH_INTERVAL_SECONDS:-900}"
     export QMD_CACHE_TTL_SECONDS="${QMD_CACHE_TTL_SECONDS:-30}"
@@ -48,6 +58,7 @@ write_env_file() {
     cat > "$target" <<EOF
 LLM_API_KEY=${LLM_API_KEY}
 COMPILER_MODEL=${COMPILER_MODEL}
+LLM_BACKEND=${LLM_BACKEND:-openai-compatible}
 LLM_BASE_URL=${LLM_BASE_URL:-https://openrouter.ai/api/v1}
 VAULT_DIR=${VAULT_DIR}
 VAULT_RAW_DIR=${VAULT_RAW_DIR}

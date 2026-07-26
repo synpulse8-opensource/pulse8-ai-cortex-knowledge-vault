@@ -9,10 +9,34 @@ setup() {
 }
 
 @test "env_check: no API key triggers error" {
-    unset LLM_API_KEY OPENROUTER_API_KEY CORTEX_LLM_API_KEY
+    unset LLM_API_KEY OPENROUTER_API_KEY CORTEX_LLM_API_KEY LLM_BACKEND
     run check_required_env
     [ "$status" -ne 0 ]
     [[ "$output" == *"No LLM API key found"* ]]
+}
+
+@test "env_check: LLM_BACKEND=none needs no API key" {
+    unset LLM_API_KEY OPENROUTER_API_KEY CORTEX_LLM_API_KEY
+    export LLM_BACKEND="none"
+    run check_required_env
+    [ "$status" -eq 0 ]
+}
+
+@test "env_check: LLM_BACKEND=bedrock needs no API key" {
+    unset LLM_API_KEY OPENROUTER_API_KEY CORTEX_LLM_API_KEY
+    export LLM_BACKEND="bedrock"
+    run check_required_env
+    [ "$status" -eq 0 ]
+}
+
+@test "env_check: LLM_BACKEND written to .env file" {
+    export LLM_BACKEND="none"
+    export LLM_API_KEY="unused"
+    apply_defaults
+    tmpenv="$(mktemp)"
+    write_env_file "$tmpenv"
+    grep -q "LLM_BACKEND=none" "$tmpenv"
+    rm -f "$tmpenv"
 }
 
 @test "env_check: LLM_API_KEY set passes" {
