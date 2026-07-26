@@ -15,9 +15,13 @@ import argparse
 import asyncio
 import json
 import os
-from dataclasses import dataclass, field
+import shutil
+import time
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 from evals.adapters.cortex import CortexAdapter
 from evals.config import EvalConfig
@@ -92,7 +96,27 @@ def load_longmemeval(path: Path | str, limit: int | None = None) -> list[Questio
     return questions
 
 
-def _make_complete(model: str):
+def wipe_vault(vault_path: Path | str) -> None:
+    """Empty the benchmark vault between questions (per-question isolation).
+
+    Refuses obviously wrong targets: `/`, the home directory, or a path
+    that does not already exist as a directory.
+    """
+    vault = Path(vault_path).resolve()
+    if vault == Path("/") or vault == Path.home() or not vault.is_dir():
+        raise ValueError(f"refusing to wipe suspicious vault path: {vault}")
+
+    for child in vault.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+    (vault / "raw").mkdir()
+    (vault / "wiki").mkdir()
+    (vault / "daily").mkdir()
+
+
+def _make_complete(model: str, ledger: dict[str, int] | None = None):
     """Async (system, user) -> text against an OpenAI-compatible endpoint."""
     from openai import AsyncOpenAI
 
@@ -109,6 +133,13 @@ def _make_complete(model: str):
                 {"role": "user", "content": user},
             ],
         )
+        if ledger is not None and response.usage is not None:
+            ledger["prompt"] = ledger.get("prompt", 0) + (
+                response.usage.prompt_tokens or 0
+            )
+            ledger["completion"] = ledger.get("completion", 0) + (
+                response.usage.completion_tokens or 0
+            )
         return response.choices[0].message.content or ""
 
     return complete
@@ -123,8 +154,10 @@ async def _main(config_path: str, limit: int | None = None) -> None:
         base_url=config.cortex.base_url,
         search_mode=config.cortex.search_mode,
         top_k=config.cortex.top_k,
+        context_chars=config.cortex.context_chars,
     )
-    answer_complete = _make_complete(config.models.answer)
+    ledger: dict[str, int] = {"prompt": 0, "completion": 0}
+    answer_complete = _make_complete(config.models.answer, ledger)
 
     async def answer_fn(question: str, contexts: list[dict[str, Any]]) -> str:
         context_block = "\n\n---\n\n".join(
@@ -135,18 +168,70 @@ async def _main(config_path: str, limit: int | None = None) -> None:
         )
 
     judge = Judge(
-        complete=_make_complete(config.models.judge),
+        complete=_make_complete(config.models.judge, ledger),
         judge_model=config.models.judge,
         answer_model=config.models.answer,
     )
 
-    traces = await run_eval(questions, adapter, answer_fn, judge)
-    await adapter.aclose()
+    reset_fn = None
+    if config.cortex.vault_path:
+        vault_path = Path(config.cortex.vault_path)
+
+        async def _wipe():
+            wipe_vault(vault_path)
+
+        reset_fn = _wipe
+
+    index_fn = None
+    if config.cortex.qmd_update_url:
+        # Synchronous rescan + embed; generous timeout for embedding.
+        qmd_client = httpx.AsyncClient(timeout=900.0)
+
+        async def _reindex():
+            response = await qmd_client.post(config.cortex.qmd_update_url)
+            response.raise_for_status()
+
+        index_fn = _reindex
 
     # Keep smoke-run artifacts apart from full-run (publishable) ones.
     run_name = config.name if limit is None else f"{config.name}-limit{limit}"
     out_dir = Path(config.output_dir) / run_name
-    write_traces(out_dir / "traces.jsonl", traces)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    traces_path = out_dir / "traces.jsonl"
+    traces_path.write_text("")  # fresh run
+
+    done = 0
+
+    async def progress_reset():
+        nonlocal done
+        done += 1
+        print(f"[{done}/{len(questions)}] {time.strftime('%H:%M:%S')}", flush=True)
+        if reset_fn is not None:
+            await reset_fn()
+
+    async def persist_trace(trace):
+        # Append immediately: a crash late in a long run loses nothing.
+        with traces_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(asdict(trace), ensure_ascii=False) + "\n")
+        print(
+            f"  {trace.question_id}: {trace.judge_verdict}"
+            f" (recall={trace.recall})",
+            flush=True,
+        )
+
+    traces = await run_eval(
+        questions,
+        adapter,
+        answer_fn,
+        judge,
+        reset_fn=progress_reset,
+        index_fn=index_fn,
+        usage_ledger=ledger,
+        on_trace=persist_trace,
+    )
+    await adapter.aclose()
+
+    write_traces(traces_path, traces)
     report = to_markdown(aggregate(traces), run_name=run_name)
     (out_dir / "report.md").write_text(report)
     print(report)

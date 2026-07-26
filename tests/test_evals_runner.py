@@ -81,7 +81,7 @@ class TestLongMemEvalLoader:
         f = tmp_path / "d.json"
         f.write_text(json.dumps(dataset))
 
-        (q,) = load_longmemeval(f)
+        q = load_longmemeval(f)[0]
         assert q.session_ids == ["lme-002-session-000"]
         assert q.evidence_session_ids == []
 
@@ -159,6 +159,36 @@ def _question(qid="lme-001", **kwargs):
     return Question(**defaults)
 
 
+class TestVaultWipe:
+    def test_wipe_clears_contents_and_recreates_layout(self, tmp_path: Path):
+        from evals.run_longmemeval import wipe_vault
+
+        vault = tmp_path / "vault"
+        (vault / "raw").mkdir(parents=True)
+        (vault / "wiki").mkdir()
+        (vault / ".cortex").mkdir()
+        (vault / "raw" / "a.md").write_text("x")
+        (vault / "wiki" / "b.md").write_text("y")
+        (vault / ".cortex" / "usage.json").write_text("{}")
+
+        wipe_vault(vault)
+
+        assert (vault / "raw").is_dir() and not list((vault / "raw").iterdir())
+        assert (vault / "wiki").is_dir() and not list((vault / "wiki").iterdir())
+        assert not (vault / ".cortex").exists()
+
+    def test_wipe_refuses_suspicious_paths(self, tmp_path: Path):
+        from evals.run_longmemeval import wipe_vault
+
+        with pytest.raises(ValueError):
+            wipe_vault(Path.home())
+        with pytest.raises(ValueError):
+            wipe_vault(Path("/"))
+        # Nonexistent path is also refused rather than silently created.
+        with pytest.raises(ValueError):
+            wipe_vault(tmp_path / "does-not-exist")
+
+
 class TestRunEval:
     @pytest.mark.asyncio
     async def test_run_eval_produces_judged_traces(self):
@@ -195,6 +225,34 @@ class TestRunEval:
         assert kinds == ["reset", "ingest", "reset", "ingest"]
 
     @pytest.mark.asyncio
+    async def test_index_fn_called_between_ingest_and_retrieve(self):
+        """The search index must be refreshed after a question's haystack is
+        ingested and before its retrieval runs."""
+        from evals.runner import run_eval
+
+        adapter = FakeAdapter()
+        original_retrieve = adapter.retrieve
+
+        async def tracking_retrieve(question):
+            adapter.events.append(("retrieve", None))
+            return await original_retrieve(question)
+
+        adapter.retrieve = tracking_retrieve
+
+        async def index():
+            adapter.events.append(("index", None))
+
+        await run_eval(
+            [_question("q1"), _question("q2")],
+            adapter,
+            _fake_answer,
+            _make_judge(),
+            index_fn=index,
+        )
+        kinds = [kind for kind, _ in adapter.events]
+        assert kinds == ["ingest", "index", "retrieve"] * 2
+
+    @pytest.mark.asyncio
     async def test_recall_computed_from_evidence_session_ids(self):
         from evals.runner import run_eval
 
@@ -221,6 +279,26 @@ class TestRunEval:
             [_question()], FakeAdapter(), _fake_answer, _make_judge()
         )
         assert trace.recall is None
+
+    @pytest.mark.asyncio
+    async def test_on_trace_streams_each_completed_trace(self):
+        """Long runs persist traces as they complete (crash-safe)."""
+        from evals.runner import run_eval
+
+        streamed = []
+
+        async def on_trace(trace):
+            streamed.append(trace.question_id)
+
+        traces = await run_eval(
+            [_question("q1"), _question("q2")],
+            FakeAdapter(),
+            _fake_answer,
+            _make_judge(),
+            on_trace=on_trace,
+        )
+        assert streamed == ["q1", "q2"]
+        assert len(traces) == 2
 
     @pytest.mark.asyncio
     async def test_token_usage_attributed_per_phase(self):

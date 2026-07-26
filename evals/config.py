@@ -24,11 +24,21 @@ class DatasetConfig:
 
 @dataclass(frozen=True)
 class CortexConfig:
-    """How the harness talks to a running Cortex instance."""
+    """How the harness talks to a running Cortex instance.
+
+    ``vault_path`` (local path) enables per-question vault isolation: the
+    runner wipes it between questions. ``qmd_update_url`` is POSTed after
+    each question's ingest to force a synchronous QMD rescan + embed.
+    ``context_chars`` > 0 makes the adapter feed full note content (capped
+    per note) to the answer model instead of search snippets.
+    """
 
     base_url: str
     search_mode: str = "hybrid"
     top_k: int = 8
+    vault_path: str | None = None
+    qmd_update_url: str | None = None
+    context_chars: int = 0
 
 
 @dataclass(frozen=True)
@@ -74,6 +84,9 @@ class EvalConfig:
             base_url=cortex_data["base_url"],
             search_mode=cortex_data.get("search_mode", "hybrid"),
             top_k=int(cortex_data.get("top_k", 8)),
+            vault_path=cortex_data.get("vault_path"),
+            qmd_update_url=cortex_data.get("qmd_update_url"),
+            context_chars=int(cortex_data.get("context_chars", 0)),
         )
 
         models_data = data.get("models") or {}

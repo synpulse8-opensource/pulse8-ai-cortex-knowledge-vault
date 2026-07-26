@@ -26,6 +26,16 @@ cortex:
   base_url: http://localhost:8420
   search_mode: hybrid
   top_k: 8
+  # Per-question isolation: the runner wipes this local vault between
+  # questions so retrieval only sees the current question's haystack
+  # (the setting LongMemEval defines). Requires harness + Cortex on the
+  # same machine with Cortex's CORTEX_VAULT_PATH pointing at this dir.
+  vault_path: ./evals/vault
+  # POSTed after each question's ingest: synchronous QMD rescan + embed.
+  qmd_update_url: http://localhost:3100/update
+  # Feed full note content (capped per note) to the answer model instead
+  # of search snippets — how agents actually consume Cortex.
+  context_chars: 4000
 
 models:
   answer: anthropic/claude-sonnet-4

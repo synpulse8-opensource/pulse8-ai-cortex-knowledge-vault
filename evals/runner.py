@@ -41,9 +41,17 @@ async def run_eval(
     answer_fn: AnswerFn,
     judge: Judge,
     reset_fn: Callable[[], Awaitable[None]] | None = None,
+    index_fn: Callable[[], Awaitable[None]] | None = None,
     usage_ledger: dict[str, int] | None = None,
+    on_trace: Callable[[Trace], Awaitable[None]] | None = None,
 ) -> list[Trace]:
-    """Run every question through the system under test and judge it."""
+    """Run every question through the system under test and judge it.
+
+    ``index_fn`` runs after a question's haystack is ingested and before
+    retrieval — e.g. to force a synchronous QMD rescan + embed.
+    ``on_trace`` receives each completed trace immediately, so long runs
+    can persist results incrementally (crash-safe).
+    """
     traces: list[Trace] = []
     for question in questions:
         if reset_fn is not None:
@@ -51,6 +59,9 @@ async def run_eval(
 
         for i, session in enumerate(question.sessions):
             await adapter.ingest(_session_filename(question, i), session)
+
+        if index_fn is not None:
+            await index_fn()
 
         start = time.perf_counter()
         retrieved = await adapter.retrieve(question.question)
@@ -83,24 +94,25 @@ async def run_eval(
                 **{f"judge_{k}": v for k, v in judge_usage.items()},
             }
 
-        traces.append(
-            Trace(
-                question_id=question.question_id,
-                category=question.category,
-                question=question.question,
-                gold_answer=question.gold_answer,
-                system=adapter.name,
-                retrieved=retrieved,
-                answer=answer,
-                judge_verdict=verdict["verdict"],
-                judge_raw=verdict["raw"],
-                latency_ms={
-                    "retrieve": retrieve_ms,
-                    "answer": answer_ms,
-                    "judge": judge_ms,
-                },
-                recall=_compute_recall(question, retrieved),
-                tokens=tokens,
-            )
+        trace = Trace(
+            question_id=question.question_id,
+            category=question.category,
+            question=question.question,
+            gold_answer=question.gold_answer,
+            system=adapter.name,
+            retrieved=retrieved,
+            answer=answer,
+            judge_verdict=verdict["verdict"],
+            judge_raw=verdict["raw"],
+            latency_ms={
+                "retrieve": retrieve_ms,
+                "answer": answer_ms,
+                "judge": judge_ms,
+            },
+            recall=_compute_recall(question, retrieved),
+            tokens=tokens,
         )
+        traces.append(trace)
+        if on_trace is not None:
+            await on_trace(trace)
     return traces

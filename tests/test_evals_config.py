@@ -55,6 +55,31 @@ def test_config_rejects_same_judge_and_answer_model(tmp_path: Path):
         EvalConfig.from_yaml(_write_config(tmp_path, text))
 
 
+def test_config_isolation_fields_default_off(tmp_path: Path):
+    from evals.config import EvalConfig
+
+    cfg = EvalConfig.from_yaml(_write_config(tmp_path, _VALID_YAML))
+    assert cfg.cortex.vault_path is None
+    assert cfg.cortex.qmd_update_url is None
+    assert cfg.cortex.context_chars == 0
+
+
+def test_config_isolation_fields_parsed(tmp_path: Path):
+    from evals.config import EvalConfig
+
+    text = _VALID_YAML.replace(
+        "  top_k: 8\n",
+        "  top_k: 8\n"
+        "  vault_path: ./evals/vault\n"
+        "  qmd_update_url: http://localhost:3100/update\n"
+        "  context_chars: 4000\n",
+    )
+    cfg = EvalConfig.from_yaml(_write_config(tmp_path, text))
+    assert cfg.cortex.vault_path == "./evals/vault"
+    assert cfg.cortex.qmd_update_url == "http://localhost:3100/update"
+    assert cfg.cortex.context_chars == 4000
+
+
 def test_config_rejects_missing_dataset_sha(tmp_path: Path):
     """Unpinned datasets make runs unreproducible — refuse them."""
     from evals.config import EvalConfig
