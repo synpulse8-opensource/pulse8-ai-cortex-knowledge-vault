@@ -15,11 +15,16 @@ class CortexAdapter:
         base_url: str,
         search_mode: str = "hybrid",
         top_k: int = 8,
+        context_chars: int = 0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.search_mode = search_mode
         self.top_k = top_k
+        # When > 0, replace each hit's snippet with the full note content
+        # (capped per note) — matching how agents consume Cortex: search,
+        # then read the note.
+        self.context_chars = context_chars
         self._client = client or httpx.AsyncClient(
             base_url=self.base_url, timeout=300.0
         )
@@ -45,13 +50,31 @@ class CortexAdapter:
         )
         response.raise_for_status()
         results = response.json().get("results", [])
-        return [
-            {
-                "path": r.get("path", ""),
-                "snippet": r.get("snippet") or r.get("text") or "",
-            }
-            for r in results
-        ]
+
+        hits: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for r in results:
+            path = r.get("path", "")
+            if path in seen:
+                continue
+            seen.add(path)
+            hits.append(
+                {"path": path, "snippet": r.get("snippet") or r.get("text") or ""}
+            )
+
+        if self.context_chars > 0:
+            for hit in hits:
+                content = await self._read_note(hit["path"])
+                if content:
+                    hit["snippet"] = content[: self.context_chars]
+        return hits
+
+    async def _read_note(self, path: str) -> str:
+        """Fetch full note content; empty string when unavailable."""
+        response = await self._client.get(f"/api/v1/notes/{path}")
+        if response.status_code != 200:
+            return ""
+        return response.json().get("content", "")
 
     async def aclose(self) -> None:
         await self._client.aclose()

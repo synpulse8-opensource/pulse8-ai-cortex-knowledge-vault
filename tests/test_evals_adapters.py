@@ -74,3 +74,71 @@ class TestCortexAdapter:
         assert results[0] == {"path": "wiki/session-12.md", "snippet": "moved to Zurich"}
         # Falls back to `text` when no snippet field is present.
         assert results[1] == {"path": "wiki/session-03.md", "snippet": "fallback text"}
+
+    @pytest.mark.asyncio
+    async def test_retrieve_dedupes_and_fetches_full_notes(self):
+        """With context_chars set, each unique hit carries full note content
+        (capped), not just the search snippet — matching how agents actually
+        consume Cortex (search, then read)."""
+        from evals.adapters.cortex import CortexAdapter
+
+        note_bodies = {
+            "wiki/session-12.md": "# Session 12\n\n" + "moved to Zurich in March. " * 40,
+            "wiki/session-03.md": "# Session 3\n\nshort note",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/v1/search":
+                return httpx.Response(
+                    200,
+                    json={
+                        "results": [
+                            {"path": "wiki/session-12.md", "snippet": "s1"},
+                            {"path": "wiki/session-12.md", "snippet": "s1-dup"},
+                            {"path": "wiki/session-03.md", "snippet": "s3"},
+                        ]
+                    },
+                )
+            if request.url.path.startswith("/api/v1/notes/"):
+                path = request.url.path.removeprefix("/api/v1/notes/")
+                return httpx.Response(
+                    200, json={"path": path, "content": note_bodies[path]}
+                )
+            return httpx.Response(404)
+
+        adapter = CortexAdapter(
+            base_url="http://cortex.test",
+            context_chars=200,
+            client=_mock_client(handler),
+        )
+        results = await adapter.retrieve("zurich")
+
+        # Duplicate paths collapse to one entry, order preserved.
+        assert [r["path"] for r in results] == [
+            "wiki/session-12.md",
+            "wiki/session-03.md",
+        ]
+        # Full note content, capped at context_chars.
+        assert results[0]["snippet"].startswith("# Session 12")
+        assert len(results[0]["snippet"]) == 200
+        assert results[1]["snippet"] == "# Session 3\n\nshort note"
+
+    @pytest.mark.asyncio
+    async def test_retrieve_falls_back_to_snippet_when_note_fetch_fails(self):
+        from evals.adapters.cortex import CortexAdapter
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/v1/search":
+                return httpx.Response(
+                    200,
+                    json={"results": [{"path": "wiki/gone.md", "snippet": "snip"}]},
+                )
+            return httpx.Response(404, json={"detail": "not found"})
+
+        adapter = CortexAdapter(
+            base_url="http://cortex.test",
+            context_chars=500,
+            client=_mock_client(handler),
+        )
+        results = await adapter.retrieve("q")
+        assert results == [{"path": "wiki/gone.md", "snippet": "snip"}]
