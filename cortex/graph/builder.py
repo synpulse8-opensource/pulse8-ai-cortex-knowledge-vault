@@ -23,6 +23,10 @@ async def build_graph(
 
     wikilink_index = build_wikilink_index(vault_root)
 
+    # Lineage: everything this builder derives from note structure is
+    # deterministic, so it carries origin="extracted".
+    extracted = {"origin": "extracted"}
+
     async with engine.batch():
         for note in notes:
             await engine.add_note_node(note)
@@ -36,6 +40,7 @@ async def build_graph(
                             source=note.path,
                             target=resolved,
                             edge_type=EdgeType.LINKS_TO,
+                            metadata=dict(extracted),
                         )
                     )
 
@@ -48,6 +53,7 @@ async def build_graph(
                         source=note.path,
                         target=tag_id,
                         edge_type=EdgeType.TAGGED_WITH,
+                        metadata=dict(extracted),
                     )
                 )
 
@@ -64,6 +70,7 @@ async def build_graph(
                         source=note.path,
                         target=source_path,
                         edge_type=EdgeType.DERIVED_FROM,
+                        metadata=dict(extracted),
                     )
                 )
 

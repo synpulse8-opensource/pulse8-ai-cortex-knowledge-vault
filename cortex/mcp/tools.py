@@ -485,11 +485,15 @@ async def handle_vault_link(
         if action == "create":
             if not source or not target or not edge_type:
                 return {"error": "source, target, and edge_type are required for create"}
+            # Lineage: edges created through this tool are manual assertions
+            # (human or agent), unless the caller explicitly claims otherwise.
+            edge_metadata = dict(metadata or {})
+            edge_metadata.setdefault("origin", "manual")
             edge = Edge(
                 source=source,
                 target=target,
                 edge_type=EdgeType(edge_type),
-                metadata=metadata or {},
+                metadata=edge_metadata,
             )
             await graph.add_edge(edge)
             await log_operation(vault_path, "mcp", "vault:link", f"Created {edge_type}: {source} → {target}")
