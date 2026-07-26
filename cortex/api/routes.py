@@ -13,7 +13,12 @@ from cortex.config import settings
 from cortex.vault.layout import raw_dir, raw_rel
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
-from cortex.mcp.tools import handle_vault_trace
+from cortex.mcp.tools import (
+    handle_vault_explain,
+    handle_vault_impact,
+    handle_vault_path,
+    handle_vault_trace,
+)
 from cortex.search.qmd import QMDSearch
 from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.index import rebuild_index
@@ -501,6 +506,50 @@ async def trace_endpoint(path: str, request: Request):
     graph = get_graph(request)
 
     result = await handle_vault_trace(path=path, vault_path=vault_path, graph=graph)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/graph/path", tags=["graph"])
+async def graph_path_endpoint(
+    source: str, target: str, request: Request, max_paths: int = 3
+):
+    """Find shortest paths between two notes over the typed graph."""
+    result = await handle_vault_path(
+        source=source,
+        target=target,
+        max_paths=max_paths,
+        vault_path=get_vault_path(request),
+        graph=get_graph(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.get("/graph/impact", tags=["graph"])
+async def graph_impact_endpoint(path: str, request: Request, max_depth: int = 5):
+    """Walk all notes downstream of a note (change-impact analysis)."""
+    result = await handle_vault_impact(
+        path=path,
+        max_depth=max_depth,
+        vault_path=get_vault_path(request),
+        graph=get_graph(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.get("/explain/{path:path}", tags=["graph"])
+async def explain_endpoint(path: str, request: Request):
+    """Explain a note: summary, provenance, sources, and connections."""
+    result = await handle_vault_explain(
+        path=path,
+        vault_path=get_vault_path(request),
+        graph=get_graph(request),
+    )
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result

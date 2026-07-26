@@ -157,6 +157,40 @@ class TestTraceEndpoint:
         assert response.status_code == 404
 
 
+class TestQuerySurfaceEndpoints:
+    def test_graph_path(self, app_client):
+        response = app_client.get(
+            "/api/v1/graph/path",
+            params={
+                "source": "wiki/transformers.md",
+                "target": "wiki/attention-mechanisms.md",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["paths"], "expected at least one path"
+
+    def test_graph_impact(self, app_client):
+        response = app_client.get(
+            "/api/v1/graph/impact", params={"path": "wiki/attention-mechanisms.md"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "impacted" in data
+        assert "total" in data
+
+    def test_explain(self, app_client):
+        response = app_client.get("/api/v1/explain/wiki/transformers.md")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["title"] == "Transformer Architecture"
+        assert "provenance" in data
+
+    def test_explain_missing_404(self, app_client):
+        response = app_client.get("/api/v1/explain/wiki/nope.md")
+        assert response.status_code == 404
+
+
 class TestIngestEndpoint:
     def test_ingest(self, app_client):
         response = app_client.post(

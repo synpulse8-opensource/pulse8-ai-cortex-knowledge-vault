@@ -21,7 +21,10 @@ from cortex.mcp.tools import (
     handle_vault_compile,
     handle_vault_context,
     handle_vault_feedback,
+    handle_vault_explain,
+    handle_vault_impact,
     handle_vault_list_feedbacks,
+    handle_vault_path,
     handle_vault_trace,
     handle_vault_ingest,
     handle_vault_link,
@@ -217,6 +220,34 @@ async def create_fastmcp_server(
         touching it labeled extracted / inferred / manual."""
         logger.info("MCP tool=vault_trace path=%s", path)
         result = await handle_vault_trace(path=path, **services)
+        return json.dumps(result, indent=2, default=str)
+
+    # Named explicitly: the enclosing function's vault_path parameter would
+    # otherwise clash with a `def vault_path` tool function.
+    @mcp.tool(name="vault_path")
+    async def vault_path_tool(source: str, target: str, max_paths: int = 3) -> str:
+        """Find shortest paths between two notes over the typed graph.
+        Every hop carries its edge type and lineage origin."""
+        logger.info("MCP tool=vault_path source=%s target=%s", source, target)
+        result = await handle_vault_path(
+            source=source, target=target, max_paths=max_paths, **services
+        )
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool()
+    async def vault_impact(path: str, max_depth: int = 5) -> str:
+        """Walk everything downstream of a note: all notes linking to it
+        directly or transitively. Use for change-impact analysis."""
+        logger.info("MCP tool=vault_impact path=%s max_depth=%d", path, max_depth)
+        result = await handle_vault_impact(path=path, max_depth=max_depth, **services)
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool()
+    async def vault_explain(path: str) -> str:
+        """Explain a note: summary, provenance, raw sources, and connections
+        grouped by direction (links in / out, contradictions)."""
+        logger.info("MCP tool=vault_explain path=%s", path)
+        result = await handle_vault_explain(path=path, **services)
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool()

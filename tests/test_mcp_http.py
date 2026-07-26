@@ -110,6 +110,9 @@ class TestMCPHttpServer:
             "vault_list_feedbacks",
             "vault_resource_read",
             "vault_trace",
+            "vault_path",
+            "vault_impact",
+            "vault_explain",
         }
         assert expected.issubset(set(tool_names))
         assert len(tool_names) == len(expected)

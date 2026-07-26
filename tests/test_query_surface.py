@@ -105,3 +105,106 @@ class TestImpact:
         paths = {i["path"] for i in impacted}
         assert "wiki/procedure.md" in paths
         assert "wiki/policy.md" not in paths
+
+
+class TestVaultPathHandler:
+    @pytest.mark.asyncio
+    async def test_path_handler_returns_titled_paths(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_path
+
+        _write_chain(tmp_vault)
+        graph = await _build(tmp_vault)
+        result = await handle_vault_path(
+            source="wiki/policy.md",
+            target="wiki/control.md",
+            vault_path=tmp_vault,
+            graph=graph,
+        )
+        assert result["source"] == "wiki/policy.md"
+        assert result["paths"][0]["nodes"][0]["path"] == "wiki/policy.md"
+        assert result["paths"][0]["nodes"][0]["title"] == "Data Retention Policy"
+
+    @pytest.mark.asyncio
+    async def test_path_handler_no_path(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_path
+
+        _write_chain(tmp_vault)
+        graph = await _build(tmp_vault)
+        result = await handle_vault_path(
+            source="wiki/policy.md",
+            target="wiki/island.md",
+            vault_path=tmp_vault,
+            graph=graph,
+        )
+        assert result["paths"] == []
+
+
+class TestVaultImpactHandler:
+    @pytest.mark.asyncio
+    async def test_impact_handler(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_impact
+
+        _write_chain(tmp_vault)
+        graph = await _build(tmp_vault)
+        result = await handle_vault_impact(
+            path="wiki/control.md", vault_path=tmp_vault, graph=graph
+        )
+        assert result["path"] == "wiki/control.md"
+        assert result["total"] == 2
+        impacted_paths = {i["path"] for i in result["impacted"]}
+        assert impacted_paths == {"wiki/procedure.md", "wiki/policy.md"}
+
+
+class TestVaultExplainHandler:
+    @pytest.mark.asyncio
+    async def test_explain_combines_provenance_and_connections(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_explain
+
+        graph = await _build(tmp_vault)
+        result = await handle_vault_explain(
+            path="wiki/transformers.md", vault_path=tmp_vault, graph=graph
+        )
+        assert result["path"] == "wiki/transformers.md"
+        assert result["title"] == "Transformer Architecture"
+        assert result["provenance"]["authored_by"] == "claude-sonnet-4"
+        assert {"path": "raw/transformer-paper.txt", "origin": "extracted"} in result["sources"]
+
+        links_out = {e["target"] for e in result["links_out"]}
+        assert "wiki/attention-mechanisms.md" in links_out
+        links_in = {e["source"] for e in result["links_in"]}
+        assert "wiki/attention-mechanisms.md" in links_in
+
+        assert "ml" in result["tags"]
+        assert result["summary"]
+
+    @pytest.mark.asyncio
+    async def test_explain_missing_note(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_explain
+
+        graph = await _build(tmp_vault)
+        result = await handle_vault_explain(
+            path="wiki/ghost.md", vault_path=tmp_vault, graph=graph
+        )
+        assert "error" in result
+
+
+class TestQuerySurfaceRegistration:
+    @pytest.mark.asyncio
+    async def test_registered_on_both_mcp_servers(self, tmp_vault: Path):
+        from unittest.mock import AsyncMock
+
+        from cortex.mcp.http_server import create_fastmcp_server
+        from cortex.mcp.server import _tool_definitions
+
+        stdio_names = {t.name for t in _tool_definitions()}
+        assert {"vault_path", "vault_impact", "vault_explain"} <= stdio_names
+
+        mock_services = {
+            "vault_path": tmp_vault,
+            "graph": AsyncMock(),
+            "qmd": AsyncMock(),
+            "compiler": AsyncMock(),
+        }
+        mcp = await create_fastmcp_server(tmp_vault, services=mock_services)
+        http_names = {t.name for t in await mcp.list_tools()}
+        assert {"vault_path", "vault_impact", "vault_explain"} <= http_names
