@@ -5,6 +5,19 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] — 2026-07-26
+
+### Added
+
+- **Pluggable LLM backends** (`LLM_BACKEND` / `CORTEX_LLM_BACKEND`): `openai-compatible` (OpenRouter, Azure OpenAI, Ollama, vLLM — default), `bedrock` (AWS credential chain, lazy `boto3`), or `none`. All compiler LLM usage now routes through `cortex/llm/backend.py`.
+- **Zero-LLM (deterministic-first) mode**: `LLM_BACKEND=none` guarantees no LLM client is constructed and no model call is made — ingest, graph, and search all work. `start.sh` no longer requires an API key for `none`/`bedrock`. Pinned by contract tests.
+- **Edge lineage**: every graph edge now carries an `origin` label — `extracted` (deterministic structure extraction), `manual` (created via `vault_link`/REST), reserved `inferred` for LLM cross-references.
+- **`vault_trace`** (MCP + `GET /api/v1/trace/{path}`): full lineage of a note — provenance (author, model, timestamps), raw sources via `derived_from`, and all labeled edges. Answers "why does the vault say X".
+- **Graph query surface**: `vault_path` (shortest paths between notes, tag hubs excluded, every hop typed and origin-labeled; `GET /api/v1/graph/path`), `vault_impact` (transitive upstream dependents for change-impact analysis; `GET /api/v1/graph/impact`), `vault_explain` (summary + provenance + grouped connections; `GET /api/v1/explain/{path}`).
+- **Usage counters**: MCP and REST note reads increment per-note counters in `.cortex/usage.json`.
+- **Feedback outcomes**: `vault_feedback` and `POST /api/v1/feedbacks` accept an optional `outcome` label (`useful` / `dead-end` / `corrected`).
+- **Curation report** (`GET /api/v1/curation/report`): most-read, never-read, stale (configurable `stale_days`), and contradicted notes (contradiction edges + corrected feedback) — knowledge quality management from usage and outcome signals.
+
 ## [1.4.0] — 2026-07-26
 
 ### Added

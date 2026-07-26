@@ -178,6 +178,9 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 | **Bulk Ingest**              | Ingest dozens or hundreds of files at once from a local directory with SHA-256 dedup and bounded concurrency                                                                 |
 | **REST API**                 | FastAPI endpoints mirroring all MCP tools at `/api/v1/`, including multipart file upload and bulk ingest                                                                     |
 | **Vault Watcher**            | Real-time filesystem monitoring — graph stays in sync automatically                                                                                                          |
+| **Lineage & Audit**          | Every edge labeled `extracted` / `inferred` / `manual`; `vault_trace` answers "why does the vault say X" back to the source document                                         |
+| **Graph Queries**            | `vault_path` (what connects X to Y), `vault_impact` (what's downstream of this note), `vault_explain` (entity summary with provenance)                                       |
+| **Curation Report**          | Read counters + outcome feedback (`useful` / `dead-end` / `corrected`) surface stale, contradicted, and never-read notes at `GET /api/v1/curation/report`                    |
 | **Zero Database**            | Everything persists as Markdown + JSON on your filesystem                                                                                                                    |
 
 ## Runs without an LLM
@@ -249,9 +252,13 @@ Microsoft Copilot Studio setup — agent instructions, tool selection, and the C
 | `vault_context`        | Build a context window: search → graph traversal → ranked subgraph. Supports `as_resource=true` |
 | `vault_ingest`         | Ingest raw content or binary files (supports `content_base64` for binary)                  |
 | `vault_compile`        | Compile unprocessed raw sources into wiki Markdown via MarkItDown                          |
-| `vault_feedback`       | Submit feedback on vault quality (`status: OPEN`; optional `related_paths` of `.md` notes) |
+| `vault_feedback`       | Submit feedback on vault quality (`status: OPEN`; optional `related_paths` and `outcome`: useful / dead-end / corrected) |
 | `vault_list_feedbacks` | List feedback note metadata (paths, tags, status; not full body)                           |
 | `vault_resource_read`  | Read a server-stored MCP resource by ID (fallback for clients without `resources/read`)    |
+| `vault_trace`          | Trace a note's lineage: provenance, raw sources, and edges labeled extracted / inferred / manual |
+| `vault_path`           | Shortest paths between two notes — "what connects X to Y", every hop typed and origin-labeled |
+| `vault_impact`         | Walk everything downstream of a note (change-impact analysis)                              |
+| `vault_explain`        | Explain a note: summary, provenance, sources, links in/out, contradictions                 |
 
 
 
@@ -395,6 +402,7 @@ cp .env.example .env
 
 | Variable                       | Required | Default                        | Description                                                                                        |
 | ------------------------------ | -------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `LLM_BACKEND`                  | No       | `openai-compatible`            | LLM backend: `openai-compatible`, `bedrock` (AWS credential chain), or `none` (zero LLM calls)     |
 | `LLM_API_KEY`                  | No       | —                              | OpenRouter (or compatible) API key (for cross-referencing only)                                    |
 | `COMPILER_MODEL`               | No       | `anthropic/claude-sonnet-4`    | Model for cross-reference detection                                                                |
 | `LLM_BASE_URL`                 | No       | `https://openrouter.ai/api/v1` | LLM API base URL                                                                                   |
