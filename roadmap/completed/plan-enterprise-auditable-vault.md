@@ -81,12 +81,10 @@ A vault holding client knowledge can't let every connected agent see everything.
 
 ## Phase 6: Retrieval eval (prove it)
 
-One honest number over a public corpus.
-
-1. Pick a public regulatory corpus (e.g. EUR-Lex MiFID II / DORA texts) — ingest with zero-LLM mode and with enrichment.
-2. Build a question set with ground-truth source passages; measure retrieval hit-rate for `vault_search` and `vault_context` in both modes, plus path-query accuracy on a hand-labeled impact set.
-3. Publish methodology + numbers in `docs/eval.md`. Rerun per release; regression-gate in CI if stable enough.
-4. Optionally run LongMemEval for the memory/session angle — secondary to the regulatory retrieval eval.
+Superseded by the dedicated plan: [../plan-retrieval-benchmarks.md](../plan-retrieval-benchmarks.md) —
+LongMemEval first (public dataset, official judge prompts, comparable
+published numbers), LOCOMO second, custom regulatory-corpus eval third, with
+blind-validated judging and one-command reproduction.
 
 ## Sequencing rationale
 
