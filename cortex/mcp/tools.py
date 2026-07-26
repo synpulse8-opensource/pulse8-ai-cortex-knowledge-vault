@@ -17,6 +17,7 @@ from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.layout import raw_dir, raw_rel, wiki_dir
 from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.daily_log import append_daily_log_entry
+from cortex.vault.usage import record_read
 from cortex.vault.writer import write_note
 
 # Paths whose writes should NOT mirror into daily/ (avoid self-reference loops
@@ -149,6 +150,7 @@ async def handle_vault_read(
             for e in edges
         ]
         await log_operation(vault_path, "mcp", "vault:read", f"Read {path}")
+        await record_read(vault_path, note.path)
         return _enforce_payload_size({
             "path": note.path,
             "title": note.title,

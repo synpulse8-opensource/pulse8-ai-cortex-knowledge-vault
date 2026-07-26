@@ -25,6 +25,7 @@ from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.reader import read_note, resolve_wikilink
+from cortex.vault.usage import record_read
 from cortex.vault.writer import write_note
 
 # Mirrors `_DAILY_LOG_EXCLUDED_PREFIXES` in cortex.mcp.tools. Kept in sync
@@ -258,6 +259,7 @@ async def read_note_endpoint(path: str, request: Request):
     ]
 
     await log_operation(vault_path, "api", "vault:read", f"Read {path}")
+    await record_read(vault_path, note.path)
 
     return {
         "path": note.path,
