@@ -1,0 +1,33 @@
+# LongMemEval-S against Cortex with hybrid search.
+#
+# Reproduction:
+#   ./scripts/start.sh
+#   uv run python -m evals.run_longmemeval --config evals/configs/longmemeval-s-hybrid.yaml
+#
+# Everything below is pinned; a published run is this file + the traces
+# artifact it produces under evals/out/.
+
+name: longmemeval-s-hybrid
+benchmark: longmemeval
+
+dataset:
+  name: longmemeval_s
+  # Official dataset: https://github.com/xiaowu0162/LongMemEval
+  # (also mirrored on Hugging Face: xiaowu0162/longmemeval).
+  url: https://huggingface.co/datasets/xiaowu0162/longmemeval/resolve/main/longmemeval_s.json
+  # Compute after the first manual download and pin before publishing:
+  #   shasum -a 256 evals/data/longmemeval_s.json
+  sha256: "PIN-ME-BEFORE-PUBLISHING"
+  path: evals/data/longmemeval_s.json
+
+cortex:
+  base_url: http://localhost:8420
+  search_mode: hybrid
+  top_k: 8
+
+models:
+  answer: anthropic/claude-sonnet-4
+  judge: openai/gpt-4o   # must differ from answer model (enforced)
+
+seed: 42
+output_dir: evals/out

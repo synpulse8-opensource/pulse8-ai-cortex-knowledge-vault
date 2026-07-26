@@ -25,7 +25,7 @@ def _judge_with_reply(reply: str):
 def test_judge_rejects_same_model_as_answerer():
     from evals.judge import Judge
 
-    async def fake_complete(system: str, user: str) -> str:
+    async def fake_complete(_system: str, _user: str) -> str:
         return "yes"
 
     with pytest.raises(ValueError, match="judge"):

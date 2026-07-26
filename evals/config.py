@@ -54,7 +54,7 @@ class EvalConfig:
     @classmethod
     def from_yaml(cls, path: Path | str) -> EvalConfig:
         """Load and validate a config file."""
-        data = yaml.safe_load(Path(path).read_text())
+        data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
 
         dataset_data = data.get("dataset") or {}
         if not dataset_data.get("sha256"):

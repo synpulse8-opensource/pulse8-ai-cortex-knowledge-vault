@@ -91,6 +91,10 @@ Thumbs.db
 # remain tracked. Add new public samples deliberately with `git add -f`.
 example_vault/**
 
+# benchmark datasets (downloaded, pinned by SHA-256) and run outputs
+evals/data/
+evals/out/
+
 # draw.io and MS Office temp/backup files (may shadow client documents)
 .$*.bkp
 .$*.dtmp
