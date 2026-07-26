@@ -77,3 +77,76 @@ class TestManualOrigin:
         manual = [e for e in edges if e.edge_type.value == "supersedes"]
         assert manual[0].metadata["reason"] == "newer revision"
         assert manual[0].metadata["origin"] == "manual"
+
+
+class TestVaultTrace:
+    """vault_trace answers: 'why does the vault say X' — full lineage chain."""
+
+    @pytest.mark.asyncio
+    async def test_trace_returns_provenance_and_sources(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_trace
+
+        graph = await _build(tmp_vault)
+        result = await handle_vault_trace(
+            path="wiki/transformers.md", vault_path=tmp_vault, graph=graph
+        )
+
+        assert result["path"] == "wiki/transformers.md"
+        prov = result["provenance"]
+        assert prov["authored_by"] == "claude-sonnet-4"
+        assert prov["created_at"]
+
+        sources = result["sources"]
+        assert {"path": "raw/transformer-paper.txt", "origin": "extracted"} in sources
+
+    @pytest.mark.asyncio
+    async def test_trace_lists_edges_with_origins(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_link, handle_vault_trace
+
+        graph = await _build(tmp_vault)
+        await handle_vault_link(
+            action="create",
+            vault_path=tmp_vault,
+            graph=graph,
+            source="wiki/transformers.md",
+            target="wiki/attention-mechanisms.md",
+            edge_type="supersedes",
+        )
+
+        result = await handle_vault_trace(
+            path="wiki/transformers.md", vault_path=tmp_vault, graph=graph
+        )
+        origins = {(e["edge_type"], e["origin"]) for e in result["edges"]}
+        assert ("links_to", "extracted") in origins
+        assert ("supersedes", "manual") in origins
+
+    @pytest.mark.asyncio
+    async def test_trace_missing_note_returns_error(self, tmp_vault: Path):
+        from cortex.mcp.tools import handle_vault_trace
+
+        graph = await _build(tmp_vault)
+        result = await handle_vault_trace(
+            path="wiki/does-not-exist.md", vault_path=tmp_vault, graph=graph
+        )
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_trace_registered_on_both_mcp_servers(self, tmp_vault: Path):
+        from unittest.mock import AsyncMock
+
+        from cortex.mcp.http_server import create_fastmcp_server
+        from cortex.mcp.server import _tool_definitions
+
+        # stdio server
+        assert any(t.name == "vault_trace" for t in _tool_definitions())
+
+        # streamable-http server
+        mock_services = {
+            "vault_path": tmp_vault,
+            "graph": AsyncMock(),
+            "qmd": AsyncMock(),
+            "compiler": AsyncMock(),
+        }
+        mcp = await create_fastmcp_server(tmp_vault, services=mock_services)
+        tools = await mcp.list_tools()
+        assert any(t.name == "vault_trace" for t in tools)

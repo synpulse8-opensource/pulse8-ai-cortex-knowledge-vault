@@ -22,6 +22,7 @@ from cortex.mcp.tools import (
     handle_vault_context,
     handle_vault_feedback,
     handle_vault_list_feedbacks,
+    handle_vault_trace,
     handle_vault_ingest,
     handle_vault_link,
     handle_vault_read,
@@ -208,6 +209,14 @@ async def create_fastmcp_server(
             metadata=metadata,
             **services,
         )
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool()
+    async def vault_trace(path: str) -> str:
+        """Trace a note's lineage: provenance, raw sources, and every edge
+        touching it labeled extracted / inferred / manual."""
+        logger.info("MCP tool=vault_trace path=%s", path)
+        result = await handle_vault_trace(path=path, **services)
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool()

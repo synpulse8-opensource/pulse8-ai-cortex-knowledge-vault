@@ -19,6 +19,7 @@ from cortex.mcp.tools import (
     handle_vault_context,
     handle_vault_feedback,
     handle_vault_list_feedbacks,
+    handle_vault_trace,
     handle_vault_ingest,
     handle_vault_link,
     handle_vault_read,
@@ -212,6 +213,24 @@ def _tool_definitions() -> list[Tool]:
             },
         ),
         Tool(
+            name="vault_trace",
+            description=(
+                "Trace the lineage of a note: provenance (author, model, "
+                "timestamps), raw sources it derives from, and every edge "
+                "touching it labeled extracted / inferred / manual."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Note path relative to vault root (e.g. wiki/foo.md)",
+                    },
+                },
+                "required": ["path"],
+            },
+        ),
+        Tool(
             name="vault_compile",
             description="Compile unprocessed raw sources into wiki articles via LLM.",
             inputSchema={
@@ -252,6 +271,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         "vault_feedback": handle_vault_feedback,
         "vault_list_feedbacks": handle_vault_list_feedbacks,
         "vault_resource_read": handle_vault_resource_read,
+        "vault_trace": handle_vault_trace,
     }
 
     handler = handlers.get(name)

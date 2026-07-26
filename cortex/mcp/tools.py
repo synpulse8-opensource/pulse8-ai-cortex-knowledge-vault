@@ -470,6 +470,67 @@ async def handle_vault_context(
         return {"error": str(e)}
 
 
+async def handle_vault_trace(
+    path: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Trace the lineage of a note: where it came from and who asserted what.
+
+    Answers "why does the vault say X" — returns the note's provenance
+    (author, model, timestamps), its raw sources (via derived_from edges),
+    and every edge touching it with the origin label (extracted / inferred
+    / manual) stamped at creation time.
+    """
+    try:
+        path = resolve_note_path(path, vault_path, graph=graph)
+        if not (vault_path / path).exists():
+            return {"error": f"Note not found: {path}"}
+        note = await asyncio.to_thread(read_note, vault_path / path, vault_path)
+
+        edges = await graph.get_edges(note.path)
+        edge_dicts = [
+            {
+                "source": e.source,
+                "target": e.target,
+                "edge_type": e.edge_type.value,
+                "origin": e.metadata.get("origin", "unknown"),
+                "model": e.metadata.get("model"),
+                "created_at": e.created_at,
+            }
+            for e in edges
+        ]
+
+        sources = [
+            {"path": e.target, "origin": e.metadata.get("origin", "unknown")}
+            for e in edges
+            if e.source == note.path and e.edge_type == EdgeType.DERIVED_FROM
+        ]
+
+        provenance = {
+            "authored_by": note.provenance.authored_by,
+            "model": note.provenance.model,
+            "created_at": note.provenance.created_at,
+            "updated_at": note.provenance.updated_at,
+            "enrichment_status": note.frontmatter.get("enrichment_status"),
+        }
+
+        await log_operation(vault_path, "mcp", "vault:trace", f"Trace {path}")
+        return _enforce_payload_size({
+            "path": note.path,
+            "title": note.title,
+            "provenance": provenance,
+            "sources": sources,
+            "edges": edge_dicts,
+        })
+    except FileNotFoundError:
+        return {"error": f"Note not found: {path}"}
+    except Exception as e:
+        logger.exception("vault:trace error")
+        return {"error": str(e)}
+
+
 async def handle_vault_link(
     action: str,
     vault_path: Path,
