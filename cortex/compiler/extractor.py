@@ -4,22 +4,19 @@ from __future__ import annotations
 from pathlib import Path
 
 from markitdown import MarkItDown
-from openai import OpenAI
 
-from cortex.compiler.prompts import IMAGE_CAPTION_PROMPT
 from cortex.config import settings
+from cortex.llm.backend import LLMBackend, create_backend
 
 
-def make_markitdown() -> MarkItDown:
-    """Build MarkItDown; attach a vision LLM for image captioning when configured."""
+def make_markitdown(backend: LLMBackend | None = None) -> MarkItDown:
+    """Build MarkItDown; attach a vision LLM for image captioning when the
+    configured backend supports it (disabled/Bedrock backends attach none)."""
+    if backend is None:
+        backend = create_backend(settings)
     kwargs: dict = {"enable_plugins": False}
-    if settings.llm_api_key:
-        kwargs["llm_client"] = OpenAI(
-            api_key=settings.llm_api_key,
-            base_url=settings.llm_base_url,
-        )
-        kwargs["llm_model"] = settings.compiler_vision_model or settings.compiler_model
-        kwargs["llm_prompt"] = IMAGE_CAPTION_PROMPT
+    if backend.enabled:
+        kwargs.update(backend.markitdown_kwargs())
     return MarkItDown(**kwargs)
 
 
