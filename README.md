@@ -183,6 +183,10 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 | **Curation Report**          | Read counters + outcome feedback (`useful` / `dead-end` / `corrected`) surface stale, contradicted, and never-read notes at `GET /api/v1/curation/report`                    |
 | **Zero Database**            | Everything persists as Markdown + JSON on your filesystem                                                                                                                    |
 
+## Benchmarks
+
+A reproducible evaluation harness lives in [`evals/`](evals/) — pinned configs, LLM-as-judge with strict verdict parsing, blind human validation, and per-question trace artifacts. First target: LongMemEval-S. Methodology and (upcoming) results: [docs/benchmarks/](docs/benchmarks/README.md).
+
 ## Runs without an LLM
 
 Cortex is deterministic-first: ingestion (MarkItDown conversion), the knowledge graph (wikilinks, tags, `derived_from` edges), and QMD search all work with **zero LLM calls**. The LLM is an optional enrichment pass — cross-referencing, tagging, image captioning — not a dependency.
