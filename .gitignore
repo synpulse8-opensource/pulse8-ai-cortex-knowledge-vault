@@ -91,9 +91,14 @@ Thumbs.db
 # remain tracked. Add new public samples deliberately with `git add -f`.
 example_vault/**
 
-# benchmark datasets (downloaded, pinned by SHA-256) and run outputs
+# benchmark datasets (downloaded, pinned by SHA-256), run outputs, scratch vault
 evals/data/
 evals/out/
+evals/vault/
+
+# native QMD daemon state (./scripts/start.sh --native-qmd)
+.qmd-native.pid
+.qmd-native.log
 
 # draw.io and MS Office temp/backup files (may shadow client documents)
 .$*.bkp
