@@ -54,6 +54,67 @@ async def test_create_feedback_writes_file_and_graph_edges(feedback_vault: Path)
 
 
 @pytest.mark.asyncio
+async def test_create_feedback_records_outcome(feedback_vault: Path):
+    """Outcome labels (useful/dead-end/corrected) close the knowledge loop."""
+    import frontmatter as fm
+
+    from cortex.vault.feedback import create_feedback, list_feedbacks
+
+    graph = GraphEngine(feedback_vault / ".cortex" / "graph.json")
+    await graph.load()
+
+    result = await create_feedback(
+        vault_root=feedback_vault,
+        graph=graph,
+        qmd_debounce=None,
+        content="The retention answer in this note was wrong; corrected upstream.",
+        related_paths=["wiki/target.md"],
+        outcome="corrected",
+    )
+    assert result["outcome"] == "corrected"
+
+    post = fm.load(str(feedback_vault / result["path"]))
+    assert post.metadata["outcome"] == "corrected"
+
+    listed = list_feedbacks(feedback_vault)
+    assert listed[0]["outcome"] == "corrected"
+
+
+@pytest.mark.asyncio
+async def test_create_feedback_rejects_bad_outcome(feedback_vault: Path):
+    from cortex.vault.feedback import create_feedback
+
+    graph = GraphEngine(feedback_vault / ".cortex" / "graph.json")
+    await graph.load()
+
+    with pytest.raises(ValueError, match="outcome"):
+        await create_feedback(
+            vault_root=feedback_vault,
+            graph=graph,
+            qmd_debounce=None,
+            content="Some feedback.",
+            outcome="amazing",
+        )
+
+
+@pytest.mark.asyncio
+async def test_create_feedback_outcome_optional(feedback_vault: Path):
+    from cortex.vault.feedback import create_feedback, list_feedbacks
+
+    graph = GraphEngine(feedback_vault / ".cortex" / "graph.json")
+    await graph.load()
+
+    result = await create_feedback(
+        vault_root=feedback_vault,
+        graph=graph,
+        qmd_debounce=None,
+        content="Plain feedback, no outcome.",
+    )
+    assert result["outcome"] is None
+    assert list_feedbacks(feedback_vault)[0]["outcome"] is None
+
+
+@pytest.mark.asyncio
 async def test_create_feedback_calls_teams_notify(feedback_vault: Path, monkeypatch):
     from cortex.config import settings
     from cortex.vault.feedback import create_feedback

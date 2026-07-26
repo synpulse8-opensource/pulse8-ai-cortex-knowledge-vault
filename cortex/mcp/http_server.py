@@ -256,19 +256,24 @@ async def create_fastmcp_server(
         tags: Optional[list[str]] = None,
         related_paths: Optional[list[str]] = None,
         authored_by: str = "human",
+        outcome: Optional[str] = None,
     ) -> str:
-        """Submit user feedback. Saved under feedback/ with tags and links to related notes."""
+        """Submit user feedback. Saved under feedback/ with tags and links to
+        related notes. Optional outcome label (useful / dead-end / corrected)
+        records whether the retrieved knowledge held up."""
         logger.info(
-            "MCP tool=vault_feedback authored_by=%s tags=%s related_paths=%s",
+            "MCP tool=vault_feedback authored_by=%s tags=%s related_paths=%s outcome=%s",
             authored_by,
             tags,
             related_paths,
+            outcome,
         )
         result = await handle_vault_feedback(
             content=content,
             tags=tags,
             related_paths=related_paths,
             authored_by=authored_by,
+            outcome=outcome,
             **services,
         )
         return json.dumps(result, indent=2, default=str)

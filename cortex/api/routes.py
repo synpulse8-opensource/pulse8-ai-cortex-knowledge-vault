@@ -81,6 +81,7 @@ class FeedbackBody(BaseModel):
     tags: list[str] | None = None
     related_paths: list[str] | None = None
     authored_by: str | None = None
+    outcome: str | None = None
 
 
 class TokenExchangeBody(BaseModel):
@@ -772,6 +773,7 @@ async def create_feedback_endpoint(body: FeedbackBody, request: Request):
             tags=body.tags,
             related_paths=body.related_paths,
             authored_by=authored_by,
+            outcome=body.outcome,
         )
         await log_operation(vault_path, "api", "vault:feedback", f"Feedback {result['path']}")
         return result

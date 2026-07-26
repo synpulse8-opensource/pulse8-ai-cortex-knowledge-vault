@@ -255,6 +255,7 @@ async def handle_vault_feedback(
     related_paths: Optional[list[str]] = None,
     qmd_debounce: Any = None,
     authored_by: str = "human",
+    outcome: Optional[str] = None,
     **_kwargs: Any,
 ) -> dict[str, Any]:
     """Create a feedback note with tags, author name, and optional related paths."""
@@ -269,6 +270,7 @@ async def handle_vault_feedback(
             tags=tags,
             related_paths=related_paths,
             authored_by=authored_by,
+            outcome=outcome,
         )
         await log_operation(vault_path, "mcp", "vault:feedback", f"Feedback {result['path']}")
         return result

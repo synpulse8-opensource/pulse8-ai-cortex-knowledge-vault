@@ -145,6 +145,14 @@ def _tool_definitions() -> list[Tool]:
                         "default": "human",
                         "description": "Author display name (e.g. user email or full name)",
                     },
+                    "outcome": {
+                        "type": "string",
+                        "enum": ["useful", "dead-end", "corrected"],
+                        "description": (
+                            "Optional outcome label: was the retrieved "
+                            "knowledge useful, a dead end, or corrected?"
+                        ),
+                    },
                 },
                 "required": ["content"],
             },
