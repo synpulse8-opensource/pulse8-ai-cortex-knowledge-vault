@@ -12,16 +12,28 @@ from evals.traces import Trace
 
 
 def _bucket() -> dict[str, Any]:
-    return {"correct": 0, "incorrect": 0, "errors": 0, "accuracy": None}
+    return {
+        "correct": 0,
+        "incorrect": 0,
+        "errors": 0,
+        "accuracy": None,
+        "recall": None,
+        "tokens": 0,
+        "_recall_sum": 0.0,
+        "_recall_n": 0,
+    }
 
 
 def _finalize(bucket: dict[str, Any]) -> None:
     judged = bucket["correct"] + bucket["incorrect"]
     bucket["accuracy"] = bucket["correct"] / judged if judged else None
+    if bucket["_recall_n"]:
+        bucket["recall"] = bucket["_recall_sum"] / bucket["_recall_n"]
+    del bucket["_recall_sum"], bucket["_recall_n"]
 
 
 def aggregate(traces: list[Trace]) -> dict[str, Any]:
-    """Aggregate judge verdicts overall and per category."""
+    """Aggregate judge verdicts, mean recall, and token totals."""
     overall = _bucket()
     categories: dict[str, dict[str, Any]] = {}
 
@@ -34,6 +46,10 @@ def aggregate(traces: list[Trace]) -> dict[str, Any]:
                 bucket["incorrect"] += 1
             else:
                 bucket["errors"] += 1
+            if trace.recall is not None:
+                bucket["_recall_sum"] += trace.recall
+                bucket["_recall_n"] += 1
+            bucket["tokens"] += sum(trace.tokens.values())
 
     _finalize(overall)
     for bucket in categories.values():
@@ -51,18 +67,20 @@ def to_markdown(aggregation: dict[str, Any], run_name: str) -> str:
     lines = [
         f"## Results — `{run_name}`",
         "",
-        "| Category | Accuracy | Correct | Incorrect | Judge errors |",
-        "|---|---|---|---|---|",
+        "| Category | Accuracy | Recall | Correct | Incorrect | Judge errors | Tokens |",
+        "|---|---|---|---|---|---|---|",
     ]
-    for category in sorted(aggregation["categories"]):
-        b = aggregation["categories"][category]
-        lines.append(
-            f"| {category} | {_pct(b['accuracy'])} | {b['correct']} "
-            f"| {b['incorrect']} | {b['errors']} |"
+
+    def row(label: str, b: dict[str, Any], bold: bool = False) -> str:
+        acc = _pct(b["accuracy"])
+        if bold:
+            label, acc = f"**{label}**", f"**{acc}**"
+        return (
+            f"| {label} | {acc} | {_pct(b['recall'])} | {b['correct']} "
+            f"| {b['incorrect']} | {b['errors']} | {b['tokens']:,} |"
         )
-    o = aggregation["overall"]
-    lines.append(
-        f"| **overall** | **{_pct(o['accuracy'])}** | {o['correct']} "
-        f"| {o['incorrect']} | {o['errors']} |"
-    )
+
+    for category in sorted(aggregation["categories"]):
+        lines.append(row(category, aggregation["categories"][category]))
+    lines.append(row("overall", aggregation["overall"], bold=True))
     return "\n".join(lines) + "\n"

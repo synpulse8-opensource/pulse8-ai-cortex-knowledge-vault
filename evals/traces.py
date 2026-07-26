@@ -26,6 +26,10 @@ class Trace:
     judge_verdict: str = ""
     judge_raw: str = ""
     latency_ms: dict[str, int] = field(default_factory=dict)
+    # Fraction of labeled evidence sessions present in the retrieved set
+    # (None when the dataset carries no evidence labels).
+    recall: float | None = None
+    tokens: dict[str, int] = field(default_factory=dict)
 
 
 def write_traces(path: Path | str, traces: list[Trace]) -> None:

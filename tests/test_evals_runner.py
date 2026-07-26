@@ -109,50 +109,66 @@ class TestLimit:
         assert len(load_longmemeval(f)) == 10  # no limit -> everything
 
 
+class FakeAdapter:
+    name = "fake-system"
+
+    def __init__(self, retrieved=None):
+        self.ingested = []
+        self.events = []
+        self._retrieved = retrieved or [
+            {"path": "wiki/x.md", "snippet": "moved to Zurich in March"}
+        ]
+
+    async def ingest(self, filename, _content):
+        self.ingested.append(filename)
+        self.events.append(("ingest", filename))
+        return {"status": "created"}
+
+    async def retrieve(self, _question):
+        return self._retrieved
+
+
+def _make_judge():
+    from evals.judge import Judge
+
+    async def judge_complete(_system: str, _user: str) -> str:
+        return "yes"
+
+    return Judge(
+        complete=judge_complete, judge_model="j-model", answer_model="a-model"
+    )
+
+
+async def _fake_answer(_question: str, contexts: list[dict]) -> str:
+    assert contexts, "answerer must receive retrieved context"
+    return "Zurich"
+
+
+def _question(qid="lme-001", **kwargs):
+    from evals.run_longmemeval import Question
+
+    defaults = {
+        "question_id": qid,
+        "category": "single-session-user",
+        "question": "Where did I move?",
+        "gold_answer": "Zurich",
+        "sessions": ["user: I moved to Zurich in March."],
+        "session_ids": [f"{qid}-sess-a"],
+    }
+    defaults.update(kwargs)
+    return Question(**defaults)
+
+
 class TestRunEval:
     @pytest.mark.asyncio
     async def test_run_eval_produces_judged_traces(self):
-        from evals.judge import Judge
-        from evals.run_longmemeval import Question
         from evals.runner import run_eval
 
-        class FakeAdapter:
-            name = "fake-system"
-
-            def __init__(self):
-                self.ingested = []
-
-            async def ingest(self, filename, _content):
-                self.ingested.append(filename)
-                return {"status": "created"}
-
-            async def retrieve(self, _question):
-                return [{"path": "wiki/x.md", "snippet": "moved to Zurich in March"}]
-
-        async def fake_answer(_question: str, contexts: list[dict]) -> str:
-            assert contexts, "answerer must receive retrieved context"
-            return "Zurich"
-
-        async def judge_complete(_system: str, _user: str) -> str:
-            return "yes"
-
-        judge = Judge(
-            complete=judge_complete, judge_model="j-model", answer_model="a-model"
-        )
-        questions = [
-            Question(
-                question_id="lme-001",
-                category="single-session-user",
-                question="Where did I move?",
-                gold_answer="Zurich",
-                sessions=["user: I moved to Zurich in March."],
-            )
-        ]
-
         adapter = FakeAdapter()
-        traces = await run_eval(questions, adapter, fake_answer, judge)
+        traces = await run_eval([_question()], adapter, _fake_answer, _make_judge())
 
-        assert adapter.ingested == ["lme-001-session-000.md"]
+        # Sessions are ingested under their dataset session IDs.
+        assert adapter.ingested == ["lme-001-sess-a.md"]
         assert len(traces) == 1
         trace = traces[0]
         assert trace.system == "fake-system"
@@ -160,3 +176,82 @@ class TestRunEval:
         assert trace.answer == "Zurich"
         assert trace.retrieved[0]["path"] == "wiki/x.md"
         assert set(trace.latency_ms) == {"retrieve", "answer", "judge"}
+
+    @pytest.mark.asyncio
+    async def test_reset_fn_called_before_each_question(self):
+        """Per-question vault isolation: each question starts from a clean
+        vault so its retrieval only sees its own haystack."""
+        from evals.runner import run_eval
+
+        adapter = FakeAdapter()
+
+        async def reset():
+            adapter.events.append(("reset", None))
+
+        questions = [_question("q1"), _question("q2")]
+        await run_eval(questions, adapter, _fake_answer, _make_judge(), reset_fn=reset)
+
+        kinds = [kind for kind, _ in adapter.events]
+        assert kinds == ["reset", "ingest", "reset", "ingest"]
+
+    @pytest.mark.asyncio
+    async def test_recall_computed_from_evidence_session_ids(self):
+        from evals.runner import run_eval
+
+        adapter = FakeAdapter(
+            retrieved=[
+                {"path": "wiki/answer_xyz.md", "snippet": "evidence hit"},
+                {"path": "raw/other_1.md", "snippet": "noise"},
+            ]
+        )
+        question = _question(
+            sessions=["s1", "s2"],
+            session_ids=["answer_xyz", "answer_abc"],
+            evidence_session_ids=["answer_xyz", "answer_abc"],
+        )
+        (trace,) = await run_eval([question], adapter, _fake_answer, _make_judge())
+        # One of two evidence sessions retrieved -> recall 0.5.
+        assert trace.recall == 0.5
+
+    @pytest.mark.asyncio
+    async def test_recall_none_without_evidence_labels(self):
+        from evals.runner import run_eval
+
+        (trace,) = await run_eval(
+            [_question()], FakeAdapter(), _fake_answer, _make_judge()
+        )
+        assert trace.recall is None
+
+    @pytest.mark.asyncio
+    async def test_token_usage_attributed_per_phase(self):
+        """A shared ledger (incremented inside the LLM callables) is
+        snapshotted around each phase, attributing tokens per question."""
+        from evals.judge import Judge
+        from evals.runner import run_eval
+
+        ledger = {"prompt": 0, "completion": 0}
+
+        async def counting_answer(_question, _contexts):
+            ledger["prompt"] += 100
+            ledger["completion"] += 10
+            return "Zurich"
+
+        async def counting_judge_complete(_system, _user):
+            ledger["prompt"] += 50
+            ledger["completion"] += 5
+            return "yes"
+
+        judge = Judge(
+            complete=counting_judge_complete,
+            judge_model="j-model",
+            answer_model="a-model",
+        )
+        (trace,) = await run_eval(
+            [_question()], FakeAdapter(), counting_answer, judge, usage_ledger=ledger
+        )
+        assert trace.tokens == {
+            "answer_prompt": 100,
+            "answer_completion": 10,
+            "judge_prompt": 50,
+            "judge_completion": 5,
+        }
