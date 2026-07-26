@@ -57,6 +57,29 @@ class TestLongMemEvalLoader:
         assert "I moved to Zurich in March." in q.sessions[0]
 
 
+class TestLimit:
+    def test_limit_takes_first_n_questions(self, tmp_path: Path):
+        """--limit N enables a cheap smoke run before spending on a full one."""
+        from evals.run_longmemeval import load_longmemeval
+
+        dataset = [
+            {
+                "question_id": f"lme-{i:03d}",
+                "question_type": "single-session-user",
+                "question": f"q{i}",
+                "answer": f"a{i}",
+                "haystack_sessions": [],
+            }
+            for i in range(10)
+        ]
+        f = tmp_path / "d.json"
+        f.write_text(json.dumps(dataset))
+
+        questions = load_longmemeval(f, limit=3)
+        assert [q.question_id for q in questions] == ["lme-000", "lme-001", "lme-002"]
+        assert len(load_longmemeval(f)) == 10  # no limit -> everything
+
+
 class TestRunEval:
     @pytest.mark.asyncio
     async def test_run_eval_produces_judged_traces(self):

@@ -51,9 +51,15 @@ def _render_session(turns: list[dict[str, Any]]) -> str:
     )
 
 
-def load_longmemeval(path: Path | str) -> list[Question]:
-    """Parse the LongMemEval JSON into Question records."""
+def load_longmemeval(path: Path | str, limit: int | None = None) -> list[Question]:
+    """Parse the LongMemEval JSON into Question records.
+
+    ``limit`` caps the number of questions — a cheap smoke run before
+    spending on a full one.
+    """
     data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if limit is not None:
+        data = data[:limit]
     questions = []
     for item in data:
         questions.append(
@@ -93,10 +99,10 @@ def _make_complete(model: str):
     return complete
 
 
-async def _main(config_path: str) -> None:
+async def _main(config_path: str, limit: int | None = None) -> None:
     config = EvalConfig.from_yaml(config_path)
     dataset_path = download(config.dataset)
-    questions = load_longmemeval(dataset_path)
+    questions = load_longmemeval(dataset_path, limit=limit)
 
     adapter = CortexAdapter(
         base_url=config.cortex.base_url,
@@ -122,9 +128,11 @@ async def _main(config_path: str) -> None:
     traces = await run_eval(questions, adapter, answer_fn, judge)
     await adapter.aclose()
 
-    out_dir = Path(config.output_dir) / config.name
+    # Keep smoke-run artifacts apart from full-run (publishable) ones.
+    run_name = config.name if limit is None else f"{config.name}-limit{limit}"
+    out_dir = Path(config.output_dir) / run_name
     write_traces(out_dir / "traces.jsonl", traces)
-    report = to_markdown(aggregate(traces), run_name=config.name)
+    report = to_markdown(aggregate(traces), run_name=run_name)
     (out_dir / "report.md").write_text(report)
     print(report)
 
@@ -132,8 +140,14 @@ async def _main(config_path: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run LongMemEval against Cortex")
     parser.add_argument("--config", required=True, help="Path to a pinned run config")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Run only the first N questions (smoke run); omit for the full set",
+    )
     args = parser.parse_args()
-    asyncio.run(_main(args.config))
+    asyncio.run(_main(args.config, limit=args.limit))
 
 
 if __name__ == "__main__":

@@ -11,14 +11,16 @@ name: longmemeval-s-hybrid
 benchmark: longmemeval
 
 dataset:
-  name: longmemeval_s
-  # Official dataset: https://github.com/xiaowu0162/LongMemEval
-  # (also mirrored on Hugging Face: xiaowu0162/longmemeval).
-  url: https://huggingface.co/datasets/xiaowu0162/longmemeval/resolve/main/longmemeval_s.json
-  # Compute after the first manual download and pin before publishing:
-  #   shasum -a 256 evals/data/longmemeval_s.json
-  sha256: "PIN-ME-BEFORE-PUBLISHING"
-  path: evals/data/longmemeval_s.json
+  name: longmemeval_s_cleaned
+  # Official dataset: https://github.com/xiaowu0162/LongMemEval — the
+  # original longmemeval dataset is deprecated in favor of the cleaned
+  # release (noisy history sessions removed), which is what published
+  # numbers now use.
+  url: https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json
+  # Pinned from the 2026-07-26 download (277,383,467 bytes):
+  #   shasum -a 256 evals/data/longmemeval_s_cleaned.json
+  sha256: "d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442"
+  path: evals/data/longmemeval_s_cleaned.json
 
 cortex:
   base_url: http://localhost:8420
