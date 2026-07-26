@@ -181,6 +181,101 @@ class GraphEngine:
             p: self._collect_edges(p, edge_types=edge_types) for p in paths
         }
 
+    def _note_subgraph(self) -> nx.MultiDiGraph:
+        """View of the graph without tag hub nodes.
+
+        Tag nodes connect every note sharing a tag, which turns path and
+        impact queries into noise — exclude them from traversal.
+        """
+        note_nodes = [
+            n
+            for n, data in self.graph.nodes(data=True)
+            if data.get("node_type") != "tag"
+        ]
+        return self.graph.subgraph(note_nodes)
+
+    def _edge_step(self, subgraph: nx.MultiDiGraph, u: str, v: str) -> dict[str, Any]:
+        """Describe the edge between two adjacent nodes (either direction)."""
+        if subgraph.has_edge(u, v):
+            data = next(iter(subgraph[u][v].values()))
+            source, target = u, v
+        else:
+            data = next(iter(subgraph[v][u].values()))
+            source, target = v, u
+        metadata = data.get("metadata", {}) or {}
+        return {
+            "source": source,
+            "target": target,
+            "edge_type": data.get("edge_type", ""),
+            "origin": metadata.get("origin", "unknown"),
+        }
+
+    async def find_paths(
+        self, source: str, target: str, max_paths: int = 3
+    ) -> list[dict[str, Any]]:
+        """Find shortest paths between two notes (undirected, tag hubs excluded).
+
+        Each path reports the node sequence plus every hop's edge with its
+        type and lineage origin, so a path is an auditable chain of
+        assertions rather than a bare node list.
+        """
+        subgraph = self._note_subgraph()
+        if source not in subgraph or target not in subgraph:
+            return []
+        undirected = subgraph.to_undirected(as_view=True)
+        try:
+            shortest = nx.all_shortest_paths(undirected, source, target)
+            node_paths = []
+            for node_path in shortest:
+                node_paths.append(node_path)
+                if len(node_paths) >= max_paths:
+                    break
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            return []
+
+        results = []
+        for node_path in node_paths:
+            edges = [
+                self._edge_step(subgraph, u, v)
+                for u, v in zip(node_path, node_path[1:])
+            ]
+            results.append({"nodes": node_path, "edges": edges})
+        return results
+
+    async def impact(self, path: str, max_depth: int = 5) -> list[dict[str, Any]]:
+        """Walk upstream dependents: every note that links (directly or
+        transitively) to ``path``. Used for change-impact analysis — when a
+        note changes, these are the notes whose content relies on it."""
+        subgraph = self._note_subgraph()
+        if path not in subgraph:
+            return []
+
+        results: list[dict[str, Any]] = []
+        visited = {path}
+        frontier = [path]
+        depth = 0
+        while frontier and depth < max_depth:
+            depth += 1
+            next_frontier = []
+            for node in frontier:
+                for dependent, _, data in subgraph.in_edges(node, data=True):
+                    if dependent in visited:
+                        continue
+                    visited.add(dependent)
+                    metadata = data.get("metadata", {}) or {}
+                    results.append(
+                        {
+                            "path": dependent,
+                            "depth": depth,
+                            "via": node,
+                            "edge_type": data.get("edge_type", ""),
+                            "origin": metadata.get("origin", "unknown"),
+                        }
+                    )
+                    next_frontier.append(dependent)
+            frontier = next_frontier
+        return results
+
     async def get_contradictions(self, path: str) -> list[Edge]:
         """Get all contradiction edges for a node."""
         return await self.get_edges(path, edge_types=[EdgeType.CONTRADICTS])
