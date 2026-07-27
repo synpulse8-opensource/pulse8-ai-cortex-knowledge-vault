@@ -32,8 +32,10 @@ from evals.runner import run_eval
 from evals.traces import write_traces
 
 ANSWER_SYSTEM_PROMPT = (
-    "Answer the question using only the provided context. If the context "
-    "does not contain the answer, say you don't know."
+    "Answer the question using only the provided context. Sessions in the "
+    "context carry a 'Session date:' line; use those dates for any "
+    "time-related reasoning. If the context does not contain the answer, "
+    "say you don't know."
 )
 
 
@@ -52,13 +54,19 @@ class Question:
     sessions: list[str] = field(default_factory=list)
     session_ids: list[str] = field(default_factory=list)
     evidence_session_ids: list[str] = field(default_factory=list)
+    question_date: str = ""
 
 
-def _render_session(turns: list[dict[str, Any]]) -> str:
-    return "\n\n".join(
+def _render_session(turns: list[dict[str, Any]], date: str = "") -> str:
+    """Render one session; its timestamp becomes part of the ingested
+    content (official LongMemEval setup timestamps every session)."""
+    body = "\n\n".join(
         f"**{turn.get('role', 'user')}**: {turn.get('content', '')}"
         for turn in turns
     )
+    if date:
+        return f"Session date: {date}\n\n{body}"
+    return body
 
 
 def load_longmemeval(path: Path | str, limit: int | None = None) -> list[Question]:
@@ -73,9 +81,11 @@ def load_longmemeval(path: Path | str, limit: int | None = None) -> list[Questio
     questions = []
     for item in data:
         question_id = str(item["question_id"])
+        raw_sessions = item.get("haystack_sessions", [])
+        dates = item.get("haystack_dates", []) or [""] * len(raw_sessions)
         sessions = [
-            _render_session(session)
-            for session in item.get("haystack_sessions", [])
+            _render_session(session, date)
+            for session, date in zip(raw_sessions, dates)
         ]
         session_ids = [
             str(sid) for sid in item.get("haystack_session_ids", [])
@@ -91,6 +101,7 @@ def load_longmemeval(path: Path | str, limit: int | None = None) -> list[Questio
                 evidence_session_ids=[
                     str(sid) for sid in item.get("answer_session_ids", [])
                 ],
+                question_date=str(item.get("question_date", "") or ""),
             )
         )
     return questions

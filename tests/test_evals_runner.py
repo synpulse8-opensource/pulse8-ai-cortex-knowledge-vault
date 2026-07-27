@@ -65,6 +65,34 @@ class TestLongMemEvalLoader:
         assert len(q.sessions) == 2
         assert "I moved to Zurich in March." in q.sessions[1]
 
+    def test_loader_renders_session_dates_and_question_date(self, tmp_path: Path):
+        """LongMemEval's official setup timestamps every session and the
+        question itself; temporal-reasoning is unanswerable without them."""
+        from evals.run_longmemeval import load_longmemeval
+
+        dataset = [
+            {
+                "question_id": "lme-003",
+                "question_type": "temporal-reasoning",
+                "question": "How many days ago did I adopt the cat?",
+                "question_date": "2023/06/01 (Thu) 00:00",
+                "answer": "18 days",
+                "haystack_dates": ["2023/05/14 (Sun) 09:30"],
+                "haystack_sessions": [
+                    [{"role": "user", "content": "I adopted a cat today!"}],
+                ],
+            }
+        ]
+        f = tmp_path / "d.json"
+        f.write_text(json.dumps(dataset))
+
+        q = load_longmemeval(f)[0]
+        assert q.question_date == "2023/06/01 (Thu) 00:00"
+        # The session timestamp is part of the ingested content, so it
+        # survives compilation and is served to the answer model.
+        assert "2023/05/14 (Sun) 09:30" in q.sessions[0]
+        assert "I adopted a cat today!" in q.sessions[0]
+
     def test_loader_tolerates_missing_ids(self, tmp_path: Path):
         """Older/other dumps without ID fields still load (no recall labels)."""
         from evals.run_longmemeval import load_longmemeval
@@ -296,6 +324,39 @@ class TestRunEval:
             [_question()], FakeAdapter(), _fake_answer, _make_judge()
         )
         assert trace.recall is None
+
+    @pytest.mark.asyncio
+    async def test_question_date_reaches_answerer_but_not_judge(self):
+        """The answer model needs the question date (official LongMemEval
+        setup); the judge grades the raw question like the official script."""
+        from evals.runner import run_eval
+
+        seen = {}
+
+        async def capturing_answer(question_text, _contexts):
+            seen["answer_question"] = question_text
+            return "18 days"
+
+        judge_prompts = []
+
+        async def judge_complete(_system, user):
+            judge_prompts.append(user)
+            return "yes"
+
+        from evals.judge import Judge
+
+        judge = Judge(
+            complete=judge_complete, judge_model="j", answer_model="a"
+        )
+        question = _question(
+            question="How many days ago did I adopt the cat?",
+            question_date="2023/06/01 (Thu) 00:00",
+        )
+        await run_eval([question], FakeAdapter(), capturing_answer, judge)
+
+        assert "2023/06/01 (Thu) 00:00" in seen["answer_question"]
+        assert "How many days ago did I adopt the cat?" in seen["answer_question"]
+        assert "2023/06/01" not in judge_prompts[0]
 
     @pytest.mark.asyncio
     async def test_on_trace_streams_each_completed_trace(self):

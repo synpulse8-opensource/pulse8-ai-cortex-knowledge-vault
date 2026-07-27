@@ -76,9 +76,19 @@ async def run_eval(
         retrieved = await adapter.retrieve(question.question)
         retrieve_ms = int((time.perf_counter() - start) * 1000)
 
+        # The official LongMemEval setup gives the answer model the question
+        # date (temporal reasoning is unanswerable without it); the judge
+        # and the retrieval query see the raw question, as officially.
+        question_date = getattr(question, "question_date", "") or ""
+        answer_question = (
+            f"{question.question}\n(Question asked on: {question_date})"
+            if question_date
+            else question.question
+        )
+
         snapshot = dict(usage_ledger) if usage_ledger else {}
         start = time.perf_counter()
-        answer = await answer_fn(question.question, retrieved)
+        answer = await answer_fn(answer_question, retrieved)
         answer_ms = int((time.perf_counter() - start) * 1000)
         answer_usage = {
             k: usage_ledger[k] - snapshot.get(k, 0) for k in (usage_ledger or {})
@@ -90,6 +100,8 @@ async def run_eval(
             question=question.question,
             gold=question.gold_answer,
             hypothesis=answer,
+            category=question.category,
+            question_id=question.question_id,
         )
         judge_ms = int((time.perf_counter() - start) * 1000)
         judge_usage = {

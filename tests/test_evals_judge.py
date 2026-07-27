@@ -56,6 +56,49 @@ async def test_no_reply_is_incorrect():
     assert result["verdict"] == "incorrect"
 
 
+class TestOfficialTypeSpecificPrompts:
+    """The judge must use LongMemEval's official per-type grading prompts
+    (src/evaluation/evaluate_qa.py) so results are comparable."""
+
+    @pytest.mark.asyncio
+    async def test_temporal_reasoning_allows_off_by_one(self):
+        judge, captured = _judge_with_reply("yes")
+        await judge.judge(
+            question="q", gold="18 days", hypothesis="19 days",
+            category="temporal-reasoning",
+        )
+        assert "off-by-one" in captured["user"]
+
+    @pytest.mark.asyncio
+    async def test_knowledge_update_accepts_updated_answer(self):
+        judge, captured = _judge_with_reply("yes")
+        await judge.judge(
+            question="q", gold="g", hypothesis="h", category="knowledge-update"
+        )
+        assert "updated answer" in captured["user"]
+
+    @pytest.mark.asyncio
+    async def test_preference_is_graded_against_rubric(self):
+        judge, captured = _judge_with_reply("yes")
+        await judge.judge(
+            question="q", gold="g", hypothesis="h",
+            category="single-session-preference",
+        )
+        assert "Rubric:" in captured["user"]
+        assert "personal information" in captured["user"]
+
+    @pytest.mark.asyncio
+    async def test_abstention_questions_graded_on_unanswerable(self):
+        """Question IDs with an _abs suffix are unanswerable by design; the
+        official metric checks the model recognized that."""
+        judge, captured = _judge_with_reply("yes")
+        await judge.judge(
+            question="q", gold="explanation", hypothesis="I don't know",
+            category="single-session-user", question_id="lme-42_abs",
+        )
+        assert "unanswerable" in captured["user"]
+
+
 @pytest.mark.asyncio
 async def test_unparseable_reply_is_error_not_a_guess():
     """A judge that can't parse must say so, never silently guess."""
