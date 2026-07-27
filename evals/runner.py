@@ -9,6 +9,7 @@ the setting the benchmarks define.
 """
 from __future__ import annotations
 
+import re
 import time
 from pathlib import PurePosixPath
 from typing import Any, Awaitable, Callable
@@ -17,6 +18,12 @@ from evals.judge import Judge
 from evals.traces import Trace
 
 AnswerFn = Callable[[str, list[dict[str, Any]]], Awaitable[str]]
+
+
+def _slug(stem: str) -> str:
+    """Kebab-case a filename stem — mirrors Cortex's wiki slug rule, so
+    evidence session IDs match slugified compiled-note paths."""
+    return re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")
 
 
 def _session_filename(question: Any, index: int) -> str:
@@ -30,8 +37,10 @@ def _compute_recall(question: Any, retrieved: list[dict[str, Any]]) -> float | N
     evidence = getattr(question, "evidence_session_ids", None) or []
     if not evidence:
         return None
-    retrieved_stems = {PurePosixPath(r.get("path", "")).stem for r in retrieved}
-    found = sum(1 for sid in evidence if sid in retrieved_stems)
+    retrieved_stems = {
+        _slug(PurePosixPath(r.get("path", "")).stem) for r in retrieved
+    }
+    found = sum(1 for sid in evidence if _slug(sid) in retrieved_stems)
     return found / len(evidence)
 
 

@@ -272,6 +272,23 @@ class TestRunEval:
         assert trace.recall == 0.5
 
     @pytest.mark.asyncio
+    async def test_recall_matches_slugified_wiki_paths(self):
+        """Cortex kebab-cases filename stems when compiling raw -> wiki
+        (answer_XYZ_1 -> answer-xyz-1.md); recall matching must too."""
+        from evals.runner import run_eval
+
+        adapter = FakeAdapter(
+            retrieved=[{"path": "wiki/answer-280352e9.md", "snippet": "hit"}]
+        )
+        question = _question(
+            sessions=["s1"],
+            session_ids=["answer_280352E9"],
+            evidence_session_ids=["answer_280352E9"],
+        )
+        (trace,) = await run_eval([question], adapter, _fake_answer, _make_judge())
+        assert trace.recall == 1.0
+
+    @pytest.mark.asyncio
     async def test_recall_none_without_evidence_labels(self):
         from evals.runner import run_eval
 
