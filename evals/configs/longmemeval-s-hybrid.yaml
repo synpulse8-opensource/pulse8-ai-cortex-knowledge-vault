@@ -35,7 +35,9 @@ cortex:
   qmd_update_url: http://localhost:3100/update
   # Feed full note content (capped per note) to the answer model instead
   # of search snippets — how agents actually consume Cortex.
-  context_chars: 4000
+  # Per-note cap when fetching full note content after search. LongMemEval-S
+  # sessions average ~9k chars; 16k serves nearly all sessions in full.
+  context_chars: 16000
 
 models:
   answer: anthropic/claude-sonnet-4
