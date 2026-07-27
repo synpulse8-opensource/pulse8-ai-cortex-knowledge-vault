@@ -47,7 +47,10 @@ def read_traces(path: Path | str) -> list[Trace]:
     if not path.exists():
         return []
     traces = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    # Split on newline only: answers may carry unescaped U+2028/U+2029
+    # (written with ensure_ascii=False), which splitlines() would treat
+    # as record boundaries, corrupting the parse.
+    for line in path.read_text(encoding="utf-8").split("\n"):
         if line.strip():
             traces.append(Trace(**json.loads(line)))
     return traces
