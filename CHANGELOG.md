@@ -5,6 +5,18 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] — 2026-07-27
+
+### Added
+
+- **Retrieval benchmark harness** (`evals/`): reproducible, auditable evaluation of Cortex retrieval end-to-end through the public REST API (ingest → compile → search → answer → judge). Pinned YAML configs (dataset SHA-256, models, seed; a hash mismatch aborts the run), per-question vault isolation with a synchronous QMD reindex hook, LLM-as-judge with strict yes/no verdict parsing and enforced judge ≠ answerer, official LongMemEval per-type grading prompts, recall@k from dataset evidence labels, per-phase token accounting, crash-safe JSONL trace streaming, and blind human validation (identifier-stripped samples, percent + Cohen's kappa agreement).
+- **First published benchmark result — LongMemEval-S (hybrid search)**: 45.0% overall accuracy, 65.6% evidence recall@8 over all 500 questions with zero judge errors. Full per-category table, methodology, and caveats in [docs/benchmarks/README.md](docs/benchmarks/README.md); reproduce with `uv run python -m evals.run_longmemeval --config evals/configs/longmemeval-s-hybrid.yaml`.
+- **Native QMD mode** (`--native-qmd`): `start.sh` / `stop.sh` can run QMD directly on the host instead of in Docker — on Apple-silicon Macs this gives QMD Metal-GPU embedding (Docker Desktop cannot access the GPU, forcing slow CPU emulation). PID/log files are managed under the repo root; `stop.sh` cleans up a native QMD automatically.
+
+### Fixed
+
+- **Trace files with Unicode line separators**: `read_traces` now splits records on newline only; model answers containing U+2028/U+2029 (written unescaped with `ensure_ascii=False`) previously corrupted JSONL parsing via `splitlines()`.
+
 ## [1.5.0] — 2026-07-26
 
 ### Added

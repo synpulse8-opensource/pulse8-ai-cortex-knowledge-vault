@@ -194,7 +194,24 @@ See [docs/ec2-gpu-setup.md](docs/ec2-gpu-setup.md) for a full guide on instance 
 
 ## Benchmarks
 
-A reproducible evaluation harness lives in [`evals/`](evals/) — pinned configs, LLM-as-judge with strict verdict parsing, blind human validation, and per-question trace artifacts. First target: LongMemEval-S. Methodology and (upcoming) results: [docs/benchmarks/](docs/benchmarks/README.md).
+**45.0% overall accuracy on [LongMemEval-S](https://github.com/xiaowu0162/LongMemEval)** (500 questions, full haystacks, hybrid search) with 65.6% evidence recall@8 and zero judge errors — measured end-to-end through the public REST API: ingest → compile → graph → search → answer.
+
+| Category | Accuracy | Recall@8 |
+|---|---|---|
+| single-session-assistant | **96.4%** | 98.2% |
+| single-session-user | **71.4%** | 78.6% |
+| knowledge-update | **60.3%** | 75.6% |
+| temporal-reasoning | 25.6% | 51.1% |
+| multi-session | 24.8% | 54.1% |
+| single-session-preference | 23.3% | 63.3% |
+
+Every number is reproducible from a pinned config (dataset SHA-256, models, seed) with one command:
+
+```bash
+uv run python -m evals.run_longmemeval --config evals/configs/longmemeval-s-hybrid.yaml
+```
+
+The harness ([`evals/`](evals/)) publishes per-question JSONL traces, separates the judge model from the answer model, uses the official LongMemEval per-type grading prompts, and includes blind human validation of the judge. Full methodology, caveats, and raw results: [docs/benchmarks/](docs/benchmarks/README.md).
 
 ## Runs without an LLM
 
