@@ -6,13 +6,13 @@
     "url": "https://github.com/synpulse8-opensource/pulse8-ai-cortex-knowledge-vault",
     "source": "github"
   },
-  "version": "1.4.0",
+  "version": "1.6.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "pulse8-ai-cortex-knowledge-vault",
-      "version": "1.4.0",
+      "version": "1.6.0",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         {

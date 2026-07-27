@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,6 +15,24 @@ def _mock_chat_response(text: str) -> MagicMock:
     response = MagicMock()
     response.choices = [choice]
     return response
+
+
+def _fake_backend(text: str):
+    """An enabled LLMBackend that returns canned text for every completion."""
+    from cortex.llm.backend import LLMBackend
+
+    class _Fake(LLMBackend):
+        enabled = True
+        model_id = "fake/model"
+
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str]] = []
+
+        async def complete(self, system, user, *, max_tokens=4096):
+            self.calls.append((system, user))
+            return text
+
+    return _Fake()
 
 
 class TestPrompts:
@@ -182,22 +200,16 @@ class TestLLMEnrichment:
         """After MarkItDown conversion, enrich_article should call LLM to add wikilinks and tags."""
         from cortex.compiler.compiler import KnowledgeCompiler
 
-        compiler = KnowledgeCompiler(tmp_vault)
-
         enriched_json = json.dumps({
             "content": "# Transformers\n\nThe [[transformer-architecture]] uses [[attention-mechanisms]].",
             "tags": ["ml", "architecture", "nlp"],
         })
-        mock_response = _mock_chat_response(enriched_json)
+        compiler = KnowledgeCompiler(tmp_vault, backend=_fake_backend(enriched_json))
 
-        with patch.object(
-            compiler.client.chat.completions, "create",
-            new_callable=AsyncMock, return_value=mock_response,
-        ):
-            result = await compiler.enrich_article(
-                "# Transformers\n\nThe transformer architecture uses attention mechanisms.",
-                "Transformers",
-            )
+        result = await compiler.enrich_article(
+            "# Transformers\n\nThe transformer architecture uses attention mechanisms.",
+            "Transformers",
+        )
         assert "[[" in result["content"]
         assert len(result["tags"]) > 0
 
@@ -206,15 +218,12 @@ class TestLLMEnrichment:
         """If LLM returns invalid JSON, enrich should return original content with no tags."""
         from cortex.compiler.compiler import KnowledgeCompiler
 
-        compiler = KnowledgeCompiler(tmp_vault)
-        mock_response = _mock_chat_response("not valid json at all")
+        compiler = KnowledgeCompiler(
+            tmp_vault, backend=_fake_backend("not valid json at all")
+        )
 
         original = "# Test\n\nPlain content."
-        with patch.object(
-            compiler.client.chat.completions, "create",
-            new_callable=AsyncMock, return_value=mock_response,
-        ):
-            result = await compiler.enrich_article(original, "Test")
+        result = await compiler.enrich_article(original, "Test")
         assert result["content"] == original
         assert result["tags"] == []
 
@@ -224,22 +233,13 @@ class TestLLMEnrichment:
         import frontmatter as fm
         from cortex.compiler.compiler import KnowledgeCompiler
 
-        compiler = KnowledgeCompiler(tmp_vault)
-
         enriched_json = json.dumps({
             "content": "# Attention Is All You Need\n\nIntroduces the [[transformer-architecture]].",
             "tags": ["ml", "attention"],
         })
-        mock_response = _mock_chat_response(enriched_json)
+        compiler = KnowledgeCompiler(tmp_vault, backend=_fake_backend(enriched_json))
 
-        with patch("cortex.compiler.compiler.settings") as mock_settings:
-            mock_settings.llm_api_key = "test-key"
-            mock_settings.compiler_max_file_size_mb = 50
-            with patch.object(
-                compiler.client.chat.completions, "create",
-                new_callable=AsyncMock, return_value=mock_response,
-            ):
-                result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
+        result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
 
         post = fm.load(str(result[0]))
         assert "[[transformer-architecture]]" in post.content
@@ -250,18 +250,64 @@ class TestLLMEnrichment:
         """When LLM API key is not set, ingest should skip enrichment gracefully."""
         from cortex.compiler.compiler import KnowledgeCompiler
 
+        # Test env has no key -> default backend is disabled.
         compiler = KnowledgeCompiler(tmp_vault)
+        assert compiler.backend.enabled is False
 
-        with patch("cortex.compiler.compiler.settings") as mock_settings:
-            mock_settings.llm_api_key = ""
-            mock_settings.llm_base_url = "https://openrouter.ai/api/v1"
-            mock_settings.compiler_model = "test"
-            mock_settings.compiler_max_tokens = 4096
-            mock_settings.compiler_max_file_size_mb = 50
-            result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
+        result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
 
         assert len(result) == 1
         assert result[0].exists()
+
+
+class TestBackendWiring:
+    """The compiler consults the pluggable LLM backend, not the raw API key."""
+
+    @pytest.mark.asyncio
+    async def test_backend_none_disables_enrichment_even_with_key(
+        self, tmp_vault: Path, monkeypatch
+    ):
+        """CORTEX_LLM_BACKEND=none must guarantee zero LLM usage even if a key is set."""
+        import frontmatter as fm
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.config import settings
+
+        monkeypatch.setattr(settings, "llm_backend", "none")
+        monkeypatch.setattr(settings, "llm_api_key", "sk-or-test-key")
+
+        compiler = KnowledgeCompiler(tmp_vault)
+        assert compiler.backend.enabled is False
+
+        result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
+        assert len(result) == 1
+        post = fm.load(str(result[0]))
+        assert post.metadata.get("enrichment_status") == "incomplete"
+        assert "model" not in post.metadata
+
+    def test_make_markitdown_respects_backend_none(self, monkeypatch):
+        """No vision client is attached when the backend is disabled, key or not."""
+        from cortex.compiler.extractor import make_markitdown
+        from cortex.config import settings
+
+        monkeypatch.setattr(settings, "llm_backend", "none")
+        monkeypatch.setattr(settings, "llm_api_key", "sk-or-test-key")
+        md = make_markitdown()
+        assert md._llm_client is None
+
+    @pytest.mark.asyncio
+    async def test_cross_references_skipped_when_backend_disabled(
+        self, tmp_vault: Path, monkeypatch
+    ):
+        """compile_cross_references is a no-op with a disabled backend."""
+        from cortex.compiler.compiler import KnowledgeCompiler
+        from cortex.config import settings
+
+        monkeypatch.setattr(settings, "llm_backend", "none")
+        compiler = KnowledgeCompiler(tmp_vault)
+        # Must return without raising and without touching the backend.
+        await compiler.compile_cross_references(
+            [tmp_vault / "wiki" / "transformer-architecture.md"]
+        )
 
 
 class TestEnrichmentStatus:
@@ -273,26 +319,13 @@ class TestEnrichmentStatus:
         import frontmatter as fm
         from cortex.compiler.compiler import KnowledgeCompiler
 
-        compiler = KnowledgeCompiler(tmp_vault)
         enriched_json = json.dumps({
             "content": "# Paper\n\nUses [[attention-mechanisms]] for NLP.",
             "tags": ["ml", "nlp"],
         })
-        mock_response = _mock_chat_response(enriched_json)
+        compiler = KnowledgeCompiler(tmp_vault, backend=_fake_backend(enriched_json))
 
-        with patch("cortex.compiler.compiler.settings") as mock_settings:
-            mock_settings.llm_api_key = "test-key"
-            mock_settings.llm_base_url = "https://test"
-            mock_settings.compiler_model = "test"
-            mock_settings.compiler_max_tokens = 4096
-            mock_settings.compiler_max_file_size_mb = 50
-            with patch.object(
-                compiler.client.chat.completions, "create",
-                new_callable=AsyncMock, return_value=mock_response,
-            ):
-                result = await compiler.ingest_source(
-                    tmp_vault / "raw" / "transformer-paper.txt"
-                )
+        result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
 
         post = fm.load(str(result[0]))
         assert post.metadata.get("enrichment_status") == "complete"
@@ -303,22 +336,9 @@ class TestEnrichmentStatus:
         import frontmatter as fm
         from cortex.compiler.compiler import KnowledgeCompiler
 
-        compiler = KnowledgeCompiler(tmp_vault)
-        mock_response = _mock_chat_response("not valid json")
+        compiler = KnowledgeCompiler(tmp_vault, backend=_fake_backend("not valid json"))
 
-        with patch("cortex.compiler.compiler.settings") as mock_settings:
-            mock_settings.llm_api_key = "test-key"
-            mock_settings.llm_base_url = "https://test"
-            mock_settings.compiler_model = "test"
-            mock_settings.compiler_max_tokens = 4096
-            mock_settings.compiler_max_file_size_mb = 50
-            with patch.object(
-                compiler.client.chat.completions, "create",
-                new_callable=AsyncMock, return_value=mock_response,
-            ):
-                result = await compiler.ingest_source(
-                    tmp_vault / "raw" / "transformer-paper.txt"
-                )
+        result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
 
         post = fm.load(str(result[0]))
         assert post.metadata.get("enrichment_status") == "incomplete"
@@ -330,16 +350,9 @@ class TestEnrichmentStatus:
         from cortex.compiler.compiler import KnowledgeCompiler
 
         compiler = KnowledgeCompiler(tmp_vault)
+        assert compiler.backend.enabled is False
 
-        with patch("cortex.compiler.compiler.settings") as mock_settings:
-            mock_settings.llm_api_key = ""
-            mock_settings.llm_base_url = "https://test"
-            mock_settings.compiler_model = "test"
-            mock_settings.compiler_max_tokens = 4096
-            mock_settings.compiler_max_file_size_mb = 50
-            result = await compiler.ingest_source(
-                tmp_vault / "raw" / "transformer-paper.txt"
-            )
+        result = await compiler.ingest_source(tmp_vault / "raw" / "transformer-paper.txt")
 
         post = fm.load(str(result[0]))
         assert post.metadata.get("enrichment_status") == "incomplete"
@@ -528,7 +541,7 @@ class TestExtractor:
         monkeypatch.setattr(settings, "compiler_model", "text/model")
         monkeypatch.setattr(settings, "compiler_vision_model", "vision/model")
 
-        with patch("cortex.compiler.extractor.OpenAI") as mock_openai:
+        with patch("openai.OpenAI") as mock_openai:
             md = make_markitdown()
             mock_openai.assert_called_once_with(
                 api_key="test-key",

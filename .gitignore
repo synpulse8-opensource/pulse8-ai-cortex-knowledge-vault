@@ -85,3 +85,24 @@ Thumbs.db
 **/.cortex/index.md
 **/.cortex/log.md
 .obsidian/
+
+# example_vault is a local working vault that may contain client material.
+# Everything new in it is ignored by default; the tracked public samples
+# remain tracked. Add new public samples deliberately with `git add -f`.
+example_vault/**
+
+# benchmark datasets (downloaded, pinned by SHA-256), run outputs, scratch vault,
+# isolated qmd index/model cache for eval runs
+evals/data/
+evals/out/
+evals/vault/
+evals/.qmd-home/
+
+# native QMD daemon state (./scripts/start.sh --native-qmd)
+.qmd-native.pid
+.qmd-native.log
+
+# draw.io and MS Office temp/backup files (may shadow client documents)
+.$*.bkp
+.$*.dtmp
+~$*

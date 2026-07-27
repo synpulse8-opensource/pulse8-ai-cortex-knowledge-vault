@@ -5,6 +5,31 @@ All notable changes to PULSE8.ai Cortex are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] — 2026-07-27
+
+### Added
+
+- **Retrieval benchmark harness** (`evals/`): reproducible, auditable evaluation of Cortex retrieval end-to-end through the public REST API (ingest → compile → search → answer → judge). Pinned YAML configs (dataset SHA-256, models, seed; a hash mismatch aborts the run), per-question vault isolation with a synchronous QMD reindex hook, LLM-as-judge with strict yes/no verdict parsing and enforced judge ≠ answerer, official LongMemEval per-type grading prompts, recall@k from dataset evidence labels, per-phase token accounting, crash-safe JSONL trace streaming, and blind human validation (identifier-stripped samples, percent + Cohen's kappa agreement).
+- **First published benchmark result — LongMemEval-S (hybrid search)**: 45.0% overall accuracy, 65.6% evidence recall@8 over all 500 questions with zero judge errors. Full per-category table, methodology, and caveats in [docs/benchmarks/README.md](docs/benchmarks/README.md); reproduce with `uv run python -m evals.run_longmemeval --config evals/configs/longmemeval-s-hybrid.yaml`.
+- **Native QMD mode** (`--native-qmd`): `start.sh` / `stop.sh` can run QMD directly on the host instead of in Docker — on Apple-silicon Macs this gives QMD Metal-GPU embedding (Docker Desktop cannot access the GPU, forcing slow CPU emulation). PID/log files are managed under the repo root; `stop.sh` cleans up a native QMD automatically.
+
+### Fixed
+
+- **Trace files with Unicode line separators**: `read_traces` now splits records on newline only; model answers containing U+2028/U+2029 (written unescaped with `ensure_ascii=False`) previously corrupted JSONL parsing via `splitlines()`.
+
+## [1.5.0] — 2026-07-26
+
+### Added
+
+- **Pluggable LLM backends** (`LLM_BACKEND` / `CORTEX_LLM_BACKEND`): `openai-compatible` (OpenRouter, Azure OpenAI, Ollama, vLLM — default), `bedrock` (AWS credential chain, lazy `boto3`), or `none`. All compiler LLM usage now routes through `cortex/llm/backend.py`.
+- **Zero-LLM (deterministic-first) mode**: `LLM_BACKEND=none` guarantees no LLM client is constructed and no model call is made — ingest, graph, and search all work. `start.sh` no longer requires an API key for `none`/`bedrock`. Pinned by contract tests.
+- **Edge lineage**: every graph edge now carries an `origin` label — `extracted` (deterministic structure extraction), `manual` (created via `vault_link`/REST), reserved `inferred` for LLM cross-references.
+- **`vault_trace`** (MCP + `GET /api/v1/trace/{path}`): full lineage of a note — provenance (author, model, timestamps), raw sources via `derived_from`, and all labeled edges. Answers "why does the vault say X".
+- **Graph query surface**: `vault_path` (shortest paths between notes, tag hubs excluded, every hop typed and origin-labeled; `GET /api/v1/graph/path`), `vault_impact` (transitive upstream dependents for change-impact analysis; `GET /api/v1/graph/impact`), `vault_explain` (summary + provenance + grouped connections; `GET /api/v1/explain/{path}`).
+- **Usage counters**: MCP and REST note reads increment per-note counters in `.cortex/usage.json`.
+- **Feedback outcomes**: `vault_feedback` and `POST /api/v1/feedbacks` accept an optional `outcome` label (`useful` / `dead-end` / `corrected`).
+- **Curation report** (`GET /api/v1/curation/report`): most-read, never-read, stale (configurable `stale_days`), and contradicted notes (contradiction edges + corrected feedback) — knowledge quality management from usage and outcome signals.
+
 ## [1.4.0] — 2026-07-26
 
 ### Added

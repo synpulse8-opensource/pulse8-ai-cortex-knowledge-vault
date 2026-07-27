@@ -17,6 +17,7 @@ from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.layout import raw_dir, raw_rel, wiki_dir
 from cortex.vault.reader import read_note, scan_vault
 from cortex.vault.daily_log import append_daily_log_entry
+from cortex.vault.usage import record_read
 from cortex.vault.writer import write_note
 
 # Paths whose writes should NOT mirror into daily/ (avoid self-reference loops
@@ -149,6 +150,7 @@ async def handle_vault_read(
             for e in edges
         ]
         await log_operation(vault_path, "mcp", "vault:read", f"Read {path}")
+        await record_read(vault_path, note.path)
         return _enforce_payload_size({
             "path": note.path,
             "title": note.title,
@@ -253,6 +255,7 @@ async def handle_vault_feedback(
     related_paths: Optional[list[str]] = None,
     qmd_debounce: Any = None,
     authored_by: str = "human",
+    outcome: Optional[str] = None,
     **_kwargs: Any,
 ) -> dict[str, Any]:
     """Create a feedback note with tags, author name, and optional related paths."""
@@ -267,6 +270,7 @@ async def handle_vault_feedback(
             tags=tags,
             related_paths=related_paths,
             authored_by=authored_by,
+            outcome=outcome,
         )
         await log_operation(vault_path, "mcp", "vault:feedback", f"Feedback {result['path']}")
         return result
@@ -470,6 +474,204 @@ async def handle_vault_context(
         return {"error": str(e)}
 
 
+async def handle_vault_trace(
+    path: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Trace the lineage of a note: where it came from and who asserted what.
+
+    Answers "why does the vault say X" — returns the note's provenance
+    (author, model, timestamps), its raw sources (via derived_from edges),
+    and every edge touching it with the origin label (extracted / inferred
+    / manual) stamped at creation time.
+    """
+    try:
+        path = resolve_note_path(path, vault_path, graph=graph)
+        if not (vault_path / path).exists():
+            return {"error": f"Note not found: {path}"}
+        note = await asyncio.to_thread(read_note, vault_path / path, vault_path)
+
+        edges = await graph.get_edges(note.path)
+        edge_dicts = [
+            {
+                "source": e.source,
+                "target": e.target,
+                "edge_type": e.edge_type.value,
+                "origin": e.metadata.get("origin", "unknown"),
+                "model": e.metadata.get("model"),
+                "created_at": e.created_at,
+            }
+            for e in edges
+        ]
+
+        sources = [
+            {"path": e.target, "origin": e.metadata.get("origin", "unknown")}
+            for e in edges
+            if e.source == note.path and e.edge_type == EdgeType.DERIVED_FROM
+        ]
+
+        provenance = {
+            "authored_by": note.provenance.authored_by,
+            "model": note.provenance.model,
+            "created_at": note.provenance.created_at,
+            "updated_at": note.provenance.updated_at,
+            "enrichment_status": note.frontmatter.get("enrichment_status"),
+        }
+
+        await log_operation(vault_path, "mcp", "vault:trace", f"Trace {path}")
+        return _enforce_payload_size({
+            "path": note.path,
+            "title": note.title,
+            "provenance": provenance,
+            "sources": sources,
+            "edges": edge_dicts,
+        })
+    except FileNotFoundError:
+        return {"error": f"Note not found: {path}"}
+    except Exception as e:
+        logger.exception("vault:trace error")
+        return {"error": str(e)}
+
+
+def _node_title(graph: GraphEngine, node: str) -> str:
+    if graph.graph.has_node(node):
+        return graph.graph.nodes[node].get("title", node)
+    return node
+
+
+async def handle_vault_path(
+    source: str,
+    target: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    max_paths: int = 3,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Find shortest paths between two notes over the typed graph.
+
+    Answers "what connects X to Y" — e.g. trace the path from a policy to
+    the procedures that implement it. Every hop carries its edge type and
+    lineage origin.
+    """
+    try:
+        source = resolve_note_path(source, vault_path, graph=graph)
+        target = resolve_note_path(target, vault_path, graph=graph)
+        raw_paths = await graph.find_paths(source, target, max_paths=max_paths)
+        paths = [
+            {
+                "nodes": [
+                    {"path": n, "title": _node_title(graph, n)} for n in p["nodes"]
+                ],
+                "edges": p["edges"],
+            }
+            for p in raw_paths
+        ]
+        await log_operation(
+            vault_path, "mcp", "vault:path", f"Path {source} → {target}"
+        )
+        return _enforce_payload_size(
+            {"source": source, "target": target, "paths": paths}
+        )
+    except Exception as e:
+        logger.exception("vault:path error")
+        return {"error": str(e)}
+
+
+async def handle_vault_impact(
+    path: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    max_depth: int = 5,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Walk everything downstream of a note: all notes that link to it,
+    directly or transitively. Used for change-impact analysis — when this
+    note changes, these notes may need review."""
+    try:
+        path = resolve_note_path(path, vault_path, graph=graph)
+        impacted = await graph.impact(path, max_depth=max_depth)
+        for item in impacted:
+            item["title"] = _node_title(graph, item["path"])
+        await log_operation(vault_path, "mcp", "vault:impact", f"Impact {path}")
+        return _enforce_payload_size(
+            {"path": path, "impacted": impacted, "total": len(impacted)}
+        )
+    except Exception as e:
+        logger.exception("vault:impact error")
+        return {"error": str(e)}
+
+
+async def handle_vault_explain(
+    path: str,
+    vault_path: Path,
+    graph: GraphEngine,
+    **_kwargs: Any,
+) -> dict[str, Any]:
+    """Explain a note: summary, provenance, sources, and connections grouped
+    by direction. Composite of trace + neighborhood for 'explain this
+    entity' questions."""
+    try:
+        path = resolve_note_path(path, vault_path, graph=graph)
+        if not (vault_path / path).exists():
+            return {"error": f"Note not found: {path}"}
+        note = await asyncio.to_thread(read_note, vault_path / path, vault_path)
+
+        edges = await graph.get_edges(note.path)
+        links_out = []
+        links_in = []
+        contradictions = []
+        sources = []
+        for e in edges:
+            entry = {
+                "source": e.source,
+                "target": e.target,
+                "edge_type": e.edge_type.value,
+                "origin": e.metadata.get("origin", "unknown"),
+            }
+            if e.edge_type == EdgeType.CONTRADICTS:
+                contradictions.append(entry)
+            elif e.source == note.path and e.edge_type == EdgeType.DERIVED_FROM:
+                sources.append(
+                    {"path": e.target, "origin": e.metadata.get("origin", "unknown")}
+                )
+            elif e.edge_type == EdgeType.TAGGED_WITH:
+                continue
+            elif e.source == note.path:
+                entry["title"] = _node_title(graph, e.target)
+                links_out.append(entry)
+            else:
+                entry["title"] = _node_title(graph, e.source)
+                links_in.append(entry)
+
+        provenance = {
+            "authored_by": note.provenance.authored_by,
+            "model": note.provenance.model,
+            "created_at": note.provenance.created_at,
+            "updated_at": note.provenance.updated_at,
+            "enrichment_status": note.frontmatter.get("enrichment_status"),
+        }
+
+        await log_operation(vault_path, "mcp", "vault:explain", f"Explain {path}")
+        return _enforce_payload_size({
+            "path": note.path,
+            "title": note.title,
+            "summary": note.content[:500],
+            "tags": note.tags,
+            "provenance": provenance,
+            "sources": sources,
+            "links_out": links_out,
+            "links_in": links_in,
+            "contradictions": contradictions,
+        })
+    except FileNotFoundError:
+        return {"error": f"Note not found: {path}"}
+    except Exception as e:
+        logger.exception("vault:explain error")
+        return {"error": str(e)}
+
+
 async def handle_vault_link(
     action: str,
     vault_path: Path,
@@ -485,11 +687,15 @@ async def handle_vault_link(
         if action == "create":
             if not source or not target or not edge_type:
                 return {"error": "source, target, and edge_type are required for create"}
+            # Lineage: edges created through this tool are manual assertions
+            # (human or agent), unless the caller explicitly claims otherwise.
+            edge_metadata = dict(metadata or {})
+            edge_metadata.setdefault("origin", "manual")
             edge = Edge(
                 source=source,
                 target=target,
                 edge_type=EdgeType(edge_type),
-                metadata=metadata or {},
+                metadata=edge_metadata,
             )
             await graph.add_edge(edge)
             await log_operation(vault_path, "mcp", "vault:link", f"Created {edge_type}: {source} → {target}")

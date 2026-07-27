@@ -64,3 +64,23 @@ def test_llm_config_from_env(monkeypatch):
     assert s.llm_api_key == "sk-or-test-key"
     assert s.llm_base_url == "https://api.openai.com/v1"
     assert s.compiler_model == "gpt-4o"
+
+
+def test_llm_backend_setting(monkeypatch):
+    """CORTEX_LLM_BACKEND selects the LLM backend; invalid values rejected."""
+    import pytest
+
+    from cortex.config import CortexSettings
+
+    # Default preserves current behavior (OpenAI-compatible endpoint).
+    assert CortexSettings().llm_backend == "openai-compatible"
+
+    monkeypatch.setenv("CORTEX_LLM_BACKEND", "none")
+    assert CortexSettings().llm_backend == "none"
+
+    monkeypatch.setenv("CORTEX_LLM_BACKEND", "bedrock")
+    assert CortexSettings().llm_backend == "bedrock"
+
+    monkeypatch.setenv("CORTEX_LLM_BACKEND", "not-a-backend")
+    with pytest.raises(ValueError):
+        CortexSettings()

@@ -9,12 +9,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from openai import AsyncOpenAI
-
 from cortex.compiler.extractor import make_markitdown
 from cortex.compiler.prompts import COMPILE_SYSTEM_PROMPT, ENRICH_SYSTEM_PROMPT
 from cortex.compiler.ingest_manifest import record_skipped_file
 from cortex.config import settings
+from cortex.llm.backend import LLMBackend, create_backend
 from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.layout import index_path, raw_dir, wiki_dest_for_raw
 from cortex.vault.reader import read_note, scan_vault
@@ -38,28 +37,19 @@ def _title_from_markdown(md_text: str, fallback: str) -> str:
 class KnowledgeCompiler:
     """Converts raw sources to wiki Markdown via MarkItDown; LLM for images and enrichment."""
 
-    def __init__(self, vault_path: Path) -> None:
+    def __init__(self, vault_path: Path, backend: LLMBackend | None = None) -> None:
         self.vault_path = vault_path
-        self._md = make_markitdown()
-        self.client = AsyncOpenAI(
-            api_key=settings.llm_api_key or "unused",
-            base_url=settings.llm_base_url,
-        )
-        self.model = settings.compiler_model
+        self.backend = backend if backend is not None else create_backend(settings)
+        self._md = make_markitdown(self.backend)
+        self.model = self.backend.model_id or settings.compiler_model
         self._index_cache: str | None = None
         self._index_mtime: float | None = None
 
     async def _chat(self, system: str, user_content: str) -> str:
         """Send a chat completion request and return the assistant's text."""
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            max_tokens=settings.compiler_max_tokens,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user_content},
-            ],
+        return await self.backend.complete(
+            system, user_content, max_tokens=settings.compiler_max_tokens
         )
-        return response.choices[0].message.content or ""
 
     async def enrich_article(self, md_content: str, title: str) -> dict:
         """Call LLM to add [[wikilinks]] and tags to a converted Markdown article."""
@@ -172,7 +162,7 @@ class KnowledgeCompiler:
 
         enriched = {"content": md_content, "tags": []}
         enrich_start = time.perf_counter()
-        if settings.llm_api_key:
+        if self.backend.enabled:
             enriched = await self.enrich_article(md_content, title)
         logger.info(
             "Enriched %s in %.3fs",
@@ -181,7 +171,7 @@ class KnowledgeCompiler:
         )
         has_tags = bool(enriched["tags"])
         has_links = "[[" in enriched["content"]
-        enrichment_ok = settings.llm_api_key and (has_tags or has_links)
+        enrichment_ok = self.backend.enabled and (has_tags or has_links)
 
         note_path = wiki_path
 
@@ -201,7 +191,7 @@ class KnowledgeCompiler:
             frontmatter=frontmatter,
             mode="upsert",
             authored_by="markitdown",
-            model=self.model if settings.llm_api_key else None,
+            model=self.model if self.backend.enabled else None,
         )
         logger.info(
             "Wrote note %s to %s in %.3fs",
@@ -230,7 +220,7 @@ class KnowledgeCompiler:
 
     async def compile_cross_references(self, new_paths: list[Path]) -> None:
         """After new articles are created, identify cross-references and contradictions."""
-        if not settings.llm_api_key:
+        if not self.backend.enabled:
             return
         new_articles = []
         for p in new_paths:

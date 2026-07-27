@@ -17,6 +17,10 @@ class CortexSettings(BaseSettings):
     qmd_url: str = ""
     qmd_search_mode: str = "hybrid"
 
+    # LLM backend: "openai-compatible" (OpenRouter, Azure OpenAI, Ollama,
+    # vLLM — anything speaking the OpenAI protocol), "bedrock" (AWS), or
+    # "none" (deterministic-only: disables all LLM enrichment explicitly).
+    llm_backend: str = "openai-compatible"
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
     compiler_model: str = "qwen/qwen3.5-flash-02-23" # "google/gemini-2.5-flash"
@@ -58,6 +62,14 @@ class CortexSettings(BaseSettings):
     # before LRU eviction kicks in.
     resource_ttl_seconds: int = 3600
     resource_max_items: int = 1000
+
+    @field_validator("llm_backend")
+    @classmethod
+    def _validate_llm_backend(cls, value: str) -> str:
+        allowed = ("openai-compatible", "bedrock", "none")
+        if value not in allowed:
+            raise ValueError(f"llm_backend must be one of {allowed}, got {value!r}")
+        return value
 
     @field_validator("vault_raw_dir", "vault_wiki_dir")
     @classmethod

@@ -13,12 +13,19 @@ from cortex.config import settings
 from cortex.vault.layout import raw_dir, raw_rel
 from cortex.graph.engine import GraphEngine
 from cortex.log.audit import log_operation
+from cortex.mcp.tools import (
+    handle_vault_explain,
+    handle_vault_impact,
+    handle_vault_path,
+    handle_vault_trace,
+)
 from cortex.search.qmd import QMDSearch
 from cortex.vault.daily_log import append_daily_log_entry
 from cortex.vault.index import rebuild_index
 from cortex.vault.models import Edge, EdgeType
 from cortex.vault.paths import build_path_index_from_graph, resolve_note_path
 from cortex.vault.reader import read_note, resolve_wikilink
+from cortex.vault.usage import record_read
 from cortex.vault.writer import write_note
 
 # Mirrors `_DAILY_LOG_EXCLUDED_PREFIXES` in cortex.mcp.tools. Kept in sync
@@ -74,6 +81,7 @@ class FeedbackBody(BaseModel):
     tags: list[str] | None = None
     related_paths: list[str] | None = None
     authored_by: str | None = None
+    outcome: str | None = None
 
 
 class TokenExchangeBody(BaseModel):
@@ -252,6 +260,7 @@ async def read_note_endpoint(path: str, request: Request):
     ]
 
     await log_operation(vault_path, "api", "vault:read", f"Read {path}")
+    await record_read(vault_path, note.path)
 
     return {
         "path": note.path,
@@ -493,6 +502,76 @@ async def graph_stats_endpoint(request: Request):
     return await graph.get_stats()
 
 
+@router.get("/trace/{path:path}", tags=["graph"])
+async def trace_endpoint(path: str, request: Request):
+    """Trace a note's lineage: provenance, raw sources, and labeled edges."""
+    vault_path = get_vault_path(request)
+    graph = get_graph(request)
+
+    result = await handle_vault_trace(path=path, vault_path=vault_path, graph=graph)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/graph/path", tags=["graph"])
+async def graph_path_endpoint(
+    source: str, target: str, request: Request, max_paths: int = 3
+):
+    """Find shortest paths between two notes over the typed graph."""
+    result = await handle_vault_path(
+        source=source,
+        target=target,
+        max_paths=max_paths,
+        vault_path=get_vault_path(request),
+        graph=get_graph(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.get("/graph/impact", tags=["graph"])
+async def graph_impact_endpoint(path: str, request: Request, max_depth: int = 5):
+    """Walk all notes downstream of a note (change-impact analysis)."""
+    result = await handle_vault_impact(
+        path=path,
+        max_depth=max_depth,
+        vault_path=get_vault_path(request),
+        graph=get_graph(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.get("/curation/report", tags=["curation"])
+async def curation_report_endpoint(request: Request, stale_days: int = 90):
+    """Knowledge quality report: most/never read, stale, contradicted notes."""
+    from cortex.vault.curation import build_curation_report
+
+    report = await build_curation_report(
+        get_vault_path(request), get_graph(request), stale_days=stale_days
+    )
+    await log_operation(
+        get_vault_path(request), "api", "vault:curation", "Curation report"
+    )
+    return report
+
+
+@router.get("/explain/{path:path}", tags=["graph"])
+async def explain_endpoint(path: str, request: Request):
+    """Explain a note: summary, provenance, sources, and connections."""
+    result = await handle_vault_explain(
+        path=path,
+        vault_path=get_vault_path(request),
+        graph=get_graph(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
 @router.post("/ingest", tags=["ingest"])
 async def ingest_endpoint(body: IngestBody, request: Request):
     """Ingest a raw source file and optionally compile it."""
@@ -708,6 +787,7 @@ async def create_feedback_endpoint(body: FeedbackBody, request: Request):
             tags=body.tags,
             related_paths=body.related_paths,
             authored_by=authored_by,
+            outcome=body.outcome,
         )
         await log_operation(vault_path, "api", "vault:feedback", f"Feedback {result['path']}")
         return result

@@ -6,29 +6,34 @@ set -euo pipefail
 #
 # Usage:
 #   ./scripts/start.sh                 # Start all services (QMD + Cortex)
-#   ./scripts/start.sh --cortex-only   # Start only Cortex container (run QMD natively)
+#   ./scripts/start.sh --native-qmd    # Native QMD on the host (GPU on macOS) + Cortex container
+#   ./scripts/start.sh --cortex-only   # Start only Cortex container (QMD managed by you)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 source "$SCRIPT_DIR/scripts/env_check.sh"
+source "$SCRIPT_DIR/scripts/qmd_native.sh"
 
 # ── Parse flags ─────────────────────────────────────────────────────
 CORTEX_ONLY=false
+NATIVE_QMD=false
 for arg in "$@"; do
     case "$arg" in
         --cortex-only) CORTEX_ONLY=true ;;
+        --native-qmd) CORTEX_ONLY=true; NATIVE_QMD=true ;;
         -h|--help)
-            echo "Usage: $0 [--cortex-only]"
+            echo "Usage: $0 [--native-qmd | --cortex-only]"
+            echo ""
+            echo "  --native-qmd    Start QMD natively on this machine and Cortex in Docker."
+            echo "                  Use this on macOS: Docker cannot access the Metal GPU,"
+            echo "                  so containerized QMD embeds on CPU only. Requires the"
+            echo "                  'qmd' binary (brew install tobi/tap/qmd) and node."
             echo ""
             echo "  --cortex-only   Start only the Cortex container."
-            echo "                  QMD must be running separately (e.g. natively)."
+            echo "                  QMD must be running separately (managed by you)."
             echo "                  Set QMD_URL in .env to point to your QMD instance."
             echo "                  Default: http://host.docker.internal:3100"
-            echo ""
-            echo "  To run QMD natively (with GPU acceleration on macOS):"
-            echo "    npm install -g @tobilu/qmd"
-            echo "    VAULT_PATH=./example_vault node docker/qmd/server.mjs"
             exit 0
             ;;
         *)
@@ -66,6 +71,10 @@ echo "Configuration saved to .env"
 # ── Launch ───────────────────────────────────────────────────────────
 echo ""
 if [ "$CORTEX_ONLY" = true ]; then
+    if [ "$NATIVE_QMD" = true ]; then
+        native_qmd_start "$VAULT_DIR"
+    fi
+    # The Cortex container reaches the host-side QMD via host.docker.internal.
     QMD_URL="${QMD_URL:-http://host.docker.internal:3100}"
     export CORTEX_QMD_URL="$QMD_URL"
 
@@ -99,7 +108,12 @@ if [ "$CORTEX_ONLY" = true ]; then
     echo "  QMD search:    $QMD_URL  (external — make sure QMD is running)"
     echo ""
     echo "  View logs:     docker compose logs -f cortex"
-    echo "  Stop:          ./scripts/stop.sh --cortex-only"
+    if [ "$NATIVE_QMD" = true ]; then
+        echo "  QMD logs:      tail -f $QMD_NATIVE_LOG_FILE"
+        echo "  Stop:          ./scripts/stop.sh --native-qmd"
+    else
+        echo "  Stop:          ./scripts/stop.sh --cortex-only"
+    fi
     echo ""
 else
     echo "Starting PULSE8.ai Cortex..."

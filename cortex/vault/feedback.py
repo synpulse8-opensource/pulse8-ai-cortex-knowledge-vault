@@ -13,6 +13,11 @@ from cortex.vault.writer import write_note
 
 _PREVIEW_MAX = 120
 
+# Outcome labels close the knowledge loop: was the retrieved knowledge
+# useful, a dead end, or wrong-and-corrected? Aggregated by the curation
+# report to surface stale or contradicted notes.
+VALID_OUTCOMES = ("useful", "dead-end", "corrected")
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -92,10 +97,15 @@ async def create_feedback(
     tags: Optional[list[str]] = None,
     related_paths: Optional[list[str]] = None,
     authored_by: str = "human",
+    outcome: Optional[str] = None,
 ) -> dict[str, Any]:
     """Create a feedback note with graph edges and QMD debounce."""
     if not content or not content.strip():
         raise ValueError("content is required")
+    if outcome is not None and outcome not in VALID_OUTCOMES:
+        raise ValueError(
+            f"outcome must be one of {', '.join(VALID_OUTCOMES)}; got {outcome!r}"
+        )
 
     tags = tags or []
     related_paths = related_paths or []
@@ -112,6 +122,8 @@ async def create_feedback(
         "tags": tags,
         "related_paths": related_paths,
     }
+    if outcome is not None:
+        frontmatter["outcome"] = outcome
 
     note = write_note(
         path=path,
@@ -153,6 +165,7 @@ async def create_feedback(
         "tags": tags,
         "related_paths": related_paths,
         "status": feedback_status,
+        "outcome": outcome,
     }
 
 
@@ -172,6 +185,7 @@ def list_feedbacks(vault_root: Path) -> list[dict[str, Any]]:
             "preview": _preview(note.content),
             "tags": note.tags,
             "related_paths": note.frontmatter.get("related_paths", []),
+            "outcome": note.frontmatter.get("outcome"),
         })
     return items
 

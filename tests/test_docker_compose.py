@@ -63,3 +63,19 @@ def test_env_example_documents_qmd_cache_ttl():
     """.env.example must document the QMD cache TTL knob."""
     content = (REPO_ROOT / ".env.example").read_text()
     assert "QMD_CACHE_TTL_SECONDS" in content
+
+
+def test_cortex_service_passes_llm_backend():
+    """LLM_BACKEND from .env must reach the container as CORTEX_LLM_BACKEND."""
+    compose_path = REPO_ROOT / "docker-compose.yml"
+    env = yaml.safe_load(compose_path.read_text())["services"]["cortex"]["environment"]
+
+    backend = [e for e in env if e.startswith("CORTEX_LLM_BACKEND=")]
+    assert backend, "Expected CORTEX_LLM_BACKEND in cortex environment"
+    assert "${LLM_BACKEND:-openai-compatible}" in backend[0]
+
+
+def test_env_example_documents_llm_backend():
+    """.env.example must document the LLM_BACKEND knob."""
+    content = (REPO_ROOT / ".env.example").read_text()
+    assert "LLM_BACKEND" in content
